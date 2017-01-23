@@ -45,6 +45,12 @@ generators:
 
       send(events)
 
+raters:
+  - name: kbpsrater
+    type: kbps
+    options:
+      KBps: 11.0
+
 samples:
   - name: weblog
     generator: perf
@@ -56,7 +62,7 @@ samples:
     interval: 1
     count: 34
     realtime: true
-    rater: default
+    rater: kbpsrater
     tokens:
       - name: ts-dmyhmsms-template
         format: template

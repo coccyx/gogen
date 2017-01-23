@@ -13,12 +13,17 @@ import (
 )
 
 var (
-	eventsWritten int64
-	bytesWritten  int64
+	EventsWritten map[string]int64
+	BytesWritten  map[string]int64
 	lastTS        time.Time
 	rotchan       chan *config.OutputStats
 	gout          [config.MaxOutputThreads]config.Outputter
 )
+
+func init() {
+	EventsWritten = make(map[string]int64)
+	BytesWritten = make(map[string]int64)
+}
 
 // ROT starts the Read Out Thread which will log statistics about what's being output
 // ROT is intended to be started as a goroutine which will log output every c.
@@ -26,8 +31,8 @@ func ROT(c *config.Config) {
 	rotchan = make(chan *config.OutputStats)
 	go readStats()
 
-	lastEventsWritten := eventsWritten
-	lastBytesWritten := bytesWritten
+	lastEventsWritten := make(map[string]int64)
+	lastBytesWritten := make(map[string]int64)
 	var gbday, eventssec, kbytessec float64
 	var tempEW, tempBW int64
 	lastTS = time.Now()
@@ -35,15 +40,17 @@ func ROT(c *config.Config) {
 		timer := time.NewTimer(time.Duration(c.Global.ROTInterval) * time.Second)
 		<-timer.C
 		n := time.Now()
-		tempEW = eventsWritten
-		tempBW = bytesWritten
-		eventssec = float64(tempEW-lastEventsWritten) / float64(int(n.Sub(lastTS))/int(time.Second)/c.Global.ROTInterval)
-		kbytessec = float64(tempBW-lastBytesWritten) / float64(int(n.Sub(lastTS))/int(time.Second)/c.Global.ROTInterval) / 1024
-		gbday = (kbytessec * 60 * 60 * 24) / 1024 / 1024
-		log.Infof("Events/Sec: %.2f Kilobytes/Sec: %.2f GB/Day: %.2f", eventssec, kbytessec, gbday)
+		for k := range BytesWritten {
+			tempEW = EventsWritten[k]
+			tempBW = BytesWritten[k]
+			eventssec = float64(tempEW-lastEventsWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/c.Global.ROTInterval)
+			kbytessec = float64(tempBW-lastBytesWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/c.Global.ROTInterval) / 1024
+			gbday = (kbytessec * 60 * 60 * 24) / 1024 / 1024
+			log.Infof("Sample: %s Events/Sec: %.2f Kilobytes/Sec: %.2f GB/Day: %.2f", k, eventssec, kbytessec, gbday)
+			lastEventsWritten[k] = tempEW
+			lastBytesWritten[k] = tempBW
+		}
 		lastTS = n
-		lastEventsWritten = tempEW
-		lastBytesWritten = tempBW
 	}
 }
 
@@ -51,17 +58,18 @@ func readStats() {
 	for {
 		select {
 		case os := <-rotchan:
-			eventsWritten += os.EventsWritten
-			bytesWritten += os.BytesWritten
+			BytesWritten[os.SampleName] += os.BytesWritten
+			EventsWritten[os.SampleName] += os.EventsWritten
 		}
 	}
 }
 
 // Account sends eventsWritten and bytesWritten to the readStats() thread
-func Account(eventsWritten int64, bytesWritten int64) {
+func Account(eventsWritten int64, bytesWritten int64, sampleName string) {
 	os := new(config.OutputStats)
 	os.EventsWritten = eventsWritten
 	os.BytesWritten = bytesWritten
+	os.SampleName = sampleName
 	rotchan <- os
 }
 
@@ -137,7 +145,7 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 					}
 					bytes += int64(getLine("footer", item.S, item.Events[last], item.IO.W))
 				}
-				Account(int64(len(item.Events)), bytes)
+				Account(int64(len(item.Events)), bytes, item.S.Name)
 			}()
 			err := out.Send(item)
 			if err != nil {

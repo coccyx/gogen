@@ -1,0 +1,11 @@
+samples:
+  - name: kbpsrater
+    rater: kbpsrater
+    count: 1
+    lines:
+    - "_raw": foo
+raters:
+  - name: kbpsrater
+    type: kbps
+    options:
+      KBps: 1.0
