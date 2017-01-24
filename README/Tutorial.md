@@ -368,9 +368,71 @@ You're now a functional expert, assuming you've read this far, in Gogen configur
 
 # Using Gogen
 
+Gogen also has a number of features to learn for using it day to day.  Gogen has a number of options which will change its behavior.  Let's look at the weblog example for some different usage patterns.
 
+    gogen -c examples/weblog/weblog.yml 
 
-TODO:
-* Single JSON Document using templates
-* Simple replay
-* Custom Generator
+This will output 10 events.  Let's output 10 events but over 10 seconds, one event per second, instead of all with the same timestamp.  Setting `--endIntervals` or `-ei` will automatically set the beginning time back the number of intervals specified.  Setting `--count` or `-c` will set the count to the specified number per interval.
+
+    gogen -c examples/weblog/weblog.yml gen -c 1 -ei 10
+
+We might get tired of typing the same config directives over and over again.  To save Gogen settings to the environment, run:
+
+    $(gogen -c examples/weblog/weblog.yml env)
+
+Maybe we'd prefer to see all the metadata associated with those events as well (if you don't have jq installed, drop the part after the `|`). Setting `--outputTemplate` or `-ot` will change the template we use to output.  Raw, CSV and JSON come with gogen, and custom templates can be built using Go's templating language.
+
+    gogen -ot json gen -c 1 -ei 10 | jq .
+
+Let's generate data over a specified window.  Setting `--interval` or `-i` will set how many seconds will elapse between samples being generated.  Setting `--begin` or `-b` to `-10s` uses [Splunk's relative time syntax](https://docs.splunk.com/Documentation/Splunk/6.5.1/SearchReference/SearchTimeModifiers) and says to start generation 10 seconds before now.  Setting `--end` or `-e` to `now` stops generation at the current time.
+
+    gogen gen -c 1 -i 2 -b -10s -e now
+
+We're going to use a different sample now, so we need to unset our environment variables from before.
+
+    $(gogen unsetenv)
+
+We may want to just continue generating events when we're done.  Setting `--sample` or `-s` will restict generation to just one sample, and setting `--realtime` or `-r` will tell Gogen to keep generating events in real time.
+
+    gogen -c examples/tutorial/tutorial6.yml gen -s tutorial5 -b -5s -r
+
+We may want to use Gogen for performance testing.  In order to do this, we're probably going to need more than one thread generating or outputting information.  For this we set `--generators` or `-g` to a number greater than one, or `--outputters` or `--out` to greater than 1.  To see what's going on in the background, we set `--verbose` or `-v`.
+
+    gogen -c examples/weblog/weblog.yml -o devnull -v -g 4 gen -c 1000 -ei 3000
+
+We may want Gogen to generate static data, where outputting to a file would make sense.  To output a CSV file for example, use `--output` and `--outputTemplate` together.
+
+    gogen -c examples/csv/csv.yml -o file -f test.csv 
+
+Gogen provides a configuration sharing service which allows for easy sharing of examples.  Let's see if someone has a weblog available through the service.
+
+    gogen search weblog
+
+Let's see some more information about this weblog generator.
+
+    gogen info coccyx/weblog
+
+Let's run it to see what it looks like.
+
+    gogen -c coccyx/weblog
+
+Turns out it's the same one we've been running all along.  Let's see what the configuration looks like:
+
+    gogen pull coccyx/weblog .
+    more weblog.yml
+
+That's pretty verbose, it'd be easier to edit if it looked more like how we recommended building them above.  Pull allows us to deconstruct the uploaded configs, run it with `--deconstruct` or `-d`.
+
+    gogen pull -d coccyx/weblog .
+
+You can also publish your own configs.  First, we need to login to Gogen.
+
+    gogen login
+
+This will open a local webserver and redirect your browser to http://localhost:46436/Login.  Once you authorize Gogen to talk to your Github account, you can push new gogen configs to the config sharing service under your Github login.
+
+    gogen -c <yourconfig.yml> push <configname>.
+
+# Wrapping up
+
+Hope you've enjoyed our tutorial!  You're now an expert!

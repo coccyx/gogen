@@ -8,6 +8,7 @@ as generating compelling data sets to be used for demo purposes.
 ## Features
 
 * Generates complex time series data via token substitutions in original raw events
+* Flexible output methods and formats: raw, JSON, CSV, or custom template output to stdout, file, HTTP and more
 * Support for arbitrary key/value datasets, tokens can replace in any field
 * Many token types: static, randomly generated, different types of choices from lists, or custom scripts
 * Three generation modes: random substitution of tokens from a sample file, replaying a sample in time series order, or custom generation scripts

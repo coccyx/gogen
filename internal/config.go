@@ -982,6 +982,8 @@ func ParseBeginEnd(s *Sample) {
 		if s.EndParsed, err = timeparser.TimeParserNow(s.End, now); err != nil {
 			log.Errorf("Error parsing End for sample %s: %v", s.Name, err)
 		}
+	} else {
+		s.EndParsed = time.Time{}
 	}
 	log.Infof("Beginning generation at %s; Ending at %s; Realtime: %v", s.BeginParsed, s.EndParsed, s.Realtime)
 }

@@ -19,6 +19,9 @@
         * Each timer thread should write current state after ack
         * This can also be used for performance counters
 
+* Start Task #5:
+    * Implement KBPS Rater
+
 * Having a control REST interface
     * Manipulate running state through REST
 

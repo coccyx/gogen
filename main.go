@@ -202,6 +202,10 @@ func main() {
 					if len(clic.String("end")) > 0 {
 						log.Infof("Setting end to %s for sample '%s'", clic.String("end"), c.Samples[i].Name)
 						c.Samples[i].End = clic.String("end")
+					} else {
+						if clic.Bool("realtime") {
+							c.Samples[i].End = ""
+						}
 					}
 					if len(clic.String("begin")) > 0 || len(clic.String("end")) > 0 {
 						if clic.Int("endIntervals") == 0 {
@@ -213,7 +217,9 @@ func main() {
 						if clic.Int("endIntervals") == 0 {
 							c.Samples[i].EndIntervals = 0
 						}
-						c.Samples[i].Realtime = true
+						if len(clic.String("begin")) == 0 {
+							c.Samples[i].Realtime = true
+						}
 					}
 				}
 				if len(clic.String("sample")) > 0 {

@@ -11,9 +11,9 @@ dependencies:
   override:
     - mkdir -p "/home/ubuntu/.go_workspace/src/$IMPORT_PATH"
     - rsync -azC --delete ./ "/home/ubuntu/.go_workspace/src/$IMPORT_PATH/"
-    - cd /home/ubuntu/.go_workspace/src/$IMPORT_PATH && env GOOS=linux GOARCH=amd64 godep go build -ldflags "-X github.com/coccyx/gogen/config.gitHubClientID=$GITHUB_OAUTH_CLIENT_ID -X github.com/coccyx/gogen/config.gitHubClientSecret=$GITHUB_OAUTH_CLIENT_SECRET" -o build/linux/gogen
-    - cd /home/ubuntu/.go_workspace/src/$IMPORT_PATH && env GOOS=darwin GOARCH=amd64  godep go build -ldflags "-X github.com/coccyx/gogen/config.gitHubClientID=$GITHUB_OAUTH_CLIENT_ID -X github.com/coccyx/gogen/config.gitHubClientSecret=$GITHUB_OAUTH_CLIENT_SECRET" -o build/osx/gogen
-    - cd /home/ubuntu/.go_workspace/src/$IMPORT_PATH && env GOOS=windows GOARCH=amd64 godep go build -ldflags "-X github.com/coccyx/gogen/config.gitHubClientID=$GITHUB_OAUTH_CLIENT_ID -X github.com/coccyx/gogen/config.gitHubClientSecret=$GITHUB_OAUTH_CLIENT_SECRET" -o build/windows/gogen.exe
+    - cd /home/ubuntu/.go_workspace/src/$IMPORT_PATH && env GOOS=linux GOARCH=amd64 godep go build -ldflags "-X github.com/coccyx/gogen/internal.gitHubClientID=$GITHUB_OAUTH_CLIENT_ID -X github.com/coccyx/gogen/internal.gitHubClientSecret=$GITHUB_OAUTH_CLIENT_SECRET" -o build/linux/gogen
+    - cd /home/ubuntu/.go_workspace/src/$IMPORT_PATH && env GOOS=darwin GOARCH=amd64  godep go build -ldflags "-X github.com/coccyx/gogen/internal.gitHubClientID=$GITHUB_OAUTH_CLIENT_ID -X github.com/coccyx/gogen/internal.gitHubClientSecret=$GITHUB_OAUTH_CLIENT_SECRET" -o build/osx/gogen
+    - cd /home/ubuntu/.go_workspace/src/$IMPORT_PATH && env GOOS=windows GOARCH=amd64 godep go build -ldflags "-X github.com/coccyx/gogen/internal.gitHubClientID=$GITHUB_OAUTH_CLIENT_ID -X github.com/coccyx/gogen/internal.gitHubClientSecret=$GITHUB_OAUTH_CLIENT_SECRET" -o build/windows/gogen.exe
 
 
 ## Customize test commands
