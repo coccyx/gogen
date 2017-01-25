@@ -13,9 +13,13 @@ import (
 )
 
 func TestTimer(t *testing.T) {
-	os.Setenv("GOGEN_HOME", "..")
+	home := filepath.Join("..", "examples", "tutorial", "tutorial3")
+	os.Setenv("GOGEN_CONFIG_DIR", home)
+
 	c := config.NewConfig()
-	s := c.FindSampleByName("translog")
+	s := c.FindSampleByName("tutorial3")
+	s.Interval = 1
+	s.Realtime = true
 	gq := make(chan *config.GenQueueItem)
 	oq := make(chan *config.OutQueueItem)
 
