@@ -104,7 +104,7 @@ Two of the most important concepts in Gogen are the concepts of rater and script
 
 Go ahead and run this.
 
-    gogen -c examples/tutorial/tutorial2.yml gen
+    gogen -c examples/tutorial/tutorial1.yml
 
 Let's examine this config in detail, because it introduces a number of important concepts.  First, this config, rather than running over a specified number of intervals, is setup to run over a specific time period by setting the `begin` and `end` clauses of the sample.  It is set to generate `count: 2` events, once per minute, with an `interval` of `60`.  Lastly, it sets a rater of `eventrater`, which we will explain in detail.
 
