@@ -15,6 +15,7 @@ raters:
 
 samples:
   - name: tutorial2
+    description: Tutorial 2
     begin: 2012-02-09T08:00:00Z
     end: 2012-02-09T08:03:00Z
     interval: 60

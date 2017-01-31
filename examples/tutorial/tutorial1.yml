@@ -1,5 +1,6 @@
 samples:
   - name: tutorial1
+    description: Tutorial 1
     interval: 1
     endIntervals: 5
     count: 1

@@ -899,7 +899,11 @@ func (c *Config) validateRater(r *RaterConfig) {
 				k2int := k2.(int)
 				v2float, ok := v2.(float64)
 				if !ok {
-					log.Fatalf("Rater value '%#v' of key '%#v' for rater '%s' in '%s' is not a float value", v2, k2, r.Name, k)
+					v2int, ok := v2.(int)
+					if !ok {
+						log.Fatalf("Rater value '%#v' of key '%#v' for rater '%s' in '%s' is not a float or int", v2, k2, r.Name, k)
+					}
+					v2float = float64(v2int)
 				}
 				newv[k2int] = v2float
 			}
