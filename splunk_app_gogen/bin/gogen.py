@@ -295,7 +295,7 @@ if __name__ == '__main__':
                 config_file = str(config['config'])
                 if config_type == 'local_file':
                     args.append(os.path.join(
-                        gogen_base_path, 'configs', config_file))
+                        gogen_base_path, 'gogen_assets','configs', config_file))
                 else:
                     args.append(config_file)
 
