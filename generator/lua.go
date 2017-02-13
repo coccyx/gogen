@@ -50,6 +50,20 @@ func (lg *luagen) send(L *lua.LState) int {
 	return 0
 }
 
+func (lg *luagen) sendEvent(L *lua.LState) int {
+	lv := L.ToTable(1)
+
+	event, err := lg.getEventFromTable(lv)
+	if err != nil {
+		log.Errorf("Received error from generator '%s': %s", lg.currentItem.S.CustomGenerator.Name, err)
+		return 0
+	}
+	events := make([]map[string]string, 1)
+	events[0] = event
+	lg.sendevents(events)
+	return 0
+}
+
 func (lg *luagen) sendevents(events []map[string]string) {
 	item := lg.currentItem
 	// log.Debugf("events: %# v", pretty.Formatter(events))
@@ -125,6 +139,29 @@ func (lg *luagen) getChoice(L *lua.LState) int {
 	return 1
 }
 
+func (lg *luagen) getChoiceItem(L *lua.LState) int {
+	s := lg.currentItem.S
+
+	token := L.ToString(1)
+	idx := L.ToInt(2)
+	var found *config.Token
+	for _, t := range s.Tokens {
+		if t.Name == token {
+			found = &t
+			break
+		}
+	}
+	if found == nil {
+		L.ArgError(1, "Choice not found")
+	}
+	if len(found.Choice) < idx {
+		L.ArgError(2, "Index out of range")
+	}
+	ret := lua.LString(found.Choice[idx])
+	L.Push(ret)
+	return 1
+}
+
 func (lg *luagen) getFieldChoice(L *lua.LState) int {
 	s := lg.currentItem.S
 
@@ -151,6 +188,77 @@ func (lg *luagen) getFieldChoice(L *lua.LState) int {
 	return 1
 }
 
+func (lg *luagen) getFieldChoiceItem(L *lua.LState) int {
+	s := lg.currentItem.S
+
+	token := L.ToString(1)
+	field := L.ToString(2)
+	idx := L.ToInt(3)
+
+	var found *config.Token
+	for _, t := range s.Tokens {
+		if t.Name == token {
+			found = &t
+			break
+		}
+	}
+	if found == nil {
+		L.ArgError(1, "Field Choice not found")
+		return 0
+	}
+	if len(found.FieldChoice) < idx {
+		L.ArgError(3, "Field index out of range")
+		return 0
+	}
+	if _, ok := found.FieldChoice[idx][field]; !ok {
+		L.ArgError(2, "Field "+field+" not found")
+		return 0
+	}
+	ret := lua.LString(found.FieldChoice[idx][field])
+	L.Push(ret)
+	return 1
+}
+
+func (lg *luagen) getWeightedChoiceItem(L *lua.LState) int {
+	s := lg.currentItem.S
+
+	token := L.ToString(1)
+	idx := L.ToInt(2)
+
+	var found *config.Token
+	for _, t := range s.Tokens {
+		if t.Name == token {
+			found = &t
+			break
+		}
+	}
+	if found == nil {
+		L.ArgError(1, "Weighted Choice not found")
+		return 0
+	}
+	if len(found.WeightedChoice) < idx {
+		L.ArgError(3, "Weighted Choice index out of range")
+		return 0
+	}
+	ret := lua.LString(found.WeightedChoice[idx].Choice)
+	L.Push(ret)
+	return 1
+}
+
+func (lg *luagen) getGroupIdx(L *lua.LState) int {
+	var choices map[int]int
+	var ok bool
+	ud := L.CheckUserData(1)
+	idx := L.CheckInt(2)
+	if choices, ok = ud.Value.(map[int]int); !ok {
+		L.ArgError(1, "expecting choices map[int]int")
+		return 0
+	}
+	ret := lua.LNumber(choices[idx])
+	L.Push(ret)
+	return 1
+}
+
 func (lg *luagen) getEventsFromTable(lv lua.LValue) ([]map[string]string, error) {
 	s := lg.currentItem.S
 	var err error
@@ -158,16 +266,9 @@ func (lg *luagen) getEventsFromTable(lv lua.LValue) ([]map[string]string, error)
 	if lv, ok := lv.(*lua.LTable); ok {
 		events = make([]map[string]string, 0, lv.Len())
 		lv.ForEach(func(k lua.LValue, v lua.LValue) {
-			event := make(map[string]string)
-			if castv, ok := v.(*lua.LTable); ok {
-				castv.ForEach(func(k2 lua.LValue, v2 lua.LValue) {
-					event[lua.LVAsString(k2)] = lua.LVAsString(v2)
-					// log.Debugf("Event created: %s->%s", lua.LVAsString(k2), lua.LVAsString(v2))
-				})
-				events = append(events, event)
-			} else {
-				err = fmt.Errorf("Value of a returned row is not a LUA Table for sample '%s' with generator '%s', instead got: %s", s.Name, s.CustomGenerator.Name, v.Type())
-			}
+			var event map[string]string
+			event, err = lg.getEventFromTable(v)
+			events = append(events, event)
 		})
 		if err != nil {
 			return nil, err
@@ -176,6 +277,19 @@ func (lg *luagen) getEventsFromTable(lv lua.LValue) ([]map[string]string, error)
 		return nil, fmt.Errorf("Returned value from generator '%s' in sample '%s' is not a Lua Table", s.CustomGenerator.Name, s.Name)
 	}
 	return events, nil
+}
+
+func (lg *luagen) getEventFromTable(lv lua.LValue) (map[string]string, error) {
+	s := lg.currentItem.S
+	event := make(map[string]string)
+	if castv, ok := lv.(*lua.LTable); ok {
+		castv.ForEach(func(k2 lua.LValue, v2 lua.LValue) {
+			event[lua.LVAsString(k2)] = lua.LVAsString(v2)
+			// log.Debugf("Event created: %s->%s", lua.LVAsString(k2), lua.LVAsString(v2))
+		})
+		return event, nil
+	}
+	return nil, fmt.Errorf("Value of a returned row is not a LUA Table for sample '%s' with generator '%s', instead got: %s", s.Name, s.CustomGenerator.Name, lv.Type())
 }
 
 func (lg *luagen) setToken(L *lua.LState) int {
@@ -345,13 +459,18 @@ func (lg *luagen) Gen(item *config.GenQueueItem) error {
 				L.SetGlobal("info", L.NewFunction(logdebug))
 				L.SetGlobal("replaceTokens", L.NewFunction(lg.replaceTokens))
 				L.SetGlobal("send", L.NewFunction(lg.send))
+				L.SetGlobal("sendEvent", L.NewFunction(lg.sendEvent))
 				L.SetGlobal("setToken", L.NewFunction(lg.setToken))
 				L.SetGlobal("removeToken", L.NewFunction(lg.removeToken))
 				L.SetGlobal("round", L.NewFunction(lg.round))
 				L.SetGlobal("getLine", L.NewFunction(lg.getLine))
 				L.SetGlobal("getLines", L.NewFunction(lg.getLines))
 				L.SetGlobal("getChoice", L.NewFunction(lg.getChoice))
+				L.SetGlobal("getChoiceItem", L.NewFunction(lg.getChoiceItem))
 				L.SetGlobal("getFieldChoice", L.NewFunction(lg.getFieldChoice))
+				L.SetGlobal("getFieldChoiceItem", L.NewFunction(lg.getFieldChoiceItem))
+				L.SetGlobal("getWeightedChoiceItem", L.NewFunction(lg.getWeightedChoiceItem))
+				L.SetGlobal("getGroupIdx", L.NewFunction(lg.getGroupIdx))
 				L.SetGlobal("setTime", L.NewFunction(lg.setTime))
 				return L
 			},

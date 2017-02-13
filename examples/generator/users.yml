@@ -1,9 +1,9 @@
 global:
   samplesDir:
-  - /Users/ddallimore/Dev/gogen/examples/common
+  - $GOGEN_HOME/examples/common
 generators:
   - name: usermodel
-    fileName: /Users/ddallimore/Dev/gogen/examples/generator/users.lua
+    fileName: $GOGEN_HOME/examples/generator/users.lua
     singleThreaded: false
     options:
       users:

@@ -6,10 +6,28 @@ generators:
     script: |
         choices = getChoice("getChoice")
         setToken("getChoice", choices[1])
+  - name: getChoiceItem
+    script: |
+        choice = getChoiceItem("getChoiceItem", 1)
+        setToken("getChoiceItem", choice)
   - name: getFieldChoice
     script: |
         choices = getFieldChoice("getFieldChoice", "field")
         setToken("getFieldChoice", choices[1])
+  - name: getFieldChoiceItem
+    script: |
+        choice = getFieldChoiceItem("getFieldChoiceItem", "field", 1)
+        setToken("getFieldChoiceItem", choice)
+  - name: getWeightedChoiceItem
+    script: |
+        choice = getWeightedChoiceItem("getWeightedChoiceItem", 0)
+        setToken("getWeightedChoiceItem", choice)
+  - name: getGroupIdx
+    script: |
+        line = getLine(0)
+        line, choices = replaceTokens(line)
+        idx = getGroupIdx(choices, 1)
+        setToken("getGroupIdx", tostring(idx))
   - name: getLine
     script: |
         line = getLine(0)
@@ -23,9 +41,7 @@ generators:
     script: |
         line = getLine(0)
         line = replaceTokens(line)
-        events = { }
-        table.insert(events, line)
-        send(events)
+        sendEvent(line)
   - name: setTime
     script: |
         line = getLine(0)
@@ -52,6 +68,17 @@ samples:
       disabled: true
       choice:
       - foo
+  - name: getChoiceItem
+    generator: getChoiceItem
+    interval: 1
+    endIntervals: 1
+    tokens:
+    - name: getChoiceItem
+      type: choice
+      disabled: true
+      choice:
+      - foo
+      - bar
   - name: getFieldChoice
     generator: getFieldChoice
     interval: 1
@@ -65,6 +92,41 @@ samples:
       - field: foo
     lines:
     - _raw: notused
+  - name: getFieldChoiceItem
+    generator: getFieldChoiceItem
+    interval: 1
+    endIntervals: 1
+    tokens:
+    - name: getFieldChoiceItem
+      type: fieldChoice
+      srcField: field
+      disabled: true
+      fieldChoice:
+      - field: foo
+      - field: bar
+  - name: getWeightedChoiceItem
+    generator: getWeightedChoiceItem
+    interval: 1
+    endIntervals: 1
+    tokens:
+    - name: getWeightedChoiceItem
+      type: weightedChoice
+      disabled: true
+      weightedChoice:
+      - weight: 1
+        choice: foo
+  - name: getGroupIdx
+    generator: getGroupIdx
+    interval: 1
+    endIntervals: 1
+    tokens:
+    - name: getGroupIdx
+      type: choice
+      disabled: true
+      choice:
+      - foo
+    lines:
+    - _raw: blah
   - name: getLine
     generator: getLine
     interval: 1

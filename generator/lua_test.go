@@ -76,6 +76,31 @@ func TestGetChoice(t *testing.T) {
 	assert.Equal(t, "foo", token.Replacement)
 }
 
+func TestGetChoiceItem(t *testing.T) {
+	config.ResetConfig()
+
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "")
+	home := ".."
+	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "generator", "luaapi.yml"))
+
+	c := config.NewConfig()
+	s := c.FindSampleByName("getChoiceItem")
+	gen := new(luagen)
+	runLuaGen(t, s, gen)
+	time.Sleep(100 * time.Millisecond)
+	found := false
+	var token config.Token
+	for _, t := range gen.tokens {
+		if t.Name == "getChoiceItem" {
+			found = true
+			token = t
+		}
+	}
+	assert.True(t, found, "Couldn't find token 'getChoiceItem' in sample getChoiceItem")
+	assert.Equal(t, "bar", token.Replacement)
+}
+
 func TestGetFieldChoice(t *testing.T) {
 	config.ResetConfig()
 
@@ -99,6 +124,81 @@ func TestGetFieldChoice(t *testing.T) {
 	}
 	assert.True(t, found, "Couldn't find token 'getFieldChoice' in sample getFieldChoice")
 	assert.Equal(t, "foo", token.Replacement)
+}
+
+func TestGetFieldChoiceItem(t *testing.T) {
+	config.ResetConfig()
+
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "")
+	home := ".."
+	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "generator", "luaapi.yml"))
+
+	c := config.NewConfig()
+	s := c.FindSampleByName("getFieldChoiceItem")
+	gen := new(luagen)
+	runLuaGen(t, s, gen)
+	time.Sleep(100 * time.Millisecond)
+	found := false
+	var token config.Token
+	for _, t := range gen.tokens {
+		if t.Name == "getFieldChoiceItem" {
+			found = true
+			token = t
+		}
+	}
+	assert.True(t, found, "Couldn't find token 'getFieldChoiceItem' in sample getFieldChoiceItem")
+	assert.Equal(t, "bar", token.Replacement)
+}
+
+func TestGetWeightedChoiceItem(t *testing.T) {
+	config.ResetConfig()
+
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "")
+	home := ".."
+	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "generator", "luaapi.yml"))
+
+	c := config.NewConfig()
+	s := c.FindSampleByName("getWeightedChoiceItem")
+	gen := new(luagen)
+	runLuaGen(t, s, gen)
+	time.Sleep(100 * time.Millisecond)
+	found := false
+	var token config.Token
+	for _, t := range gen.tokens {
+		if t.Name == "getWeightedChoiceItem" {
+			found = true
+			token = t
+		}
+	}
+	assert.True(t, found, "Couldn't find token 'getWeightedChoiceItem' in sample getWeightedChoiceItem")
+	assert.Equal(t, "foo", token.Replacement)
+}
+
+func TestGetGroupIdx(t *testing.T) {
+	config.ResetConfig()
+
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "")
+	home := ".."
+	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "generator", "luaapi.yml"))
+
+	c := config.NewConfig()
+	s := c.FindSampleByName("getGroupIdx")
+	gen := new(luagen)
+	runLuaGen(t, s, gen)
+	time.Sleep(100 * time.Millisecond)
+	found := false
+	var token config.Token
+	for _, t := range gen.tokens {
+		if t.Name == "getGroupIdx" {
+			found = true
+			token = t
+		}
+	}
+	assert.True(t, found, "Couldn't find token 'getGroupIdx' in sample getGroupIdx")
+	assert.Equal(t, "0", token.Replacement)
 }
 
 func TestGetLine(t *testing.T) {

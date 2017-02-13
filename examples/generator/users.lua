@@ -69,9 +69,7 @@ function sendevent(i, choices)
   else
     l, ret = replaceTokens(l, choices)
   end
-  events = { }
-  table.insert(events, l)
-  send(events)
+  sendEvent(l)
   return ret
 end
 
