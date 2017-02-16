@@ -16,6 +16,7 @@ type httpout struct {
 	buf         *bufio.Writer
 	r           *io.PipeReader
 	w           *io.PipeWriter
+	client 	    *http.Client
 	resp        *http.Response
 	initialized bool
 	closed      bool
@@ -26,6 +27,8 @@ type httpout struct {
 func (h *httpout) Send(item *config.OutQueueItem) error {
 	if h.initialized == false {
 		h.newPost(item)
+		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+		h.client = &http.Client{Transport: tr}
 		h.initialized = true
 	}
 	bytes, err := io.Copy(h.buf, item.IO.R)
@@ -70,20 +73,24 @@ func (h *httpout) newPost(item *config.OutQueueItem) {
 	h.buf = bufio.NewWriter(h.w)
 
 	endpoint := item.S.Output.Endpoints[rand.Intn(len(item.S.Output.Endpoints))]
-	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	client := &http.Client{Transport: tr}
 	req, err := http.NewRequest("POST", endpoint, h.r)
 	for k, v := range item.S.Output.Headers {
 		req.Header.Add(k, v)
 	}
 	h.done = make(chan int)
 	go func() {
-		h.resp, err = client.Do(req)
-		if err != nil {
+		h.resp, err = h.client.Do(req)
+		if err != nil && h.resp == nil {
 			log.Errorf("Error making request from sample '%s' to endpoint '%s': %s", item.S.Name, endpoint, err)
-		} else if h.resp.StatusCode != 200 {
-			body, _ := ioutil.ReadAll(h.resp.Body)
-			log.Errorf("Error making request from sample '%s' to endpoint '%s', status '%d': %s", item.S.Name, endpoint, h.resp.StatusCode, body)
+		} else {
+			defer h.resp.Body.Close()
+
+			body, err := ioutil.ReadAll(h.resp.Body)
+			if err != nil {
+				log.Errorf("Error making request from sample '%s' to endpoint '%s': %s", item.S.Name, endpoint, err)
+			} else if h.resp.StatusCode != 200 {
+				log.Errorf("Error making request from sample '%s' to endpoint '%s', status '%d': %s", item.S.Name, endpoint, h.resp.StatusCode, body)
+			}
 		}
 		h.done <- 1
 	}()
