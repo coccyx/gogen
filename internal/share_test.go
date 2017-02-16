@@ -28,15 +28,16 @@ func TestSharePull(t *testing.T) {
 }
 
 func TestSharePullFile(t *testing.T) {
+	os.Setenv("GOGEN_TMPDIR", "..")
 	os.Setenv("GOGEN_HOME", "..")
 	os.Remove("../.versioncachefile_coccyx%2Fweblog")
 	os.Remove("../.configcache_coccyx%2Fweblog")
 	PullFile("coccyx/weblog", ".test.json")
 	_, err := os.Stat(".test.json")
 	assert.NoError(t, err, "Couldn't fine .test.json")
-	_, err = os.Stat(filepath.Join(os.ExpandEnv("$GOGEN_HOME"), ".versioncache_coccyx%2Fweblog"))
+	_, err = os.Stat(filepath.Join(os.ExpandEnv("$GOGEN_TMPDIR"), ".versioncache_coccyx%2Fweblog"))
 	assert.NoError(t, err, "Couldn't fine version cache file")
-	_, err = os.Stat(filepath.Join(os.ExpandEnv("$GOGEN_HOME"), ".configcache_coccyx%2Fweblog"))
+	_, err = os.Stat(filepath.Join(os.ExpandEnv("$GOGEN_TMPDIR"), ".configcache_coccyx%2Fweblog"))
 	assert.NoError(t, err, "Couldn't find cache file")
 	os.Remove(".test.json")
 }

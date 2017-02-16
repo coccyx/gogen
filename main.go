@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -50,14 +52,26 @@ func Setup(clic *cli.Context) {
 	if len(clic.String("samplesDir")) > 0 {
 		os.Setenv("GOGEN_SAMPLES_DIR", clic.String("samplesDir"))
 	}
+	if len(clic.String("tempDir")) > 0 {
+		os.Setenv("GOGEN_TMPDIR", clic.String("tempDir"))
+	} else {
+		var tmpDir string
+		usr, err := user.Current()
+		if err != nil {
+			tmpDir = os.TempDir()
+		} else {
+			tmpDir = usr.HomeDir
+		}
+		os.Setenv("GOGEN_TMPDIR", tmpDir)
+	}
 	if len(clic.String("config")) > 0 {
 		cstr := clic.String("config")
 		if cstr[0:4] == "http" || cstr[len(cstr)-3:] == "yml" || cstr[len(cstr)-4:] == "yaml" || cstr[len(cstr)-4:] == "json" {
 			os.Setenv("GOGEN_FULLCONFIG", cstr)
 		} else {
-			config.PullFile(cstr, ".config.yml")
+			config.PullFile(cstr, filepath.Join(os.ExpandEnv("$GOGEN_TMPDIR"), ".config.yml"))
 			config.ResetConfig()
-			os.Setenv("GOGEN_FULLCONFIG", ".config.yml")
+			os.Setenv("GOGEN_FULLCONFIG", filepath.Join(os.ExpandEnv("$GOGEN_TMPDIR"), ".config.yml"))
 		}
 	}
 
@@ -122,7 +136,7 @@ func table(l []config.GogenList) {
 
 func main() {
 	defer func() {
-		os.Remove(".config.yml")
+		os.Remove(filepath.Join(os.ExpandEnv("$GOGEN_TMPDIR"), ".config.yml"))
 	}()
 	if config.ProfileOn {
 		defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
@@ -481,6 +495,11 @@ func main() {
 			Name:   "samplesDir, sd",
 			Usage:  "Sets `directory` to search for sample files, default 'config/samples'",
 			EnvVar: "GOGEN_SAMPLES_DIR",
+		},
+		cli.StringFlag{
+			Name:   "tempDir, td",
+			Usage:  "Sets `directory` to store temporary files, default $HOME",
+			EnvVar: "GOGEN_TMPDIR",
 		},
 		cli.StringFlag{
 			Name:   "config, c",

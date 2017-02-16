@@ -258,8 +258,8 @@ func PullFile(gogen string, filename string) {
 	cached := false
 
 	var readFrom io.ReadCloser
-	cacheFile := filepath.Join(os.ExpandEnv("$GOGEN_HOME"), ".configcache_"+url.QueryEscape(gogen))
-	versionCacheFile := filepath.Join(os.ExpandEnv("$GOGEN_HOME"), ".versioncache_"+url.QueryEscape(gogen))
+	cacheFile := filepath.Join(os.ExpandEnv("$GOGEN_TMPDIR"), ".configcache_"+url.QueryEscape(gogen))
+	versionCacheFile := filepath.Join(os.ExpandEnv("$GOGEN_TMPDIR"), ".versioncache_"+url.QueryEscape(gogen))
 	_, err = os.Stat(versionCacheFile)
 	if err == nil {
 		versionBytes, err := ioutil.ReadFile(versionCacheFile)
