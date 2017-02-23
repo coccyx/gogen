@@ -10,20 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDefaultRater(t *testing.T) {
-	// Setup environment
-	os.Setenv("GOGEN_HOME", "..")
-	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
-	home := ".."
-	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "rater", "defaultrater.yml"))
-
-	c := config.NewConfig()
-	r := c.FindRater("default")
-	dr := DefaultRater{c: r}
-	ret := dr.GetRate(time.Now())
-	assert.Equal(t, float64(1), ret)
-}
-
 func TestDefaultRaterEventRate(t *testing.T) {
 	// Setup environment
 	os.Setenv("GOGEN_HOME", "..")
@@ -39,5 +25,5 @@ func TestDefaultRaterEventRate(t *testing.T) {
 	ret := EventRate(s, time.Now(), 1)
 	assert.IsType(t, &DefaultRater{}, s.Rater)
 	assert.True(t, assert.ObjectsAreEqual(r, s.Rater.(*DefaultRater).c))
-	assert.Equal(t, 1, ret)
+	assert.Equal(t, 1.0, ret)
 }

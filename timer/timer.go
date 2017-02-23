@@ -85,7 +85,7 @@ func (t *Timer) genWork() {
 	} else {
 		earliest := now.Add(s.EarliestParsed)
 		latest := now.Add(s.LatestParsed)
-		count := rater.EventRate(s, now, s.Count)
+		count := int(rater.EventRate(s, now, s.Count))
 		item = &config.GenQueueItem{S: s, Count: count, Event: -1, Earliest: earliest, Latest: latest, Now: now, OQ: t.OQ}
 	}
 	// log.Debugf("Placing item in queue for sample '%s': %#v", t.S.Name, item)

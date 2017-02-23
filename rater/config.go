@@ -11,8 +11,8 @@ type ConfigRater struct {
 	c *config.RaterConfig
 }
 
-// GetRate implements Rater interface
-func (cr *ConfigRater) GetRate(now time.Time) float64 {
+// getRate acts as a general method for EventRate and TokenRate
+func (cr *ConfigRater) getRate(now time.Time) float64 {
 	rate := 1.0
 
 	if _, ok := cr.c.Options["HourOfDay"]; ok {
@@ -38,11 +38,11 @@ func (cr *ConfigRater) GetRate(now time.Time) float64 {
 }
 
 // EventRate takes a given sample and current count and returns the rated count
-func (cr *ConfigRater) EventRate(s *config.Sample, now time.Time, count int) int {
-	return EventRate(s, now, count)
+func (cr *ConfigRater) EventRate(s *config.Sample, now time.Time, count int) float64 {
+	return cr.getRate(now)
 }
 
 // TokenRate takes a token and returns the rated value
 func (cr *ConfigRater) TokenRate(t config.Token, now time.Time) float64 {
-	return TokenRate(t, now)
+	return cr.getRate(now)
 }
