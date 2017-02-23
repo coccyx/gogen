@@ -189,6 +189,10 @@ func main() {
 					Name:  "realtime, r",
 					Usage: "Set to real time, don't stop until killed",
 				},
+				cli.IntFlag{
+					Name:  "KBps, kbps",
+					Usage: "Only run from `number` KB/S",
+				},
 			},
 			Action: func(clic *cli.Context) error {
 				if len(c.Samples) == 0 {
@@ -234,6 +238,10 @@ func main() {
 						if len(clic.String("begin")) == 0 {
 							c.Samples[i].Realtime = true
 						}
+					}
+					if clic.Int("KBps") > 0 {
+						log.Infof("Setting KBps to %d for sample '%s'", clic.Int("KBps"), c.Samples[i].Name)
+						c.Samples[i].KBps = clic.Int("KBps")
 					}
 				}
 				if len(clic.String("sample")) > 0 {

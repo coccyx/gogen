@@ -33,6 +33,7 @@ type Sample struct {
 	Interval        int                 `json:"interval,omitempty" yaml:"interval,omitempty"`
 	Delay           int                 `json:"delay,omitempty" yaml:"delay,omitempty"`
 	Count           int                 `json:"count,omitempty" yaml:"count,omitempty"`
+	KBps            int                 `json:"KBps,omitempty" yaml:"KBps,omitempty"`
 	Earliest        string              `json:"earliest,omitempty" yaml:"earliest,omitempty"`
 	Latest          string              `json:"latest,omitempty" yaml:"latest,omitempty"`
 	Begin           string              `json:"begin,omitempty" yaml:"begin,omitempty"`
