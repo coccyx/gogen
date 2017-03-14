@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/coccyx/gogen",
 	"GoVersion": "go1.7",
-	"GodepVersion": "v75",
+	"GodepVersion": "v79",
 	"Packages": [
 		"./..."
 	],
@@ -18,7 +18,7 @@
 		},
 		{
 			"ImportPath": "github.com/coccyx/go-s2s/s2s",
-			"Rev": "f849ee8ee2417dc582b07781f586307973064c14"
+			"Rev": "5aedf3638b96df0bfd712835a93730ee1be4b099"
 		},
 		{
 			"ImportPath": "github.com/coccyx/timeparser",
