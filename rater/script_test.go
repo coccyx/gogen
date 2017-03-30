@@ -10,19 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestScriptRater(t *testing.T) {
-	// Setup environment
-	os.Setenv("GOGEN_HOME", "..")
-	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
-	home := ".."
-	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "rater", "luarater.yml"))
-
-	c := config.NewConfig()
-	r := c.FindRater("multiply")
-	dr := ScriptRater{c: r}
-	ret := dr.GetRate(time.Now())
-	assert.Equal(t, float64(2), ret)
-}
 
 func TestScriptRaterEventRate(t *testing.T) {
 	// Setup environment

@@ -17,8 +17,8 @@ type ScriptRater struct {
 	luaState *lua.LTable
 }
 
-// GetRate implements Rater interface
-func (sr *ScriptRater) GetRate(now time.Time) float64 {
+// GetRate acts as a general method for EventRate and TokenRate
+func (sr *ScriptRater) getRate(now time.Time) float64 {
 	if sr.luaState == nil {
 		sr.luaState = new(lua.LTable)
 		for k, v := range sr.c.Init {
@@ -36,11 +36,11 @@ func (sr *ScriptRater) GetRate(now time.Time) float64 {
 }
 
 // EventRate takes a given sample and current count and returns the rated count
-func (sr *ScriptRater) EventRate(s *config.Sample, now time.Time, count int) int {
-	return EventRate(s, now, count)
+func (sr *ScriptRater) EventRate(s *config.Sample, now time.Time, count int) float64 {
+	return sr.getRate(now)
 }
 
 // TokenRate takes a token and returns the rated value
 func (sr *ScriptRater) TokenRate(t config.Token, now time.Time) float64 {
-	return TokenRate(t, now)
+	return sr.getRate(now)
 }

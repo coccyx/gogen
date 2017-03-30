@@ -1,0 +1,123 @@
+generators:
+  - name: every
+    init:
+      eventCount: "0"
+    script: |
+      events = {}
+
+      for i=1, count do
+
+        line = getLine(0)
+        state["eventCount"] = state["eventCount"] + 1
+
+        if state["eventCount"] % 10 == 0 then
+          line["_raw"] = "every10 "..line["_raw"]
+        end
+
+        if state["eventCount"] % 100 == 0 then
+          line["_raw"] = "every100 "..line["_raw"]
+        end
+
+        if state["eventCount"] % 1000 == 0 then
+          line["_raw"] = "every1K "..line["_raw"]
+        end
+
+        if state["eventCount"] % 10000 == 0 then
+          line["_raw"] = "every10K "..line["_raw"]
+        end
+
+        if state["eventCount"] % 100000 == 0 then
+          line["_raw"] = "every100K "..line["_raw"]
+        end
+
+        if state["eventCount"] % 1000000 == 0 then
+          line["_raw"] = "every1M "..line["_raw"]
+        end
+
+        if state["eventCount"] % 10000000 == 0 then
+          line["_raw"] = "every10M "..line["_raw"]
+        end
+
+        line = replaceTokens(line)
+        table.insert(events, line)
+
+      end
+
+      send(events)
+
+raters:
+  - name: kbpsrater
+    type: kbps
+    options:
+      KBps: 11.0
+
+samples:
+  - name: weblog
+    generator: every
+    description: Weblog data in Apache common format, with every* tag prepended
+    notes: >
+      Easily customizable for your own needs.  If you want your IP ranges, edit external_ips.sample.
+      To modify server hostnames and client IPs, modify webhosts.csv.  Useragents.sample is also pretty dated,
+      so feel free to replace with a more modern list of user agents.
+    interval: 1
+    count: 34
+    realtime: true
+    rater: kbpsrater
+    tokens:
+      - name: ts-dmyhmsms-template
+        format: template
+        token: $ts$
+        type: gotimestamp
+        replacement: "02/Jan/2006 15:04:05"
+      - name: host
+        format: template
+        type: fieldChoice
+        srcField: host
+        field: host
+        sample: webhosts.csv
+        group: 1
+      - name: ip
+        format: template
+        type: fieldChoice
+        srcField: ip
+        sample: webhosts.csv
+        group: 1
+      - name: clientip
+        format: template
+        type: choice
+        sample: external_ips.sample
+      - name: status
+        format: template
+        type: weightedChoice
+        weightedChoice:
+        - weight: 10
+          choice: 200
+        - weight: 4
+          choice: 301
+        - weight: 3
+          choice: 404
+        - weight: 2
+          choice: 503
+      - name: timetaken
+        format: template
+        type: random
+        replacement: int
+        lower: 100
+        upper: 1000
+      - name: useragent
+        format: template
+        type: choice
+        sample: useragents.sample
+      - name: size
+        format: template
+        type: random
+        replacement: int
+        lower: 200
+        upper: 4000
+
+    lines:
+      - index: main
+        sourcetype: access_combined
+        source: /var/log/httpd/access_log
+        host: $host$
+        _raw: $ip$ $clientip$ - - [$ts$] "GET /product.screen?product_id=HolyGouda&JSESSIONID=SD3SL1FF7ADFF8 HTTP 1.1" $status$ $timetaken$ "http://shop.buttercupgames.com/cart.do?action=view&itemId=HolyGouda" "$useragent$" $size$
