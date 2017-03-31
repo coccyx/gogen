@@ -47,8 +47,8 @@ func ROT(c *config.Config, statsChan chan config.OutputStats) {
 			tempBW = BytesWritten[k]
 			if c.Global.Web {
 				statsChan <- config.OutputStats{
-					EventsWritten: tempEW,
-					BytesWritten:  tempBW,
+					EventsWritten: tempEW - lastEventsWritten[k],
+					BytesWritten:  tempBW - lastBytesWritten[k],
 					SampleName:    k,
 				}
 			}
