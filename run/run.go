@@ -8,21 +8,24 @@ import (
 	log "github.com/coccyx/gogen/logger"
 	"github.com/coccyx/gogen/outputter"
 	"github.com/coccyx/gogen/timer"
+	"github.com/coccyx/gogen/web"
 )
 
 // ROT reads out data every ROTInterval seconds
-func ROT(c *config.Config, gq chan *config.GenQueueItem, oq chan *config.OutQueueItem) {
+func ROT(c *config.Config, gq chan *config.GenQueueItem, oq chan *config.OutQueueItem, qds chan web.QueueDepthStats) {
 	for {
 		timer := time.NewTimer(time.Duration(c.Global.ROTInterval) * time.Second * 5)
 		<-timer.C
 		log.Infof("Generator Queue: %d Output Queue: %d", len(gq), len(oq))
+		qds <- web.QueueDepthStats{GeneratorQueueDepth: len(gq), OutputQueueDepth: len(oq)}
 	}
 }
 
 // Run runs the mainline of the program
 func Run(c *config.Config) {
 	log.Info("Starting ReadOutThread")
-	go outputter.ROT(c)
+	w := web.NewWeb()
+	go outputter.ROT(c, w.OutputStatsChan)
 	log.Info("Starting Timers")
 	timerdone := make(chan int)
 	gq := make(chan *config.GenQueueItem, config.MaxGenQueueLength)
@@ -56,7 +59,7 @@ func Run(c *config.Config) {
 		outs++
 	}
 
-	go ROT(c, gq, oq)
+	go ROT(c, gq, oq, w.QueueDepthStatsChan)
 
 	// time.Sleep(1000 * time.Millisecond)
 

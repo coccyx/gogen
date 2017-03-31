@@ -16,7 +16,13 @@ type Runner struct{}
 // Once runs a given sample a single time and outputs to a byte Buffer
 func (r Runner) Once(name string) {
 	c := config.NewConfig()
-	go outputter.ROT(c)
+
+	// Added web support.  For RunOnce, set Web to disabled and we won't try to send
+	c.Global.Web = false
+	sc := make(chan config.OutputStats)
+	// The ROT here is to keep from blocking on accounting output
+	go outputter.ROT(c, sc)
+
 	s := c.FindSampleByName(name)
 
 	source := rand.NewSource(time.Now().UnixNano())

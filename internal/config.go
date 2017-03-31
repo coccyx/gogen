@@ -50,6 +50,7 @@ type Global struct {
 	ROTInterval      int      `json:"rotInterval,omitempty" yaml:"rotInterval,omitempty"`
 	Output           Output   `json:"output,omitempty" yaml:"output,omitempty"`
 	SamplesDir       []string `json:"samplesDir,omitempty" yaml:"samplesDir,omitempty"`
+	Web              bool     `json:"web,omitempty" yaml:"webStats,omitempty"`
 }
 
 // Output represents configuration for outputting data
@@ -151,6 +152,9 @@ func BuildConfig(cc ConfigConfig) *Config {
 
 	// Setup timezone
 	c.Timezone, _ = time.LoadLocation("Local")
+
+	// Set default for WebStats to true
+	c.Global.Web = true
 
 	if len(cc.FullConfig) > 0 {
 		cc.FullConfig = os.ExpandEnv(cc.FullConfig)

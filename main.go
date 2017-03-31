@@ -35,6 +35,7 @@ func init() {
 		"splunkHECToken": "GOGEN_HEC_TOKEN",
 		"samplesDir":     "GOGEN_SAMPLES_DIR",
 		"config":         "GOGEN_CONFIG",
+		"disableWeb":     "GOGEN_DISABLE_WEB",
 	}
 }
 
@@ -84,6 +85,10 @@ func Setup(clic *cli.Context) {
 	if clic.Int("outputters") > 0 {
 		log.Infof("Setting generators to %d", clic.Int("outputters"))
 		c.Global.OutputWorkers = clic.Int("outputters")
+	}
+	if clic.Bool("disableWeb") {
+		log.Infof("Disabling web interface for stats and config")
+		c.Global.Web = false
 	}
 
 	for i := 0; i < len(c.Samples); i++ {
@@ -505,6 +510,11 @@ func main() {
 			Name:   "config, c",
 			Usage:  "`Path` or URL to a full config",
 			EnvVar: "GOGEN_CONFIG",
+		},
+		cli.BoolFlag{
+			Name:   "disableWeb",
+			Usage:  "If specified, disables web interface for stats and config",
+			EnvVar: "GOGEN_DISABLE_WEB",
 		},
 	}
 	app.Run(os.Args)

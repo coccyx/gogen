@@ -27,7 +27,7 @@ func init() {
 
 // ROT starts the Read Out Thread which will log statistics about what's being output
 // ROT is intended to be started as a goroutine which will log output every c.
-func ROT(c *config.Config) {
+func ROT(c *config.Config, statsChan chan config.OutputStats) {
 	rotchan = make(chan *config.OutputStats)
 	go readStats()
 
@@ -45,6 +45,13 @@ func ROT(c *config.Config) {
 		for k := range BytesWritten {
 			tempEW = EventsWritten[k]
 			tempBW = BytesWritten[k]
+			if c.Global.Web {
+				statsChan <- config.OutputStats{
+					EventsWritten: tempEW,
+					BytesWritten:  tempBW,
+					SampleName:    k,
+				}
+			}
 			eventssec += float64(tempEW-lastEventsWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/c.Global.ROTInterval)
 			kbytessec += float64(tempBW-lastBytesWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/c.Global.ROTInterval) / 1024
 			gbday = (kbytessec * 60 * 60 * 24) / 1024 / 1024
