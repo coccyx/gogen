@@ -107,6 +107,8 @@ Loop3:
 		}
 	}
 
+	w.Shutdown()
+
 	// for _, s := range c.Samples {
 	// 	err := s.Out.Close()
 	// 	if err != nil {
