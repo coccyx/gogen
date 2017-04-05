@@ -1,15 +1,16 @@
 import Vue from 'vue'
-import Router from 'vue-router'
-import Hello from '@/components/Hello'
+import VueRouter from 'vue-router'
 
-Vue.use(Router)
+const routes = [
+    { path: '/', component: require('../views/Home.vue') },
+    { path: '/editor', component: require('../views/Editor.vue') },
+    { path: '/stats', component: require('../views/Stats.vue') }
+]
 
-export default new Router({
-  routes: [
-    {
-      path: '/',
-      name: 'Hello',
-      component: Hello
-    }
-  ]
+Vue.use(VueRouter)
+
+const router = new VueRouter({
+    routes: routes
 })
+
+export default router

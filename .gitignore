@@ -19,3 +19,4 @@ splunk_app_gogen.spl
 .versioncache*
 roveralls*
 web/node_modules
+**yarn.lock

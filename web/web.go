@@ -41,14 +41,15 @@ func NewWeb() *Web {
 	go ws.sendQueueDepthStats()
 	ws.shutdownChan = make(chan int)
 
-	http.HandleFunc("/stats", ws.addClient)
-	log.Infof("Starting web server, listening on :9999")
-	go func() {
+	once := &sync.Once{}
+	go once.Do(func() {
+		http.HandleFunc("/stats", ws.addClient)
+		log.Infof("Starting web server, listening on :9999")
 		err := http.ListenAndServe(":9999", nil)
 		if err != nil {
 			log.WithError(err).Error("Error starting HTTP Stats server")
 		}
-	}()
+	})
 	return ws
 }
 

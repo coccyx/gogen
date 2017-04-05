@@ -1,0 +1,13 @@
+/** CSS Styles */
+
+.nav-header {
+  text-align: center;
+  display: block;
+  position: relative;
+  margin-top: 35px;
+  margin-bottom: 35px;
+}
+  
+.nav-header img {
+    height: 150px;
+}
