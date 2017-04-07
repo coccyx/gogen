@@ -18,7 +18,8 @@ type OutQueueItem struct {
 type OutputStats struct {
 	EventsWritten int64
 	BytesWritten  int64
-	SampleName string
+	SampleName    string
+	Timestamp     int64
 }
 
 // OutputIO contains our Readers and Writers

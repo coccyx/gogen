@@ -55,14 +55,15 @@ export default {
         { icon: "mode_edit", title: "Editor", href: "/editor/" },
         { icon: "timeline", title: "Realtime Stats", href: "/stats/" }
       ],
-      title: null
+      title: null,
+      socket: null
     }
   },
   methods: {
     meta(obj) {
       this.title = obj.h1
-      this.$store.commit('gogen/TITLE', obj.h1)
-    }
+      this.$store.commit('title', obj.h1)
+    },
   }
 }
 </script>

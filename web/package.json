@@ -8,6 +8,8 @@
     "build": "cross-env NODE_ENV=production webpack --progress --hide-modules"
   },
   "dependencies": {
+    "metric-suffix": "0.0.3",
+    "pretty-bytes": "^4.0.2",
     "vue": "^2.2.6",
     "vue-router": "^2.2.0",
     "vue-server-renderer": "^2.1.10",

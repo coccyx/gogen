@@ -50,6 +50,7 @@ func ROT(c *config.Config, statsChan chan config.OutputStats) {
 					EventsWritten: tempEW - lastEventsWritten[k],
 					BytesWritten:  tempBW - lastBytesWritten[k],
 					SampleName:    k,
+					Timestamp:     n.Unix(),
 				}
 			}
 			eventssec += float64(tempEW-lastEventsWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/c.Global.ROTInterval)
@@ -79,6 +80,7 @@ func Account(eventsWritten int64, bytesWritten int64, sampleName string) {
 	os.EventsWritten = eventsWritten
 	os.BytesWritten = bytesWritten
 	os.SampleName = sampleName
+	os.Timestamp = time.Now().Unix()
 	rotchan <- os
 }
 

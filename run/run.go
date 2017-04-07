@@ -17,7 +17,7 @@ func ROT(c *config.Config, gq chan *config.GenQueueItem, oq chan *config.OutQueu
 		timer := time.NewTimer(time.Duration(c.Global.ROTInterval) * time.Second * 5)
 		<-timer.C
 		log.Infof("Generator Queue: %d Output Queue: %d", len(gq), len(oq))
-		qds <- web.QueueDepthStats{GeneratorQueueDepth: len(gq), OutputQueueDepth: len(oq)}
+		qds <- web.QueueDepthStats{GeneratorQueueDepth: len(gq), OutputQueueDepth: len(oq), Timestamp: time.Now().Unix()}
 	}
 }
 
