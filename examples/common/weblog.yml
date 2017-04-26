@@ -21,12 +21,6 @@ tokens:
     field: host
     sample: webhosts.csv
     group: 1
-  - name: ip
-    format: template
-    type: fieldChoice
-    srcField: ip
-    sample: webhosts.csv
-    group: 1
   - name: clientip
     format: template
     type: choice
@@ -43,12 +37,6 @@ tokens:
       choice: 404
     - weight: 2
       choice: 503
-  - name: timetaken
-    format: template
-    type: random
-    replacement: int
-    lower: 100
-    upper: 1000
   - name: useragent
     format: template
     type: choice
