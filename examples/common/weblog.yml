@@ -64,4 +64,4 @@ lines:
     sourcetype: access_combined
     source: /var/log/httpd/access_log
     host: $host$
-    _raw: $ip$ $clientip$ - - [$ts$] "GET /product.screen?product_id=HolyGouda&JSESSIONID=SD3SL1FF7ADFF8 HTTP 1.1" $status$ $timetaken$ "http://shop.buttercupgames.com/cart.do?action=view&itemId=HolyGouda" "$useragent$" $size$
+    _raw: $clientip$ - - [$ts$] "GET /product.screen?product_id=HolyGouda&JSESSIONID=SD3SL1FF7ADFF8 HTTP 1.1" $status$ $size$ "http://shop.buttercupgames.com/cart.do?action=view&itemId=HolyGouda" "$useragent$"
