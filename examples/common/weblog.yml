@@ -13,18 +13,12 @@ tokens:
     format: template
     token: $ts$
     type: gotimestamp
-    replacement: "02/Jan/2006 15:04:05"
+    replacement: "02/Jan/2006:15:04:05 +0000"
   - name: host
     format: template
     type: fieldChoice
     srcField: host
     field: host
-    sample: webhosts.csv
-    group: 1
-  - name: ip
-    format: template
-    type: fieldChoice
-    srcField: ip
     sample: webhosts.csv
     group: 1
   - name: clientip
@@ -43,12 +37,6 @@ tokens:
       choice: 404
     - weight: 2
       choice: 503
-  - name: timetaken
-    format: template
-    type: random
-    replacement: int
-    lower: 100
-    upper: 1000
   - name: useragent
     format: template
     type: choice
@@ -64,4 +52,4 @@ lines:
     sourcetype: access_combined
     source: /var/log/httpd/access_log
     host: $host$
-    _raw: $ip$ $clientip$ - - [$ts$] "GET /product.screen?product_id=HolyGouda&JSESSIONID=SD3SL1FF7ADFF8 HTTP 1.1" $status$ $timetaken$ "http://shop.buttercupgames.com/cart.do?action=view&itemId=HolyGouda" "$useragent$" $size$
+    _raw: $clientip$ - - [$ts$] "GET /product.screen?product_id=HolyGouda&JSESSIONID=SD3SL1FF7ADFF8 HTTP 1.1" $status$ $size$ "http://shop.buttercupgames.com/cart.do?action=view&itemId=HolyGouda" "$useragent$"
