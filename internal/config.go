@@ -62,6 +62,9 @@ type Output struct {
 	OutputTemplate string            `json:"outputTemplate,omitempty" yaml:"outputTemplate,omitempty"`
 	Endpoints      []string          `json:"endpoints,omitempty" yaml:"endpoints,omitempty"`
 	Headers        map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Protocol       string            `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+	Server         string            `json:"server,omitempty" yaml:"server,omitempty"`
+	NetworkTimeout string            `json:"networkTimeout,omitempty" yaml:"networkTimeout,omitempty"`
 }
 
 // ConfigConfig represents options to pass to NewConfig
