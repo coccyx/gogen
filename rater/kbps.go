@@ -3,9 +3,9 @@ package rater
 import (
 	"time"
 
-	outputter "github.com/coccyx/gogen/outputter"
 	config "github.com/coccyx/gogen/internal"
 	log "github.com/coccyx/gogen/logger"
+	outputter "github.com/coccyx/gogen/outputter"
 )
 
 // KBpsRater rates on KB/s
@@ -33,8 +33,10 @@ func (r *KBpsRater) EventRate(s *config.Sample, now time.Time, count int) float6
 		return 1.0
 	}
 
+	outputter.Mutex.RLock()
 	size := outputter.BytesWritten[s.Name] / outputter.EventsWritten[s.Name]
-	expected := float64(size * int64(count)) / 1024.0 / KBps
+	outputter.Mutex.RUnlock()
+	expected := float64(size*int64(count)) / 1024.0 / KBps
 	current := time.Now()
 	actual := current.Sub(r.t).Seconds()
 	r.t = current

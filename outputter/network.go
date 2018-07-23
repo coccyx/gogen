@@ -2,8 +2,8 @@ package outputter
 
 import (
 	"io"
+	"math/rand"
 	"net"
-	"time"
 
 	config "github.com/coccyx/gogen/internal"
 )
@@ -16,12 +16,8 @@ type network struct {
 
 func (n *network) Send(item *config.OutQueueItem) error {
 	if n.initialized == false {
-		timeout, err := time.ParseDuration(item.S.Output.NetworkTimeout)
-		if err != nil {
-			timeout, _ = time.ParseDuration("10s")
-		}
-
-		conn, err := net.DialTimeout(item.S.Output.Protocol, item.S.Output.Server, timeout)
+		endpoint := item.S.Output.Endpoints[rand.Intn(len(item.S.Output.Endpoints))]
+		conn, err := net.DialTimeout(item.S.Output.Protocol, endpoint, item.S.Output.Timeout)
 		if err != nil {
 			return err
 		}
