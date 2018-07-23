@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/coccyx/go-s2s/s2s"
@@ -15,6 +16,7 @@ import (
 var (
 	EventsWritten map[string]int64
 	BytesWritten  map[string]int64
+	Mutex         sync.RWMutex
 	lastTS        time.Time
 	rotchan       chan *config.OutputStats
 	gout          [config.MaxOutputThreads]config.Outputter
@@ -42,6 +44,7 @@ func ROT(c *config.Config) {
 		n := time.Now()
 		eventssec = 0
 		kbytessec = 0
+		Mutex.RLock()
 		for k := range BytesWritten {
 			tempEW = EventsWritten[k]
 			tempBW = BytesWritten[k]
@@ -51,6 +54,7 @@ func ROT(c *config.Config) {
 			lastEventsWritten[k] = tempEW
 			lastBytesWritten[k] = tempBW
 		}
+		Mutex.RUnlock()
 		log.Infof("Events/Sec: %.2f Kilobytes/Sec: %.2f GB/Day: %.2f", eventssec, kbytessec, gbday)
 		lastTS = n
 	}
@@ -60,8 +64,10 @@ func readStats() {
 	for {
 		select {
 		case os := <-rotchan:
+			Mutex.Lock()
 			BytesWritten[os.SampleName] += os.BytesWritten
 			EventsWritten[os.SampleName] += os.EventsWritten
+			Mutex.Unlock()
 		}
 	}
 }

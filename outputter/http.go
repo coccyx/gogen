@@ -16,7 +16,7 @@ type httpout struct {
 	buf         *bufio.Writer
 	r           *io.PipeReader
 	w           *io.PipeWriter
-	client 	    *http.Client
+	client      *http.Client
 	resp        *http.Response
 	initialized bool
 	closed      bool
@@ -28,7 +28,7 @@ func (h *httpout) Send(item *config.OutQueueItem) error {
 	if h.initialized == false {
 		h.newPost(item)
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-		h.client = &http.Client{Transport: tr}
+		h.client = &http.Client{Transport: tr, Timeout: item.S.Output.Timeout}
 		h.initialized = true
 	}
 	bytes, err := io.Copy(h.buf, item.IO.R)
@@ -88,7 +88,7 @@ func (h *httpout) newPost(item *config.OutQueueItem) {
 			body, err := ioutil.ReadAll(h.resp.Body)
 			if err != nil {
 				log.Errorf("Error making request from sample '%s' to endpoint '%s': %s", item.S.Name, endpoint, err)
-			} else if h.resp.StatusCode != 200 {
+			} else if h.resp.StatusCode < 200 || h.resp.StatusCode > 299 {
 				log.Errorf("Error making request from sample '%s' to endpoint '%s', status '%d': %s", item.S.Name, endpoint, h.resp.StatusCode, body)
 			}
 		}

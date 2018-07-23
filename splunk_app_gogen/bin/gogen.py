@@ -1,6 +1,3 @@
-'''
-Copyright (C) 2005-2016 Splunk Inc. All Rights Reserved.
-'''
 from __future__ import division
 import sys
 import os
@@ -275,6 +272,7 @@ if __name__ == '__main__':
 
         args = []
         args.append(gogen_path)
+        # args.append('-v')
         args.append('-ot')
         args.append('modinput')
 
@@ -327,13 +325,7 @@ if __name__ == '__main__':
         logger.debug('args: %s' % pprint.pformat(args))
         logger.debug('command: %s' % ' '.join(args))
 
-        p = subprocess.Popen(args, cwd=gogen_base_path,
-                             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
-
         sys.stdout.write("<stream>\n")
-
-        while True:
-            data = p.stdout.readline()
-            # logger.debug("data: %s" % data)
-            sys.stdout.write(data)
-            sys.stdout.flush()
+        sys.stdout.flush()
+        p = subprocess.Popen(args, cwd=gogen_base_path,
+                             shell=False)

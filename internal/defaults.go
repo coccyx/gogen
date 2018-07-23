@@ -1,5 +1,7 @@
 package internal
 
+import "time"
+
 // ProfileOn determines whether we should run a CPU profiler for perf optimization
 const ProfileOn = false
 
@@ -27,6 +29,9 @@ const defaultBackupFiles = 5
 
 // Default HTTP output values
 const defaultBufferBytes = 102400
+
+// Default timeout for network connections
+const defaultTimeout = time.Duration(10 * time.Second)
 
 // MaxOutputThreads defines how large an array we'll define for output threads
 const MaxOutputThreads = 100

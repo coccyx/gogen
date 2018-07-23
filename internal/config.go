@@ -63,8 +63,7 @@ type Output struct {
 	Endpoints      []string          `json:"endpoints,omitempty" yaml:"endpoints,omitempty"`
 	Headers        map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
 	Protocol       string            `json:"protocol,omitempty" yaml:"protocol,omitempty"`
-	Server         string            `json:"server,omitempty" yaml:"server,omitempty"`
-	NetworkTimeout string            `json:"networkTimeout,omitempty" yaml:"networkTimeout,omitempty"`
+	Timeout        time.Duration     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
 // ConfigConfig represents options to pass to NewConfig
@@ -220,6 +219,9 @@ func BuildConfig(cc ConfigConfig) *Config {
 		}
 		if c.Global.Output.BufferBytes == 0 {
 			c.Global.Output.BufferBytes = defaultBufferBytes
+		}
+		if c.Global.Output.Timeout == time.Duration(0) {
+			c.Global.Output.Timeout = defaultTimeout
 		}
 
 		// Add default templates
