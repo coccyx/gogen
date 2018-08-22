@@ -28,3 +28,4 @@ deploy:
   bucket: gogen-artifacts
   on:
     repo: coccyx/gogen
+
