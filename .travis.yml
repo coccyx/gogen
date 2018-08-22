@@ -1,12 +1,12 @@
 language: go
 sudo: false
-os:
-- linux
-- osx
+# os:
+# - linux
+# - osx
 go:
 - 1.10.x
 before_script:
-- printf "$GITHUB_OAUTH_TOKEN" > .githubtoken
+# - printf "$GITHUB_OAUTH_TOKEN" > .githubtoken
 - go get -u github.com/mattn/goveralls
 - go get -u github.com/LawrenceWoodman/roveralls
 - go get github.com/tools/godep
