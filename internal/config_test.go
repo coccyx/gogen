@@ -34,6 +34,7 @@ func TestGlobal(t *testing.T) {
 		BufferBytes:    102400,
 		Endpoints:      []string(nil),
 		Headers:        map[string]string(nil),
+		Timeout:        time.Duration(10 * time.Second),
 	}
 	global := Global{
 		Debug:            false,
