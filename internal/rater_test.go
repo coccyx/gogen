@@ -72,7 +72,7 @@ func compareConfigRater(r1, r2 *RaterConfig, t *testing.T) {
 			raterCast := r1.Options[heading].(map[int]float64)
 			drCast := r2.Options[heading].(map[int]float64)
 			if raterCast[k] != drCast[k] {
-				t.Fatalf("[%s][%s] does not exist or does not match, default: %d, configrater: %d", heading, k, drCast[k], raterCast[k])
+				t.Fatalf("[%s][%d] does not exist or does not match, default: %f, configrater: %f", heading, k, drCast[k], raterCast[k])
 			}
 		}
 	}
