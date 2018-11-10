@@ -50,6 +50,7 @@ type Global struct {
 	ROTInterval      int      `json:"rotInterval,omitempty" yaml:"rotInterval,omitempty"`
 	Output           Output   `json:"output,omitempty" yaml:"output,omitempty"`
 	SamplesDir       []string `json:"samplesDir,omitempty" yaml:"samplesDir,omitempty"`
+	AddTime          bool     `json:"addTime,omitempty" yaml:"addTime,omitempty"`
 }
 
 // Output represents configuration for outputting data
@@ -999,8 +1000,7 @@ func ParseBeginEnd(s *Sample) {
 
 // SetupSplunk adds a time token if we're outputting to SplunkTime
 func (c *Config) SetupSplunk() {
-	if !c.cc.Export && (c.Global.Output.OutputTemplate == "splunkhec" || c.Global.Output.OutputTemplate == "modinput") {
-		log.Infof("Adding _time field for Splunk")
+	if !c.cc.Export && (c.Global.Output.OutputTemplate == "splunkhec" || c.Global.Output.OutputTemplate == "modinput" || c.Global.AddTime) {
 		for i := 0; i < len(c.Samples); i++ {
 			s := c.Samples[i]
 
@@ -1018,6 +1018,7 @@ func (c *Config) SetupSplunk() {
 				}
 			}
 			if !timetoken {
+				log.Infof("Adding _time field for Splunk for sample %s", s.Name)
 				tt := Token{
 					Name:   "_time",
 					Type:   "epochtimestamp",
