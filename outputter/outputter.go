@@ -101,11 +101,11 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 		}
 		out = setup(generator, item, num)
 		if len(item.Events) > 0 {
-			go func() {
+			go func(item *config.OutQueueItem) {
 				var bytes int64
 				defer item.IO.W.Close()
 				switch item.S.Output.OutputTemplate {
-				case "raw", "json", "splunktcp":
+				case "raw", "json", "splunktcp", "splunkhec":
 					for _, line := range item.Events {
 						var tempbytes int
 						var err error
@@ -127,6 +127,24 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 								}
 							case "splunktcp":
 								tempbytes, err = item.IO.W.Write(s2s.EncodeEvent(line).Bytes())
+								if err != nil {
+									log.Errorf("Error writing to IO Buffer: %s", err)
+								}
+							case "splunkhec":
+								if _, ok := line["_raw"]; ok {
+									line["event"] = line["_raw"]
+									delete(line, "_raw")
+								}
+								if _, ok := line["_time"]; ok {
+									line["time"] = line["_time"]
+									delete(line, "_time")
+								}
+								// TODO Refactor to avoid copy pasta, being lazy for now
+								jb, err := json.Marshal(line)
+								if err != nil {
+									log.Errorf("Error marshaling json: %s", err)
+								}
+								tempbytes, err = item.IO.W.Write(jb)
 								if err != nil {
 									log.Errorf("Error writing to IO Buffer: %s", err)
 								}
@@ -158,7 +176,7 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 					bytes += int64(getLine("footer", item.S, item.Events[last], item.IO.W))
 				}
 				Account(int64(len(item.Events)), bytes, item.S.Name)
-			}()
+			}(item)
 			err := out.Send(item)
 			if err != nil {
 				log.Errorf("Error with Send(): %s", err)

@@ -35,6 +35,7 @@ func init() {
 		"splunkHECToken": "GOGEN_HEC_TOKEN",
 		"samplesDir":     "GOGEN_SAMPLES_DIR",
 		"config":         "GOGEN_CONFIG",
+		"addTime":        "GOGEN_ADDTIME",
 	}
 }
 
@@ -85,11 +86,20 @@ func Setup(clic *cli.Context) {
 		log.Infof("Setting generators to %d", clic.Int("outputters"))
 		c.Global.OutputWorkers = clic.Int("outputters")
 	}
+	if clic.Bool("addTime") {
+		log.Infof("Adding _time to all Samples")
+		c.Global.AddTime = true
+	}
 
 	for i := 0; i < len(c.Samples); i++ {
 		if len(clic.String("outputter")) > 0 {
 			log.Infof("Setting outputter to '%s'", clic.String("outputter"))
-			c.Samples[i].Output.Outputter = clic.String("outputter")
+			if clic.String("outputter") == "tcp" {
+				c.Samples[i].Output.Outputter = "network"
+				c.Samples[i].Output.Protocol = "tcp"
+			} else {
+				c.Samples[i].Output.Outputter = clic.String("outputter")
+			}
 		}
 		if len(clic.String("filename")) > 0 {
 			log.Infof("Setting filename to '%s'", clic.String("filename"))
@@ -468,7 +478,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "outputter, o",
-			Usage:  "Use outputter `(stdout|devnull|file|http) for output",
+			Usage:  "Use outputter `(stdout|devnull|file|http|tcp|splunktcp) for output",
 			EnvVar: "GOGEN_OUT",
 		},
 		cli.StringFlag{
@@ -505,6 +515,11 @@ func main() {
 			Name:   "config, c",
 			Usage:  "`Path` or URL to a full config",
 			EnvVar: "GOGEN_CONFIG",
+		},
+		cli.BoolFlag{
+			Name:   "addTime, at",
+			Usage:  "Always add _time field, no matter of outputTemplate",
+			EnvVar: "GOGEN_ADDTIME",
 		},
 	}
 	app.Run(os.Args)
