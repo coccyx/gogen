@@ -153,7 +153,7 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 							tempbytes = len(line["_raw"])
 						}
 						bytes += int64(tempbytes) + 1
-						if item.S.Output.Outputter != "devnull" {
+						if item.S.Output.Outputter != "devnull" && item.S.Output.Outputter != "splunktcp" {
 							_, err = io.WriteString(item.IO.W, "\n")
 							if err != nil {
 								log.Errorf("Error writing to IO Buffer: %s", err)
