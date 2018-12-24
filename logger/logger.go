@@ -50,7 +50,7 @@ func (hook ContextHook) Fire(entry *logrus.Entry) error {
 }
 
 func init() {
-	logrus.SetFormatter(&prefixed.TextFormatter{TimestampFormat: "Jan 02 03:04:05.000"})
+	logrus.SetFormatter(&prefixed.TextFormatter{TimestampFormat: "Jan 02 15:04:05.000"})
 	logrus.AddHook(ContextHook{})
 	logrus.SetLevel(DefaultLogLevel)
 }
