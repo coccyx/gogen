@@ -20,7 +20,15 @@ var (
 	lastTS        time.Time
 	rotchan       chan *config.OutputStats
 	gout          [config.MaxOutputThreads]config.Outputter
+	lasterr       [config.MaxOutputThreads]lastError
+	rotInterval   int
 )
+
+type lastError struct {
+	when  time.Time
+	err   error
+	count int64
+}
 
 func init() {
 	EventsWritten = make(map[string]int64)
@@ -30,6 +38,7 @@ func init() {
 // ROT starts the Read Out Thread which will log statistics about what's being output
 // ROT is intended to be started as a goroutine which will log output every c.
 func ROT(c *config.Config) {
+	rotInterval = c.Global.ROTInterval
 	rotchan = make(chan *config.OutputStats)
 	go readStats()
 
@@ -39,7 +48,7 @@ func ROT(c *config.Config) {
 	var tempEW, tempBW int64
 	lastTS = time.Now()
 	for {
-		timer := time.NewTimer(time.Duration(c.Global.ROTInterval) * time.Second)
+		timer := time.NewTimer(time.Duration(rotInterval) * time.Second)
 		<-timer.C
 		n := time.Now()
 		eventssec = 0
@@ -48,8 +57,8 @@ func ROT(c *config.Config) {
 		for k := range BytesWritten {
 			tempEW = EventsWritten[k]
 			tempBW = BytesWritten[k]
-			eventssec += float64(tempEW-lastEventsWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/c.Global.ROTInterval)
-			kbytessec += float64(tempBW-lastBytesWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/c.Global.ROTInterval) / 1024
+			eventssec += float64(tempEW-lastEventsWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval)
+			kbytessec += float64(tempBW-lastBytesWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval) / 1024
 			gbday = (kbytessec * 60 * 60 * 24) / 1024 / 1024
 			lastEventsWritten[k] = tempEW
 			lastBytesWritten[k] = tempBW
@@ -179,7 +188,22 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 			}(item)
 			err := out.Send(item)
 			if err != nil {
-				log.Errorf("Error with Send(): %s", err)
+				logErr := false
+				if lasterr[num].err == nil {
+					lasterr[num].err = err
+					lasterr[num].when = time.Now()
+					lasterr[num].count = 1
+					logErr = true
+				} else if time.Since(lasterr[num].when) > time.Duration(int64(rotInterval))*time.Second {
+					lasterr[num].when = time.Now()
+					logErr = true
+				} else {
+					lasterr[num].count++
+				}
+				if logErr {
+					log.Errorf("Error with Send(): %s. %d errors in the last %d second.", err, lasterr[num].count, rotInterval)
+					lasterr[num].count = 0
+				}
 			}
 		}
 		lastS = item.S
