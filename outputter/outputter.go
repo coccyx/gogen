@@ -102,7 +102,10 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 		if !ok {
 			if lastS != nil {
 				log.Infof("Closing output for sample '%s'", lastS.Name)
-				out.Close()
+				err := out.Close()
+				if err != nil {
+					log.Errorf("Error closing output for sample '%s': %s", lastS.Name, err)
+				}
 				gout[num] = nil
 			}
 			oqs <- 1

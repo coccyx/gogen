@@ -28,6 +28,9 @@ func (h *httpout) Send(item *config.OutQueueItem) error {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		h.client = &http.Client{Transport: tr, Timeout: item.S.Output.Timeout}
 		h.buf = bytes.NewBuffer([]byte{})
+		h.endpoint = item.S.Output.Endpoints[rand.Intn(len(item.S.Output.Endpoints))]
+		h.headers = item.S.Output.Headers
+		h.lastSampleName = item.S.Name
 		h.initialized = true
 	}
 	_, err := io.Copy(h.buf, item.IO.R)
@@ -66,8 +69,11 @@ func (h *httpout) flush() error {
 
 func (h *httpout) Close() error {
 	if !h.closed {
-		h.flush()
 		h.closed = true
+		err := h.flush()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
