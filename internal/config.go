@@ -733,21 +733,25 @@ func (c *Config) validate(s *Sample) {
 					// tokenpos 0 first char, 1 last char, 2 token #
 					var pos tokenpos
 					var err error
-					pos1, pos2, err := t.GetReplacementOffsets(l[t.Field])
-					if err != nil {
+					offsets, err := t.GetReplacementOffsets(l[t.Field])
+					if err != nil || len(offsets) == 0 {
 						log.Infof("Error getting replacements for token '%s' in event '%s', disabling SinglePass", t.Name, l[t.Field])
 						s.SinglePass = false
 						break outer
 					}
-					if pos1 < 0 || pos2 < 0 {
-						log.Infof("Token '%s' not found in event '%s', disabling SinglePass", t.Name, l)
-						s.SinglePass = false
-						break outer
+					for _, offset := range offsets {
+						pos1 := offset[0]
+						pos2 := offset[1]
+						if pos1 < 0 || pos2 < 0 {
+							log.Infof("Token '%s' not found in event '%s', disabling SinglePass", t.Name, l)
+							s.SinglePass = false
+							break outer
+						}
+						pos.Pos1 = pos1
+						pos.Pos2 = pos2
+						pos.Token = j
+						tp[t.Field] = append(tp[t.Field], pos)
 					}
-					pos.Pos1 = pos1
-					pos.Pos2 = pos2
-					pos.Token = j
-					tp[t.Field] = append(tp[t.Field], pos)
 				}
 
 				// Ensure we don't have any tokens overlapping one another for singlepass
@@ -835,8 +839,8 @@ func (c *Config) validate(s *Sample) {
 			inner2:
 				for _, t := range s.Tokens {
 					if t.Type == "timestamp" || t.Type == "gotimestamp" || t.Type == "epochtimestamp" {
-						pos1, pos2, err := t.GetReplacementOffsets(s.Lines[i][t.Field])
-						if err != nil {
+						offsets, err := t.GetReplacementOffsets(s.Lines[i][t.Field])
+						if err != nil || len(offsets) == 0 {
 							log.WithFields(log.Fields{
 								"token":  t.Name,
 								"sample": s.Name,
@@ -845,6 +849,8 @@ func (c *Config) validate(s *Sample) {
 							s.Disabled = true
 							break outer2
 						}
+						pos1 := offsets[0][0]
+						pos2 := offsets[0][1]
 						ts, err := t.ParseTimestamp(s.Lines[i][t.Field][pos1:pos2])
 						if err != nil {
 							log.WithFields(log.Fields{
