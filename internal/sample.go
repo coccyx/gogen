@@ -147,36 +147,58 @@ func (t Token) Replace(event *string, choice int, et time.Time, lt time.Time, no
 	// s := t.Sample
 	e := *event
 
-	if pos1, pos2, err := t.GetReplacementOffsets(*event); err != nil {
+	if offsets, err := t.GetReplacementOffsets(*event); err != nil {
 		return choice, nil
 	} else {
-		replacement, choice, err := t.GenReplacement(choice, et, lt, now, randgen)
-		if err != nil {
-			return -1, err
+		retchoice := choice
+		lastoffset := 0
+		*event = ""
+		for _, match := range offsets {
+			replacement, newchoice, err := t.GenReplacement(retchoice, et, lt, now, randgen)
+			if err != nil {
+				return -1, err
+			}
+			*event = *event + e[lastoffset:match[0]] + replacement
+			retchoice = newchoice
+			lastoffset = match[1]
 		}
-		*event = e[:pos1] + replacement + e[pos2:]
-		return choice, nil
+		*event += e[lastoffset:]
+		return retchoice, nil
 	}
 }
 
 // GetReplacementOffsets returns the beginning and end of a token inside an event string
-func (t Token) GetReplacementOffsets(event string) (int, int, error) {
+func (t Token) GetReplacementOffsets(event string) ([][]int, error) {
+	ret := make([][]int, 0)
 	switch t.Format {
 	case "template":
-		if pos := strings.Index(event, t.Token); pos >= 0 {
-			return pos, pos + len(t.Token), nil
+		offset := 0
+		for {
+			pos := strings.Index(event[offset:], t.Token)
+			if pos < 0 {
+				break
+			}
+			ret = append(ret, []int{offset + pos, offset + pos + len(t.Token)})
+			offset += pos + len(t.Token)
 		}
 	case "regex":
 		re, err := regexp.Compile(t.Token)
 		if err != nil {
-			return -1, -1, err
+			return ret, err
 		}
-		match := re.FindStringSubmatchIndex(event)
-		if match != nil && len(match) >= 4 {
-			return match[2], match[3], nil
+		matches := re.FindAllStringSubmatchIndex(event, -1)
+		if matches != nil {
+			for _, match := range matches {
+				if len(match) >= 4 {
+					ret = append(ret, []int{match[2], match[3]})
+				}
+			}
 		}
 	}
-	return -1, -1, fmt.Errorf("Token '%s' not found in field '%s': '%s'", t.Token, t.Field, event)
+	if len(ret) > 0 {
+		return ret, nil
+	}
+	return ret, fmt.Errorf("Token '%s' not found in field '%s': '%s'", t.Token, t.Field, event)
 }
 
 // GenReplacement generates a replacement value for the token.  choice allows the user to specify

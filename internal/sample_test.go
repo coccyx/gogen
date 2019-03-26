@@ -11,6 +11,80 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestGetReplacementOffsets(t *testing.T) {
+	// Setup environment
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+	os.Setenv("GOGEN_FULLCONFIG", "")
+	home := ".."
+	os.Setenv("GOGEN_SAMPLES_DIR", filepath.Join(home, "tests", "tokens", "tokens-find.yml"))
+
+	c := NewConfig()
+	s := c.FindSampleByName("tokens-find")
+
+	_, err := s.Tokens[0].GetReplacementOffsets("foo")
+	assert.Error(t, err)
+
+	offsets, err := s.Tokens[0].GetReplacementOffsets(s.Lines[0]["_raw"])
+	assert.NoError(t, err)
+	assert.Equal(t, 4, offsets[0][0])
+	assert.Equal(t, 14, offsets[0][1])
+	assert.Equal(t, 15, offsets[1][0])
+	assert.Equal(t, 25, offsets[1][1])
+
+	offsets, err = s.Tokens[1].GetReplacementOffsets(s.Lines[0]["_raw"])
+	assert.NoError(t, err)
+	assert.Equal(t, 4, offsets[0][0])
+	assert.Equal(t, 14, offsets[0][1])
+	assert.Equal(t, 15, offsets[1][0])
+	assert.Equal(t, 25, offsets[1][1])
+}
+
+func TestReplacement(t *testing.T) {
+	// Setup environment
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+	os.Setenv("GOGEN_FULLCONFIG", "")
+	home := ".."
+	os.Setenv("GOGEN_SAMPLES_DIR", filepath.Join(home, "tests", "tokens", "tokens-find.yml"))
+	loc, _ := time.LoadLocation("UTC")
+	source := rand.NewSource(0)
+	randgen := rand.New(source)
+
+	n := time.Date(2001, 10, 20, 12, 0, 0, 100000, loc)
+	now := func() time.Time {
+		return n
+	}
+
+	c := NewConfig()
+	s := c.FindSampleByName("tokens-find")
+
+	event := "foo"
+	_, err := s.Tokens[0].Replace(&event, -1, now(), now(), now(), randgen)
+	assert.NoError(t, err)
+	assert.Equal(t, "foo", event)
+
+	event = s.Lines[0]["_raw"]
+	_, err = s.Tokens[0].Replace(&event, -1, now(), now(), now(), randgen)
+	assert.NoError(t, err)
+	assert.Equal(t, "foo newfoo newfoo", event)
+
+	event = s.Lines[0]["_raw"]
+	_, err = s.Tokens[1].Replace(&event, -1, now(), now(), now(), randgen)
+	assert.NoError(t, err)
+	assert.Equal(t, "foo newfoo newfoo", event)
+
+	event = s.Lines[1]["_raw"]
+	_, err = s.Tokens[0].Replace(&event, -1, now(), now(), now(), randgen)
+	assert.NoError(t, err)
+	assert.Equal(t, "newfoo foo newfoo foo some other", event)
+
+	event = s.Lines[1]["_raw"]
+	_, err = s.Tokens[1].Replace(&event, -1, now(), now(), now(), randgen)
+	assert.NoError(t, err)
+	assert.Equal(t, "newfoo foo newfoo foo some other", event)
+}
+
 func TestGenReplacement(t *testing.T) {
 	// Setup environment
 	os.Setenv("GOGEN_HOME", "..")
