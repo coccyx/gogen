@@ -22,18 +22,22 @@ func TestGetReplacementOffsets(t *testing.T) {
 	c := NewConfig()
 	s := c.FindSampleByName("tokens-find")
 
-	_, _, err := s.Tokens[0].GetReplacementOffsets("foo")
+	_, err := s.Tokens[0].GetReplacementOffsets("foo")
 	assert.Error(t, err)
 
-	pos1, pos2, err := s.Tokens[0].GetReplacementOffsets(s.Lines[0]["_raw"])
+	offsets, err := s.Tokens[0].GetReplacementOffsets(s.Lines[0]["_raw"])
 	assert.NoError(t, err)
-	assert.Equal(t, 4, pos1)
-	assert.Equal(t, 14, pos2)
+	assert.Equal(t, 4, offsets[0][0])
+	assert.Equal(t, 14, offsets[0][1])
+	assert.Equal(t, 15, offsets[1][0])
+	assert.Equal(t, 25, offsets[1][1])
 
-	pos1, pos2, err = s.Tokens[1].GetReplacementOffsets(s.Lines[0]["_raw"])
+	offsets, err = s.Tokens[1].GetReplacementOffsets(s.Lines[0]["_raw"])
 	assert.NoError(t, err)
-	assert.Equal(t, 4, pos1)
-	assert.Equal(t, 14, pos2)
+	assert.Equal(t, 4, offsets[0][0])
+	assert.Equal(t, 14, offsets[0][1])
+	assert.Equal(t, 15, offsets[1][0])
+	assert.Equal(t, 25, offsets[1][1])
 }
 
 func TestReplacement(t *testing.T) {
@@ -63,12 +67,22 @@ func TestReplacement(t *testing.T) {
 	event = s.Lines[0]["_raw"]
 	_, err = s.Tokens[0].Replace(&event, -1, now(), now(), now(), randgen)
 	assert.NoError(t, err)
-	assert.Equal(t, "foo newfoo $template$", event)
+	assert.Equal(t, "foo newfoo newfoo", event)
 
 	event = s.Lines[0]["_raw"]
 	_, err = s.Tokens[1].Replace(&event, -1, now(), now(), now(), randgen)
 	assert.NoError(t, err)
-	assert.Equal(t, "foo newfoo $template$", event)
+	assert.Equal(t, "foo newfoo newfoo", event)
+
+	event = s.Lines[1]["_raw"]
+	_, err = s.Tokens[0].Replace(&event, -1, now(), now(), now(), randgen)
+	assert.NoError(t, err)
+	assert.Equal(t, "newfoo foo newfoo foo some other", event)
+
+	event = s.Lines[1]["_raw"]
+	_, err = s.Tokens[1].Replace(&event, -1, now(), now(), now(), randgen)
+	assert.NoError(t, err)
+	assert.Equal(t, "newfoo foo newfoo foo some other", event)
 }
 
 func TestGenReplacement(t *testing.T) {

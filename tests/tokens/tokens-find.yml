@@ -1,0 +1,14 @@
+name: tokens-find
+tokens:
+  - name: template
+    format: template
+    type: static
+    replacement: newfoo
+  - name: regex
+    format: regex
+    token: "(\\$\\w+\\$)+"
+    type: static
+    replacement: newfoo
+lines:
+- "_raw": foo $template$ $template$
+- "_raw": $template$ foo $template$ foo some other
