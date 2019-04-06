@@ -122,7 +122,8 @@ func Setup(clic *cli.Context) {
 		}
 	}
 
-	c.SetupSplunk()
+	// Must call from runtime in case we are overriding AddTime or Facility from command line
+	c.SetupSystemTokens()
 
 	// log.Debugf("Global: %#v", c.Global)
 	// log.Debugf("Default Tokens: %#v", c.DefaultTokens)

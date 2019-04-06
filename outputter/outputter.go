@@ -2,6 +2,7 @@ package outputter
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"math/rand"
 	"sync"
@@ -117,7 +118,7 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 				var bytes int64
 				defer item.IO.W.Close()
 				switch item.S.Output.OutputTemplate {
-				case "raw", "json", "splunktcp", "splunkhec":
+				case "raw", "json", "splunktcp", "splunkhec", "rfc3164", "rfc5424":
 					for _, line := range item.Events {
 						var tempbytes int
 						var err error
@@ -125,23 +126,14 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 							switch item.S.Output.OutputTemplate {
 							case "raw":
 								tempbytes, err = io.WriteString(item.IO.W, line["_raw"])
-								if err != nil {
-									log.Errorf("Error writing to IO Buffer: %s", err)
-								}
 							case "json":
 								jb, err := json.Marshal(line)
 								if err != nil {
 									log.Errorf("Error marshaling json: %s", err)
 								}
 								tempbytes, err = item.IO.W.Write(jb)
-								if err != nil {
-									log.Errorf("Error writing to IO Buffer: %s", err)
-								}
 							case "splunktcp":
 								tempbytes, err = item.IO.W.Write(s2s.EncodeEvent(line).Bytes())
-								if err != nil {
-									log.Errorf("Error writing to IO Buffer: %s", err)
-								}
 							case "splunkhec":
 								if _, ok := line["_raw"]; ok {
 									line["event"] = line["_raw"]
@@ -157,9 +149,22 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 									log.Errorf("Error marshaling json: %s", err)
 								}
 								tempbytes, err = item.IO.W.Write(jb)
-								if err != nil {
-									log.Errorf("Error writing to IO Buffer: %s", err)
+							case "rfc3164":
+								tempbytes, err = io.WriteString(item.IO.W, fmt.Sprintf("<%s>%s %s %s[%s]: %s", line["priority"], line["_time"], line["host"], line["tag"], line["pid"], line["_raw"]))
+							case "rfc5424":
+								kv := "-"
+								for k, v := range line {
+									if k != "_raw" && k != "_time" && k != "priority" && k != "host" && k != "appName" && k != "pid" && k != "tag" {
+										kv = kv + fmt.Sprintf("%s=\"%s\" ", k, v)
+									}
 								}
+								if len(kv) != 1 {
+									kv = fmt.Sprintf("[%s]", kv[1:len(kv)-1])
+								}
+								tempbytes, err = io.WriteString(item.IO.W, fmt.Sprintf("<%s>%d %s %s %s %s - %s %s", line["priority"], 1, line["_time"], line["host"], line["appName"], line["pid"], kv, line["_raw"]))
+							}
+							if err != nil {
+								log.Errorf("Error writing to IO Buffer: %s", err)
 							}
 						} else {
 							tempbytes = len(line["_raw"])

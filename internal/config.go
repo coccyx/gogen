@@ -43,14 +43,16 @@ type Config struct {
 
 // Global represents global configuration options which apply to all of gogen
 type Global struct {
-	Debug            bool     `json:"debug,omitempty" yaml:"debug,omitempty"`
-	Verbose          bool     `json:"verbose,omitempty" yaml:"verbose,omitempty"`
-	GeneratorWorkers int      `json:"generatorWorkers,omitempty" yaml:"generatorWorkers,omitempty"`
-	OutputWorkers    int      `json:"outputWorkers,omitempty" yaml:"outputWorkers,omitempty"`
-	ROTInterval      int      `json:"rotInterval,omitempty" yaml:"rotInterval,omitempty"`
-	Output           Output   `json:"output,omitempty" yaml:"output,omitempty"`
-	SamplesDir       []string `json:"samplesDir,omitempty" yaml:"samplesDir,omitempty"`
-	AddTime          bool     `json:"addTime,omitempty" yaml:"addTime,omitempty"`
+	Debug                bool     `json:"debug,omitempty" yaml:"debug,omitempty"`
+	Verbose              bool     `json:"verbose,omitempty" yaml:"verbose,omitempty"`
+	GeneratorWorkers     int      `json:"generatorWorkers,omitempty" yaml:"generatorWorkers,omitempty"`
+	OutputWorkers        int      `json:"outputWorkers,omitempty" yaml:"outputWorkers,omitempty"`
+	GeneratorQueueLength int      `json:"generatorQueueLength,omitempty" yaml:"generatorQueueLength,omitempty"`
+	OutputQueueLength    int      `json:"outputQueueLength,omitempty" yaml:"outputQueueLength,omitempty"`
+	ROTInterval          int      `json:"rotInterval,omitempty" yaml:"rotInterval,omitempty"`
+	Output               Output   `json:"output,omitempty" yaml:"output,omitempty"`
+	SamplesDir           []string `json:"samplesDir,omitempty" yaml:"samplesDir,omitempty"`
+	AddTime              bool     `json:"addTime,omitempty" yaml:"addTime,omitempty"`
 }
 
 // Output represents configuration for outputting data
@@ -198,6 +200,12 @@ func BuildConfig(cc ConfigConfig) *Config {
 		}
 		if c.Global.OutputWorkers == 0 {
 			c.Global.OutputWorkers = defaultOutputWorkers
+		}
+		if c.Global.GeneratorQueueLength == 0 {
+			c.Global.GeneratorQueueLength = defaultGenQueueLength
+		}
+		if c.Global.OutputQueueLength == 0 {
+			c.Global.OutputQueueLength = defaultOutQueueLength
 		}
 		if c.Global.Output.Outputter == "" {
 			c.Global.Output.Outputter = defaultOutputter
@@ -360,8 +368,8 @@ func BuildConfig(cc ConfigConfig) *Config {
 		}
 	}
 
-	// Setup time for HEC and splunktcp
-	c.SetupSplunk()
+	// Setup time and facility
+	c.SetupSystemTokens()
 
 	// There area references from tokens to samples, need to resolve those references
 	for i := 0; i < len(c.Samples); i++ {
@@ -1004,47 +1012,94 @@ func ParseBeginEnd(s *Sample) {
 	log.Infof("Beginning generation at %s; Ending at %s; Realtime: %v", s.BeginParsed, s.EndParsed, s.Realtime)
 }
 
-// SetupSplunk adds a time token if we're outputting to SplunkTime
-func (c *Config) SetupSplunk() {
-	if !c.cc.Export && (c.Global.Output.OutputTemplate == "splunkhec" || c.Global.Output.OutputTemplate == "modinput" || c.Global.AddTime) {
+// SetupSystemTokens adds tokens like time and facility to samples based on configuration
+func (c *Config) SetupSystemTokens() {
+	addToken := func(s *Sample, tokenName string, tokenType string, tokenReplacement string) {
+		// If there's no _time token, add it to make sure we have a timestamp field in every event
+		tokenfound := false
+		for _, t := range s.Tokens {
+			if t.Name == tokenName {
+				tokenfound = true
+			}
+		}
+		for _, l := range s.Lines {
+			if _, ok := l[tokenName]; ok {
+				tokenfound = true
+			}
+		}
+		if !tokenfound {
+			log.Infof("Adding %s field for sample %s", tokenName, s.Name)
+			tt := Token{
+				Name:   tokenName,
+				Type:   tokenType,
+				Format: "template",
+				Field:  tokenName,
+				Token:  fmt.Sprintf("$%s$", tokenName),
+				Group:  -1,
+			}
+			if tokenReplacement != "" {
+				tt.Replacement = tokenReplacement
+			}
+			s.Tokens = append(s.Tokens, tt)
+			if s.SinglePass {
+				for j := 0; j < len(s.BrokenLines); j++ {
+					st := []StringOrToken{
+						StringOrToken{T: &tt, S: ""},
+					}
+					s.BrokenLines[j][tokenName] = st
+				}
+			}
+			for j := 0; j < len(s.Lines); j++ {
+				s.Lines[j][tokenName] = fmt.Sprintf("$%s$", tokenName)
+			}
+		}
+	}
+	addField := func(s *Sample, name string, value string) {
+		for i := 0; i < len(s.Lines); i++ {
+			if s.Lines[i][name] == "" {
+				s.Lines[i][name] = value
+			}
+		}
+		if s.SinglePass {
+			for i := 0; i < len(s.BrokenLines); i++ {
+				st := []StringOrToken{
+					StringOrToken{T: nil, S: value},
+				}
+				if _, ok := s.BrokenLines[i][name]; !ok {
+					s.BrokenLines[i][name] = st
+				}
+			}
+		}
+	}
+	syslogOutput := c.Global.Output.OutputTemplate == "rfc3164" || c.Global.Output.OutputTemplate == "rfc5424"
+	addTime := c.Global.Output.OutputTemplate == "splunkhec" || c.Global.Output.OutputTemplate == "modinput" || c.Global.AddTime || syslogOutput
+	if !c.cc.Export && addTime {
+		// Use epochtimestamp for Splunk, or different formats for rfc3164 or rfc5424
+		var tokenType string
+		var tokenReplacement string
+		if addTime && !syslogOutput {
+			tokenType = "epochtimestamp"
+		} else if c.Global.Output.OutputTemplate == "rfc3164" {
+			tokenType = "gotimestamp"
+			tokenReplacement = "Jan _2 15:04:05"
+		} else if c.Global.Output.OutputTemplate == "rfc5424" {
+			tokenType = "gotimestamp"
+			tokenReplacement = "2006-01-02T15:04:05.999999Z07:00"
+		}
 		for i := 0; i < len(c.Samples); i++ {
 			s := c.Samples[i]
-
-			// If there's no _time token, add it to make sure we have a timestamp field in every event
-			// This is primarily used for Splunk's HTTP Event Collectot
-			timetoken := false
-			for _, t := range s.Tokens {
-				if t.Name == "_time" {
-					timetoken = true
+			addToken(s, "_time", tokenType, tokenReplacement)
+			if syslogOutput {
+				addField(s, "priority", fmt.Sprintf("%d", defaultSyslogPriority))
+				hostname, _ := os.Hostname()
+				addField(s, "host", hostname)
+				tag := "gogen"
+				if s.Lines[0]["sourcetype"] != "" {
+					tag = s.Lines[0]["sourcetype"]
 				}
-			}
-			for _, l := range s.Lines {
-				if _, ok := l["_time"]; ok {
-					timetoken = true
-				}
-			}
-			if !timetoken {
-				log.Infof("Adding _time field for Splunk for sample %s", s.Name)
-				tt := Token{
-					Name:   "_time",
-					Type:   "epochtimestamp",
-					Format: "template",
-					Field:  "_time",
-					Token:  "$_time$",
-					Group:  -1,
-				}
-				s.Tokens = append(s.Tokens, tt)
-				if s.SinglePass {
-					for j := 0; j < len(s.BrokenLines); j++ {
-						st := []StringOrToken{
-							StringOrToken{T: &tt, S: ""},
-						}
-						s.BrokenLines[j]["_time"] = st
-					}
-				}
-				for j := 0; j < len(s.Lines); j++ {
-					s.Lines[j]["_time"] = "$_time$"
-				}
+				addField(s, "tag", tag)
+				addField(s, "pid", fmt.Sprintf("%d", os.Getpid()))
+				addField(s, "appName", "gogen")
 			}
 			// Fixup existing timestamp tokens to all use the same static group, -1
 			for j := 0; j < len(s.Tokens); j++ {

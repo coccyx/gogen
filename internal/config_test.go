@@ -37,13 +37,15 @@ func TestGlobal(t *testing.T) {
 		Timeout:        time.Duration(10 * time.Second),
 	}
 	global := Global{
-		Debug:            false,
-		Verbose:          false,
-		GeneratorWorkers: 1,
-		OutputWorkers:    1,
-		ROTInterval:      1,
-		Output:           output,
-		SamplesDir:       []string(nil),
+		Debug:                false,
+		Verbose:              false,
+		GeneratorWorkers:     1,
+		OutputWorkers:        1,
+		GeneratorQueueLength: 50,
+		OutputQueueLength:    10,
+		ROTInterval:          1,
+		Output:               output,
+		SamplesDir:           []string(nil),
 	}
 	assert.Equal(t, global, c.Global)
 }
