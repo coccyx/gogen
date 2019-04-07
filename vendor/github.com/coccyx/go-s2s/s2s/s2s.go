@@ -18,6 +18,17 @@ import (
 	"syscall"
 )
 
+var bp sync.Pool
+
+func init() {
+	bp = sync.Pool{
+		New: func() interface{} {
+			bb := bytes.NewBuffer([]byte{})
+			return bb
+		},
+	}
+}
+
 // S2S sends data to Splunk using the Splunk to Splunk protocol
 type S2S struct {
 	buf                *bufio.Writer
@@ -174,66 +185,50 @@ func (st *S2S) sendSig() error {
 // encodeString encodes a string to be sent across the wire to Splunk
 // Wire protocol has an unsigned integer of the length of the string followed
 // by a null terminated string.
-func encodeString(tosend string) []byte {
-	// buf := bp.Get().(*bytes.Buffer)
-	// defer bp.Put(buf)
-	// buf.Reset()
-	buf := &bytes.Buffer{}
+func encodeString(tosend string, buf *bytes.Buffer) {
 	l := uint32(len(tosend) + 1)
 	binary.Write(buf, binary.BigEndian, l)
 	binary.Write(buf, binary.BigEndian, []byte(tosend))
 	binary.Write(buf, binary.BigEndian, []byte{0})
-	return buf.Bytes()
 }
 
 // encodeKeyValue encodes a key/value pair to send across the wire to splunk
 // A key value pair is merely a concatenated set of encoded strings.
-func encodeKeyValue(key, value string) []byte {
-	// buf := bp.Get().(*bytes.Buffer)
-	// defer bp.Put(buf)
-	// buf.Reset()
-	buf := &bytes.Buffer{}
-	buf.Write(encodeString(key))
-	buf.Write(encodeString(value))
-	return buf.Bytes()
+func encodeKeyValue(key, value string, buf *bytes.Buffer) {
+	encodeString(key, buf)
+	encodeString(value, buf)
 }
 
 // EncodeEvent encodes a full Splunk event
-func EncodeEvent(line map[string]string) (buf *bytes.Buffer) {
-	// buf := bp.Get().(*bytes.Buffer)
-	// defer bp.Put(buf)
-	// buf.Reset()
-	buf = &bytes.Buffer{}
+func EncodeEvent(line map[string]string) []byte {
+	buf := bp.Get().(*bytes.Buffer)
+	defer bp.Put(buf)
+	buf.Reset()
+	binary.Write(buf, binary.BigEndian, uint32(0)) // Message Size
+	binary.Write(buf, binary.BigEndian, uint32(0)) // Map Count
 
-	var msgSize uint32
-	msgSize = 8 // Two unsigned 32 bit integers included, the number of maps and a 0 between the end of raw the _raw trailer
-	maps := make([][]byte, 0)
+	maps := 0
 
 	var indexFields string
 	for k, v := range line {
 		switch k {
 		case "source":
-			encodedSource := encodeKeyValue("MetaData:Source", "source::"+v)
-			maps = append(maps, encodedSource)
-			msgSize += uint32(len(encodedSource))
+			encodeKeyValue("MetaData:Source", "source::"+v, buf)
+			maps++
 		case "sourcetype":
-			encodedSourcetype := encodeKeyValue("MetaData:Sourcetype", "sourcetype::"+v)
-			maps = append(maps, encodedSourcetype)
-			msgSize += uint32(len(encodedSourcetype))
+			encodeKeyValue("MetaData:Sourcetype", "sourcetype::"+v, buf)
+			maps++
 		case "host":
-			encodedHost := encodeKeyValue("MetaData:Host", "host::"+v)
-			maps = append(maps, encodedHost)
-			msgSize += uint32(len(encodedHost))
+			encodeKeyValue("MetaData:Host", "host::"+v, buf)
+			maps++
 		case "index":
-			encodedIndex := encodeKeyValue("_MetaData:Index", v)
-			maps = append(maps, encodedIndex)
-			msgSize += uint32(len(encodedIndex))
+			encodeKeyValue("_MetaData:Index", v, buf)
+			maps++
 		case "_raw":
 			break
 		case "_time":
-			encoded := encodeKeyValue(k, v)
-			maps = append(maps, encoded)
-			msgSize += uint32(len(encoded))
+			encodeKeyValue(k, v, buf)
+			maps++
 			if strings.ContainsRune(v, '.') {
 				subsecs := "." + strings.Split(v, ".")[1]
 				indexFields += "_subsecond::" + subsecs + " "
@@ -245,35 +240,27 @@ func EncodeEvent(line map[string]string) (buf *bytes.Buffer) {
 
 	if len(indexFields) > 0 {
 		indexFields = strings.TrimRight(indexFields, " ")
-		encoded := encodeKeyValue("_meta", indexFields)
-		maps = append(maps, encoded)
-		msgSize += uint32(len(encoded))
+		encodeKeyValue("_meta", indexFields, buf)
+		maps++
 	}
 
-	encodedRaw := encodeKeyValue("_raw", line["_raw"])
-	msgSize += uint32(len(encodedRaw))
-	encodedRawTrailer := encodeString("_raw")
-	msgSize += uint32(len(encodedRawTrailer))
-	encodedDone := encodeKeyValue("_done", "_done")
-	msgSize += uint32(len(encodedDone))
+	encodeKeyValue("_linebreaker", "'_linebreaker'", buf)
+	encodeKeyValue("_raw", line["_raw"], buf)
+	binary.Write(buf, binary.BigEndian, uint32(0)) // Null terminate raw
+	encodeString("_raw", buf)                      // Raw trailer
 
-	binary.Write(buf, binary.BigEndian, msgSize)
-	binary.Write(buf, binary.BigEndian, uint32(len(maps)+2)) // Include extra map for _done key and one for _raw
-	for _, m := range maps {
-		binary.Write(buf, binary.BigEndian, m)
-	}
-	binary.Write(buf, binary.BigEndian, encodedDone)
-	binary.Write(buf, binary.BigEndian, encodedRaw)
-	binary.Write(buf, binary.BigEndian, uint32(0))
-	binary.Write(buf, binary.BigEndian, encodedRawTrailer)
+	ret := buf.Bytes()
 
-	return buf
+	binary.BigEndian.PutUint32(ret, uint32(len(ret)-4)) // Don't include null terminator in message size
+	binary.BigEndian.PutUint32(ret[4:], uint32(maps+2)) // Include extra map for _done key and one for _raw
+
+	return ret
 }
 
 // Send sends an event to Splunk, represented as a map[string]string containing keys of index, host, source, sourcetype, and _raw.
 // It is a convenience function, wrapping EncodeEvent and Copy
 func (st *S2S) Send(event map[string]string) (int64, error) {
-	return st.Copy(EncodeEvent(event))
+	return st.Copy(bytes.NewBuffer(EncodeEvent(event)))
 }
 
 // Copy takes a io.Reader and copies it to Splunk, needs to be encoded by EncodeEvent

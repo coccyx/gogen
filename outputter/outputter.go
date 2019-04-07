@@ -133,7 +133,7 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 								}
 								tempbytes, err = item.IO.W.Write(jb)
 							case "splunktcp":
-								tempbytes, err = item.IO.W.Write(s2s.EncodeEvent(line).Bytes())
+								tempbytes, err = item.IO.W.Write(s2s.EncodeEvent(line))
 							case "splunkhec":
 								if _, ok := line["_raw"]; ok {
 									line["event"] = line["_raw"]
@@ -159,7 +159,7 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 									}
 								}
 								if len(kv) != 1 {
-									kv = fmt.Sprintf("[%s]", kv[1:len(kv)-1])
+									kv = fmt.Sprintf("[meta %s]", kv[1:len(kv)-1])
 								}
 								tempbytes, err = io.WriteString(item.IO.W, fmt.Sprintf("<%s>%d %s %s %s %s - %s %s", line["priority"], 1, line["_time"], line["host"], line["appName"], line["pid"], kv, line["_raw"]))
 							}
