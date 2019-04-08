@@ -255,6 +255,8 @@ func setup(generator *rand.Rand, item *config.OutQueueItem, num int) config.Outp
 			gout[num] = new(splunktcp)
 		case "network":
 			gout[num] = new(network)
+		case "kafka":
+			gout[num] = new(kafkaout)
 		default:
 			gout[num] = new(stdout)
 		}

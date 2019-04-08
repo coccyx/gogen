@@ -106,10 +106,6 @@ func NewS2STLS(endpoints []string, bufferBytes int, tls bool, cert string, serve
 	if err != nil {
 		return nil, err
 	}
-	err = st.sendSig()
-	if err != nil {
-		return nil, err
-	}
 	st.rebalanceInterval = 300
 	st.maxIdleTime = 15
 	st.lastSendTime = time.Now()
@@ -351,6 +347,10 @@ func (st *S2S) newBuf(force bool) error {
 	}
 	st.buf = bufio.NewWriter(st.conn)
 	st.lastConnectTime = time.Now()
+	err := st.sendSig()
+	if err != nil {
+		return nil
+	}
 	return nil
 }
 

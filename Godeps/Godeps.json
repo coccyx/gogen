@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coccyx/gogen",
-	"GoVersion": "go1.7",
+	"GoVersion": "go1.10",
 	"GodepVersion": "v79",
 	"Packages": [
 		"./..."
