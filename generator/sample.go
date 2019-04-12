@@ -104,7 +104,7 @@ func getBrokenEvent(item *config.GenQueueItem, i int) map[string]string {
 				} else {
 					choice = -1
 				}
-				replacement, choice, err := st.T.GenReplacement(choice, item.Earliest, item.Latest, item.Now, item.Rand)
+				replacement, choice, err := st.T.GenReplacement(choice, item.Earliest, item.Latest, item.Now, item.Rand, ret)
 				if err != nil {
 					log.Errorf("Error generating replacement for token '%s' in sample '%s'", st.T.Name, s.Name)
 				}
@@ -194,7 +194,7 @@ func replaceTokens(item *config.GenQueueItem, event *map[string]string, outsidec
 					choice = -1
 				}
 				// log.Debugf("Replacing token '%s':'%s' with choice %d in fieldval: %s", token.Name, token.Token, *choice, fieldval)
-				if choice, err = token.Replace(&fieldval, choice, item.Earliest, item.Latest, item.Now, item.Rand); err == nil {
+				if choice, err = token.Replace(&fieldval, choice, item.Earliest, item.Latest, item.Now, item.Rand, e); err == nil {
 					e[token.Field] = fieldval
 				} else {
 					log.Error(err)

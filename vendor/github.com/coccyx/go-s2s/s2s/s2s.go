@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"encoding/binary"
-	"syscall"
 )
 
 var bp sync.Pool
@@ -37,7 +36,6 @@ type S2S struct {
 	endpoint           string
 	endpoints          []string
 	closed             bool
-	sent               int64
 	bufferBytes        int
 	tls                bool
 	cert               string
@@ -48,6 +46,7 @@ type S2S struct {
 	maxIdleTime        int
 	lastSendTime       time.Time
 	mutex              *sync.RWMutex
+	ignoreNextClosed   bool
 }
 
 type splunkSignature struct {
@@ -102,7 +101,7 @@ func NewS2STLS(endpoints []string, bufferBytes int, tls bool, cert string, serve
 	}
 	st.insecureSkipVerify = insecureSkipVerify
 
-	err := st.newBuf(false)
+	err := st.reconnect(true)
 	if err != nil {
 		return nil, err
 	}
@@ -117,11 +116,13 @@ func NewS2STLS(endpoints []string, bufferBytes int, tls bool, cert string, serve
 // Connect opens a connection to Splunk
 // endpoint is the format of 'host:port'
 func (st *S2S) connect(endpoint string) error {
+	st.mutex.Lock()
 	var err error
 	st.conn, err = net.DialTimeout("tcp", endpoint, 2*time.Second)
 	if err != nil {
 		return err
 	}
+	st.buf = bufio.NewWriterSize(st.conn, st.bufferBytes)
 	if st.tls {
 		config := &tls.Config{
 			InsecureSkipVerify: st.insecureSkipVerify,
@@ -136,11 +137,16 @@ func (st *S2S) connect(endpoint string) error {
 			config.RootCAs = roots
 		}
 
-		st.mutex.Lock()
 		st.conn = tls.Client(st.conn, config)
-		st.mutex.Unlock()
+	}
+	st.mutex.Unlock()
+	err = st.sendSig()
+	if err != nil {
+		return err
 	}
 	go st.readAndDiscard()
+	st.lastConnectTime = time.Now()
+	st.lastSendTime = time.Now()
 	return err
 }
 
@@ -160,6 +166,8 @@ func (st *S2S) SetRebalanceInterval(interval int) {
 // 	char _mgmtPort[16];
 // };
 func (st *S2S) sendSig() error {
+	st.mutex.RLock()
+	defer st.mutex.RUnlock()
 	endpointParts := strings.Split(st.endpoint, ":")
 	if len(endpointParts) != 2 {
 		return fmt.Errorf("Endpoint malformed.  Should look like server:port")
@@ -203,52 +211,68 @@ func EncodeEvent(line map[string]string) []byte {
 	binary.Write(buf, binary.BigEndian, uint32(0)) // Message Size
 	binary.Write(buf, binary.BigEndian, uint32(0)) // Map Count
 
-	maps := 0
+	// These fields should be present in every event
+	_time := line["_time"]
+	host := line["host"]
+	source := line["source"]
+	sourcetype := line["sourcetype"]
+	index := line["index"]
 
+	// These are optional
+	channel, hasChannel := line["_channel"]
+	conf, hasConf := line["_conf"]
+	_, hasLineBreaker := line["_linebreaker"]
 	var indexFields string
+
+	// Check time for subseconds
+	if strings.ContainsRune(_time, '.') {
+		timeparts := strings.Split(_time, ".")
+		_time = timeparts[0]
+		indexFields += "_subsecond::" + timeparts[1] + " "
+	}
+
 	for k, v := range line {
 		switch k {
-		case "source":
-			encodeKeyValue("MetaData:Source", "source::"+v, buf)
-			maps++
-		case "sourcetype":
-			encodeKeyValue("MetaData:Sourcetype", "sourcetype::"+v, buf)
-			maps++
-		case "host":
-			encodeKeyValue("MetaData:Host", "host::"+v, buf)
-			maps++
-		case "index":
-			encodeKeyValue("_MetaData:Index", v, buf)
-			maps++
-		case "_raw":
+		case "source", "sourcetype", "host", "index", "_raw", "_time", "_channel", "_conf":
 			break
-		case "_time":
-			encodeKeyValue(k, v, buf)
-			maps++
-			if strings.ContainsRune(v, '.') {
-				subsecs := "." + strings.Split(v, ".")[1]
-				indexFields += "_subsecond::" + subsecs + " "
-			}
 		default:
 			indexFields += k + "::" + v + " "
 		}
 	}
 
+	maps := 7
+	encodeKeyValue("_raw", line["_raw"], buf)
 	if len(indexFields) > 0 {
 		indexFields = strings.TrimRight(indexFields, " ")
 		encodeKeyValue("_meta", indexFields, buf)
 		maps++
 	}
+	if hasLineBreaker {
+		encodeKeyValue("_linebreaker", "_linebreaker", buf)
+		maps++
+	}
+	encodeKeyValue("_hpn", "_hpn", buf)
+	encodeKeyValue("_time", _time, buf)
+	if hasConf {
+		encodeKeyValue("_conf", conf, buf)
+		maps++
+	}
+	encodeKeyValue("MetaData:Source", "source::"+source, buf)
+	encodeKeyValue("MetaData:Host", "host::"+host, buf)
+	encodeKeyValue("MetaData:Sourcetype", "sourcetype::"+sourcetype, buf)
+	if hasChannel {
+		encodeKeyValue("_channel", channel, buf)
+		maps++
+	}
+	encodeKeyValue("_MetaData:Index", index, buf)
 
-	encodeKeyValue("_linebreaker", "'_linebreaker'", buf)
-	encodeKeyValue("_raw", line["_raw"], buf)
 	binary.Write(buf, binary.BigEndian, uint32(0)) // Null terminate raw
 	encodeString("_raw", buf)                      // Raw trailer
 
 	ret := buf.Bytes()
 
 	binary.BigEndian.PutUint32(ret, uint32(len(ret)-4)) // Don't include null terminator in message size
-	binary.BigEndian.PutUint32(ret[4:], uint32(maps+2)) // Include extra map for _done key and one for _raw
+	binary.BigEndian.PutUint32(ret[4:], uint32(maps))   // Include extra map for _done key and one for _raw
 
 	return ret
 }
@@ -265,43 +289,16 @@ func (st *S2S) Copy(r io.Reader) (int64, error) {
 		return 0, fmt.Errorf("cannot send on closed connection")
 	}
 	if time.Now().Sub(st.lastSendTime) > time.Duration(st.maxIdleTime)*time.Second {
-		st.newBuf(true)
+		st.reconnect(true)
 	}
-	buf := &bytes.Buffer{}
-	io.Copy(buf, r)
 
-	bytes, err := io.Copy(st.buf, buf)
+	bytes, err := io.Copy(st.buf, r)
 	if err != nil {
-		// Catch closed pipe error, resend
-		switch e := err.(type) {
-		case *net.OpError:
-			if e.Err == syscall.EPIPE {
-				err = st.newBuf(true)
-				if err != nil {
-					return 0, err
-				}
-				bytes, err = io.Copy(st.buf, buf)
-				if err != nil {
-					return 0, err
-				}
-			}
-		default:
-			return 0, err
-		}
+		return bytes, err
 	}
 
-	st.sent += bytes
-	if st.sent > int64(st.bufferBytes) {
-		st.mutex.RLock()
-		err := st.buf.Flush()
-		st.mutex.RUnlock()
-		if err != nil {
-			return 0, err
-		}
-		st.newBuf(false)
-		st.sent = 0
-		st.lastSendTime = time.Now()
-	}
+	st.lastSendTime = time.Now()
+	st.reconnect(false)
 	return bytes, nil
 }
 
@@ -328,11 +325,12 @@ func (st *S2S) close() error {
 	if err != nil {
 		return err
 	}
+	st.ignoreNextClosed = true
 	return nil
 }
 
-func (st *S2S) newBuf(force bool) error {
-	if time.Now().Sub(st.lastConnectTime) > time.Duration(st.rebalanceInterval)*time.Second || force {
+func (st *S2S) reconnect(force bool) error {
+	if (len(st.endpoints) > 1 && time.Now().Sub(st.lastConnectTime) > time.Duration(st.rebalanceInterval)*time.Second) || force {
 		st.endpoint = st.endpoints[rand.Intn(len(st.endpoints))]
 		if st.conn != nil {
 			err := st.close()
@@ -345,12 +343,6 @@ func (st *S2S) newBuf(force bool) error {
 			return err
 		}
 	}
-	st.buf = bufio.NewWriter(st.conn)
-	st.lastConnectTime = time.Now()
-	err := st.sendSig()
-	if err != nil {
-		return nil
-	}
 	return nil
 }
 
@@ -359,15 +351,19 @@ func (st *S2S) readAndDiscard() {
 	// err := st.conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
 	// err := st.conn.SetReadDeadline(time.Time{})
 	for {
-		err := st.conn.SetReadDeadline(time.Now().Add(1 * time.Second))
-		if err != nil {
-			st.newBuf(true)
-			break
-		}
 		one := []byte{}
-		_, err = st.conn.Read(one)
+		_, err := st.conn.Read(one)
 		if err != nil {
-			st.newBuf(true)
+			st.mutex.RLock()
+			if !(strings.Contains(err.Error(), "use of closed network connection") && st.ignoreNextClosed) {
+				st.mutex.RUnlock()
+				st.mutex.Lock()
+				st.ignoreNextClosed = false
+				st.mutex.Unlock()
+				st.reconnect(true)
+			} else {
+				st.mutex.RUnlock()
+			}
 			break
 		}
 	}

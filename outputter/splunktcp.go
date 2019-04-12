@@ -31,7 +31,7 @@ func (st *splunktcp) Send(item *config.OutQueueItem) error {
 }
 
 func (st *splunktcp) Close() error {
-	if !st.closed {
+	if !st.closed && st.initialized {
 		time.Sleep(500 * time.Millisecond) // Hack for Cribl flush bug
 		st.s2s.Close()
 		st.closed = true

@@ -67,6 +67,10 @@ type Output struct {
 	Headers        map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
 	Protocol       string            `json:"protocol,omitempty" yaml:"protocol,omitempty"`
 	Timeout        time.Duration     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+
+	// Used for S2S Outputter to maintain state of unique host, source, sourcetype combos
+	channelIdx int
+	channelMap map[string]int
 }
 
 // ConfigConfig represents options to pass to NewConfig
@@ -232,6 +236,9 @@ func BuildConfig(cc ConfigConfig) *Config {
 		if c.Global.Output.Timeout == time.Duration(0) {
 			c.Global.Output.Timeout = defaultTimeout
 		}
+
+		c.Global.Output.channelIdx = 0
+		c.Global.Output.channelMap = make(map[string]int)
 
 		// Add default templates
 		templates := []*Template{defaultCSVTemplate, defaultJSONTemplate, defaultSplunkHECTemplate, defaultRawTemplate, defaultModinputTemplate}
@@ -1072,7 +1079,7 @@ func (c *Config) SetupSystemTokens() {
 		}
 	}
 	syslogOutput := c.Global.Output.OutputTemplate == "rfc3164" || c.Global.Output.OutputTemplate == "rfc5424"
-	addTime := c.Global.Output.OutputTemplate == "splunkhec" || c.Global.Output.OutputTemplate == "modinput" || c.Global.AddTime || syslogOutput
+	addTime := c.Global.Output.OutputTemplate == "splunkhec" || c.Global.Output.OutputTemplate == "modinput" || c.Global.Output.OutputTemplate == "splunktcp" || c.Global.AddTime || syslogOutput
 	if !c.cc.Export && addTime {
 		// Use epochtimestamp for Splunk, or different formats for rfc3164 or rfc5424
 		var tokenType string
@@ -1089,6 +1096,7 @@ func (c *Config) SetupSystemTokens() {
 		for i := 0; i < len(c.Samples); i++ {
 			s := c.Samples[i]
 			addToken(s, "_time", tokenType, tokenReplacement)
+			// Add fields for syslog output
 			if syslogOutput {
 				addField(s, "priority", fmt.Sprintf("%d", defaultSyslogPriority))
 				hostname, _ := os.Hostname()
@@ -1100,6 +1108,10 @@ func (c *Config) SetupSystemTokens() {
 				addField(s, "tag", tag)
 				addField(s, "pid", fmt.Sprintf("%d", os.Getpid()))
 				addField(s, "appName", "gogen")
+			}
+			// Add fields and/or tokens for splunktcp output
+			if c.Global.Output.OutputTemplate == "splunktcp" {
+				addField(s, "_linebreaker", "_linebreaker")
 			}
 			// Fixup existing timestamp tokens to all use the same static group, -1
 			for j := 0; j < len(s.Tokens); j++ {

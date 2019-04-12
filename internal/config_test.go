@@ -35,6 +35,8 @@ func TestGlobal(t *testing.T) {
 		Endpoints:      []string(nil),
 		Headers:        map[string]string(nil),
 		Timeout:        time.Duration(10 * time.Second),
+		channelIdx:     0,
+		channelMap:     map[string]int{},
 	}
 	global := Global{
 		Debug:                false,
