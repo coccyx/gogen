@@ -22,6 +22,15 @@ import (
 var c *config.Config
 var envVarMap map[string]string
 
+// Version is the version from ./VERSION set by govvv
+var Version string
+
+// BuildDate is the build date, set by govvv
+var BuildDate string
+
+// GitSummary is the git commit set by govvv
+var GitSummary string
+
 func init() {
 	envVarMap = map[string]string{
 		"info":           "GOGEN_INFO",
@@ -31,11 +40,13 @@ func init() {
 		"outputTemplate": "GOGEN_OUTPUTTEMPLATE",
 		"outputter":      "GOGEN_OUT",
 		"filename":       "GOGEN_FILENAME",
+		"topic":          "GOGEN_TOPIC",
 		"url":            "GOGEN_URL",
 		"splunkHECToken": "GOGEN_HEC_TOKEN",
 		"samplesDir":     "GOGEN_SAMPLES_DIR",
 		"config":         "GOGEN_CONFIG",
 		"addTime":        "GOGEN_ADDTIME",
+		"bufferBytes":    "GOGEN_BUFFERBYTES",
 	}
 }
 
@@ -45,6 +56,9 @@ func Setup(clic *cli.Context) {
 		log.SetDebug(true)
 	} else if clic.Bool("info") {
 		log.SetInfo()
+	}
+	if len(clic.String("logFile")) > 0 {
+		log.SetOutput(os.ExpandEnv(clic.String("logFile")))
 	}
 
 	if len(clic.String("configDir")) > 0 {
@@ -105,6 +119,10 @@ func Setup(clic *cli.Context) {
 			log.Infof("Setting filename to '%s'", clic.String("filename"))
 			c.Samples[i].Output.FileName = clic.String("filename")
 		}
+		if len(clic.String("topic")) > 0 {
+			log.Infof("Setting topic to '%s'", clic.String("topic"))
+			c.Samples[i].Output.Topic = clic.String("topic")
+		}
 		if len(clic.String("url")) > 0 {
 			log.Infof("Setting all endpoint urls to '%s'", clic.String("url"))
 			c.Samples[i].Output.Endpoints = []string{clic.String("url")}
@@ -120,9 +138,14 @@ func Setup(clic *cli.Context) {
 			log.Infof("Setting outputTemplate to '%s'", clic.String("outputTemplate"))
 			c.Samples[i].Output.OutputTemplate = clic.String("outputTemplate")
 		}
+		if clic.Int("bufferBytes") > 0 {
+			log.Infof("Setting bufferBytes to '%d'", clic.Int("bufferBytes"))
+			c.Samples[i].Output.BufferBytes = clic.Int("bufferBytes")
+		}
 	}
 
-	c.SetupSplunk()
+	// Must call from runtime in case we are overriding AddTime or Facility from command line
+	c.SetupSystemTokens()
 
 	// log.Debugf("Global: %#v", c.Global)
 	// log.Debugf("Default Tokens: %#v", c.DefaultTokens)
@@ -157,7 +180,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "gogen"
 	app.Usage = "Generate data for demos and testing"
-	app.Version = "0.1.0"
+	app.Version = Version
 	cli.VersionFlag = cli.BoolFlag{Name: "version"}
 	app.Compiled = time.Now()
 	app.Authors = []cli.Author{
@@ -441,6 +464,23 @@ func main() {
 				return nil
 			},
 		},
+		{
+			Name:  "version",
+			Usage: "Outputs version info",
+			Flags: []cli.Flag{
+				cli.BoolFlag{Name: "versiononly, v"},
+			},
+			Action: func(clic *cli.Context) error {
+				if clic.Bool("versiononly") {
+					fmt.Printf("%s", Version)
+					return nil
+				}
+				fmt.Printf("Version: %s\n", Version)
+				fmt.Printf("Build Date: %s\n", BuildDate)
+				fmt.Printf("Git Summary: %s\n", GitSummary)
+				return nil
+			},
+		},
 	}
 	app.Before = func(clic *cli.Context) error {
 		Setup(clic)
@@ -473,18 +513,23 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "outputTemplate, ot",
-			Usage:  "Use output template `(raw|csv|json|splunkhec)` for formatting output",
+			Usage:  "Use output template (raw|csv|json|splunkhec|splunktcp|splunktcpuf|rfc3134|rfc5424|elasticsearch) for formatting output",
 			EnvVar: "GOGEN_OUTPUTTEMPLATE",
 		},
 		cli.StringFlag{
 			Name:   "outputter, o",
-			Usage:  "Use outputter `(stdout|devnull|file|http|tcp|splunktcp) for output",
+			Usage:  "Use outputter (stdout|devnull|file|http|tcp|splunktcp|splunktcpuf) for output",
 			EnvVar: "GOGEN_OUT",
 		},
 		cli.StringFlag{
 			Name:   "filename, f",
 			Usage:  "Set `filename`, only usable with file output",
 			EnvVar: "GOGEN_FILENAME",
+		},
+		cli.StringFlag{
+			Name:   "topic, t",
+			Usage:  "Set `topic`, only usable with Kafka output",
+			EnvVar: "GOGEN_TOPIC",
 		},
 		cli.StringFlag{
 			Name:   "url",
@@ -520,6 +565,16 @@ func main() {
 			Name:   "addTime, at",
 			Usage:  "Always add _time field, no matter of outputTemplate",
 			EnvVar: "GOGEN_ADDTIME",
+		},
+		cli.IntFlag{
+			Name:   "bufferBytes, bb",
+			Usage:  "Sets size of output buffers",
+			EnvVar: "GOGEN_BUFFERBYTES",
+		},
+		cli.StringFlag{
+			Name:   "logFile, lf",
+			Usage:  "Output internal logs to a file instead of stderr",
+			EnvVar: "GOGEN_LOGFILE",
 		},
 	}
 	app.Run(os.Args)

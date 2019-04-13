@@ -26,9 +26,10 @@ const defaultRater = "default"
 const defaultFileName = "/tmp/test.log"
 const defaultMaxBytes = 10485760
 const defaultBackupFiles = 5
+const defaultTopic = "defaultTopic"
 
-// Default HTTP output values
-const defaultBufferBytes = 102400
+// Default buffer size
+const defaultBufferBytes = 4096
 
 // Default timeout for network connections
 const defaultTimeout = time.Duration(10 * time.Second)
@@ -36,11 +37,15 @@ const defaultTimeout = time.Duration(10 * time.Second)
 // MaxOutputThreads defines how large an array we'll define for output threads
 const MaxOutputThreads = 100
 
-// MaxGenQueueLength defines how many items can be in the Generator queue at a given time
-const MaxGenQueueLength = 100
+// defaultGenQueueLength defines how many items can be in the Generator queue at a given time
+const defaultGenQueueLength = 50
 
-// MaxOutQueueLength defines how many items can be in the Output queue at a given time
-const MaxOutQueueLength = 100
+// defaultOutQueueLength defines how many items can be in the Output queue at a given time
+const defaultOutQueueLength = 10
+
+// defaultSyslogPriority defines the default value for the priority field in syslog
+// This is the user facilitiy (1 << 3 == 8) at INFO (6) level, (8+6)
+const defaultSyslogPriority = 14
 
 var (
 	defaultCSVTemplate       *Template

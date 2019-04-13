@@ -143,7 +143,7 @@ type StringOrToken struct {
 // Replace replaces any instances of this token in the string pointed to by event.  Since time is native is Gogen, we can pass in
 // earliest and latest time ranges to generate the event between.  Lastly, some times we want to span a selected choice over multiple
 // tokens.  Passing in a pointer to choice allows the replacement to choose a preselected row in FieldChoice or Choice.
-func (t Token) Replace(event *string, choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand) (int, error) {
+func (t Token) Replace(event *string, choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand, fullevent map[string]string) (int, error) {
 	// s := t.Sample
 	e := *event
 
@@ -154,7 +154,7 @@ func (t Token) Replace(event *string, choice int, et time.Time, lt time.Time, no
 		lastoffset := 0
 		*event = ""
 		for _, match := range offsets {
-			replacement, newchoice, err := t.GenReplacement(retchoice, et, lt, now, randgen)
+			replacement, newchoice, err := t.GenReplacement(retchoice, et, lt, now, randgen, fullevent)
 			if err != nil {
 				return -1, err
 			}
@@ -203,7 +203,7 @@ func (t Token) GetReplacementOffsets(event string) ([][]int, error) {
 
 // GenReplacement generates a replacement value for the token.  choice allows the user to specify
 // a specific value to choose in the array.  This is useful for saving picks amongst tokens.
-func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand) (string, int, error) {
+func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand, fullevent map[string]string) (string, int, error) {
 	switch t.Type {
 	case "timestamp", "gotimestamp", "epochtimestamp":
 		td := lt.Sub(et)
@@ -346,6 +346,18 @@ func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.T
 			log.Errorf("Error executing script for token '%s' in sample '%s': %s", t.Name, t.Parent.Name, err)
 		}
 		return lua.LVAsString(L.Get(-1)), -1, nil
+	case "_channel":
+		channelConfStr := strings.Join([]string{"host::", fullevent["host"], "|source::", fullevent["source"], "|", fullevent["sourcetype"], "|"}, "")
+		var chanIdx int
+		var ok bool
+		if chanIdx, ok = t.Parent.Output.channelMap[channelConfStr]; !ok {
+			chanIdx = t.Parent.Output.channelIdx
+			t.Parent.Output.channelMap[channelConfStr] = chanIdx
+			t.Parent.Output.channelIdx++
+		}
+		chanStr := strconv.Itoa(chanIdx)
+		fullevent["_conf"] = channelConfStr + chanStr // HACK side effect shouldn't really be doing this here but it's faster and easier than trying to get the state to another token
+		return chanStr, -1, nil
 	}
 	return "", -1, fmt.Errorf("GenReplacement called with invalid type for token '%s' with type '%s'", t.Name, t.Type)
 }
