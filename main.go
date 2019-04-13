@@ -22,6 +22,15 @@ import (
 var c *config.Config
 var envVarMap map[string]string
 
+// Version is the version from ./VERSION set by govvv
+var Version string
+
+// BuildDate is the build date, set by govvv
+var BuildDate string
+
+// GitSummary is the git commit set by govvv
+var GitSummary string
+
 func init() {
 	envVarMap = map[string]string{
 		"info":           "GOGEN_INFO",
@@ -45,6 +54,9 @@ func Setup(clic *cli.Context) {
 		log.SetDebug(true)
 	} else if clic.Bool("info") {
 		log.SetInfo()
+	}
+	if len(clic.String("logFile")) > 0 {
+		log.SetOutput(os.ExpandEnv(clic.String("logFile")))
 	}
 
 	if len(clic.String("configDir")) > 0 {
@@ -446,6 +458,23 @@ func main() {
 				return nil
 			},
 		},
+		{
+			Name:  "version",
+			Usage: "Outputs version info",
+			Flags: []cli.Flag{
+				cli.BoolFlag{Name: "versiononly, v"},
+			},
+			Action: func(clic *cli.Context) error {
+				if clic.Bool("versiononly") {
+					fmt.Printf("%s", Version)
+					return nil
+				}
+				fmt.Printf("Version: %s\n", Version)
+				fmt.Printf("Build Date: %s\n", BuildDate)
+				fmt.Printf("Git Summary: %s\n", GitSummary)
+				return nil
+			},
+		},
 	}
 	app.Before = func(clic *cli.Context) error {
 		Setup(clic)
@@ -530,6 +559,11 @@ func main() {
 			Name:   "bufferBytes, bb",
 			Usage:  "Sets size of output buffers",
 			EnvVar: "GOGEN_BUFFERBYTES",
+		},
+		cli.StringFlag{
+			Name:   "logFile, lf",
+			Usage:  "Output internal logs to a file instead of stderr",
+			EnvVar: "GOGEN_LOGFILE",
 		},
 	}
 	app.Run(os.Args)

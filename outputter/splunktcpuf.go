@@ -29,7 +29,7 @@ type ufbuf struct {
 func (st *splunktcpuf) Send(item *config.OutQueueItem) error {
 	var err error
 	if st.initialized == false {
-		st.s2s, err = s2s.NewS2S(item.S.Output.Endpoints, 4096) // HACK hard coded buffer, should be fine
+		st.s2s, err = s2s.NewS2S(item.S.Output.Endpoints, item.S.Output.BufferBytes)
 		if err != nil {
 			return err
 		}

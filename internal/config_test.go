@@ -31,7 +31,7 @@ func TestGlobal(t *testing.T) {
 		FileName:       "/tmp/test.log",
 		MaxBytes:       10485760,
 		BackupFiles:    5,
-		BufferBytes:    102400,
+		BufferBytes:    4096,
 		Endpoints:      []string(nil),
 		Headers:        map[string]string(nil),
 		Timeout:        time.Duration(10 * time.Second),
