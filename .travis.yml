@@ -11,8 +11,8 @@ before_script:
 # - printf "$GITHUB_OAUTH_TOKEN" > .githubtoken
 - make GOBIN=$HOME/gopath/bin deps
 script:
-- make test
-- make build
+- make GOBIN=$HOME/gopath/bin test
+- make GOBIN=$HOME/gopath/bin build
 deploy:
   provider: s3
   region: us-west-1
