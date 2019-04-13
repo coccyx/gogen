@@ -1035,7 +1035,7 @@ func (c *Config) SetupSystemTokens() {
 			}
 		}
 		if !tokenfound {
-			log.Infof("Adding %s field for sample %s", tokenName, s.Name)
+			log.Infof("Adding %s token for sample %s", tokenName, s.Name)
 			tt := Token{
 				Name:   tokenName,
 				Type:   tokenType,
@@ -1062,6 +1062,7 @@ func (c *Config) SetupSystemTokens() {
 		}
 	}
 	addField := func(s *Sample, name string, value string) {
+		log.Infof("Adding %s field for sample %s", name, s.Name)
 		for i := 0; i < len(s.Lines); i++ {
 			if s.Lines[i][name] == "" {
 				s.Lines[i][name] = value
@@ -1079,7 +1080,7 @@ func (c *Config) SetupSystemTokens() {
 		}
 	}
 	syslogOutput := c.Global.Output.OutputTemplate == "rfc3164" || c.Global.Output.OutputTemplate == "rfc5424"
-	addTime := c.Global.Output.OutputTemplate == "splunkhec" || c.Global.Output.OutputTemplate == "modinput" || c.Global.Output.OutputTemplate == "splunktcp" || c.Global.AddTime || syslogOutput
+	addTime := c.Global.Output.OutputTemplate == "splunkhec" || c.Global.Output.OutputTemplate == "modinput" || strings.Contains(c.Global.Output.OutputTemplate, "splunktcp") || c.Global.AddTime || syslogOutput
 	if !c.cc.Export && addTime {
 		// Use epochtimestamp for Splunk, or different formats for rfc3164 or rfc5424
 		var tokenType string
@@ -1112,6 +1113,11 @@ func (c *Config) SetupSystemTokens() {
 			// Add fields and/or tokens for splunktcp output
 			if c.Global.Output.OutputTemplate == "splunktcp" {
 				addField(s, "_linebreaker", "_linebreaker")
+			}
+			if c.Global.Output.OutputTemplate == "splunktcpuf" {
+				addField(s, "_channel", "$_channel$")
+				addToken(s, "_channel", "_channel", "")
+				addField(s, "_done", "_done")
 			}
 			// Fixup existing timestamp tokens to all use the same static group, -1
 			for j := 0; j < len(s.Tokens); j++ {

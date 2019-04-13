@@ -120,6 +120,10 @@ func Setup(clic *cli.Context) {
 			log.Infof("Setting outputTemplate to '%s'", clic.String("outputTemplate"))
 			c.Samples[i].Output.OutputTemplate = clic.String("outputTemplate")
 		}
+		if clic.Int("bufferBytes") > 0 {
+			log.Infof("Setting bufferBytes to '%d'", clic.Int("bufferBytes"))
+			c.Samples[i].Output.BufferBytes = clic.Int("bufferBytes")
+		}
 	}
 
 	// Must call from runtime in case we are overriding AddTime or Facility from command line
@@ -479,7 +483,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "outputter, o",
-			Usage:  "Use outputter `(stdout|devnull|file|http|tcp|splunktcp) for output",
+			Usage:  "Use outputter `(stdout|devnull|file|http|tcp|splunktcp|splunktcpuf) for output",
 			EnvVar: "GOGEN_OUT",
 		},
 		cli.StringFlag{
@@ -521,6 +525,11 @@ func main() {
 			Name:   "addTime, at",
 			Usage:  "Always add _time field, no matter of outputTemplate",
 			EnvVar: "GOGEN_ADDTIME",
+		},
+		cli.IntFlag{
+			Name:   "bufferBytes, bb",
+			Usage:  "Sets size of output buffers",
+			EnvVar: "GOGEN_BUFFERBYTES",
 		},
 	}
 	app.Run(os.Args)

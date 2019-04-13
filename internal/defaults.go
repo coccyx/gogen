@@ -27,8 +27,8 @@ const defaultFileName = "/tmp/test.log"
 const defaultMaxBytes = 10485760
 const defaultBackupFiles = 5
 
-// Default HTTP output values
-const defaultBufferBytes = 102400
+// Default buffer size
+const defaultBufferBytes = 4096
 
 // Default timeout for network connections
 const defaultTimeout = time.Duration(10 * time.Second)

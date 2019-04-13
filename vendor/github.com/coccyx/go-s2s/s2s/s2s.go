@@ -89,6 +89,10 @@ insecureSkipVerify specifies whether to skip verification of the server certific
 func NewS2STLS(endpoints []string, bufferBytes int, tls bool, cert string, serverName string, insecureSkipVerify bool) (*S2S, error) {
 	st := new(S2S)
 
+	if len(endpoints) < 1 {
+		return nil, fmt.Errorf("No endpoints specified")
+	}
+
 	st.mutex = &sync.RWMutex{}
 	st.endpoints = endpoints
 	st.bufferBytes = bufferBytes
@@ -222,6 +226,7 @@ func EncodeEvent(line map[string]string) []byte {
 	channel, hasChannel := line["_channel"]
 	conf, hasConf := line["_conf"]
 	_, hasLineBreaker := line["_linebreaker"]
+	_, hasDone := line["_done"]
 	var indexFields string
 
 	// Check time for subseconds
@@ -233,7 +238,7 @@ func EncodeEvent(line map[string]string) []byte {
 
 	for k, v := range line {
 		switch k {
-		case "source", "sourcetype", "host", "index", "_raw", "_time", "_channel", "_conf":
+		case "source", "sourcetype", "host", "index", "_raw", "_time", "_channel", "_conf", "_linebreaker", "_done":
 			break
 		default:
 			indexFields += k + "::" + v + " "
@@ -245,6 +250,10 @@ func EncodeEvent(line map[string]string) []byte {
 	if len(indexFields) > 0 {
 		indexFields = strings.TrimRight(indexFields, " ")
 		encodeKeyValue("_meta", indexFields, buf)
+		maps++
+	}
+	if hasDone {
+		encodeKeyValue("_done", "_done", buf)
 		maps++
 	}
 	if hasLineBreaker {
