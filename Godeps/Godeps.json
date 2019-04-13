@@ -15,7 +15,7 @@
 		},
 		{
 			"ImportPath": "github.com/coccyx/go-s2s/s2s",
-			"Rev": "5aedf3638b96df0bfd712835a93730ee1be4b099"
+			"Rev": "bdc39b6946f56bdce124941d05a64fad5e7aa9b7"
 		},
 		{
 			"ImportPath": "github.com/coccyx/timeparser",
