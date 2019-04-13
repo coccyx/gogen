@@ -4,20 +4,13 @@ sudo: false
 # - linux
 # - osx
 go:
-- 1.10.x
+- 1.12.x
 before_script:
 # - printf "$GITHUB_OAUTH_TOKEN" > .githubtoken
-- go get -u github.com/mattn/goveralls
-- go get -u github.com/LawrenceWoodman/roveralls
-- go get github.com/tools/godep
-- go get github.com/ahmetb/govvv
+- make GOBIN=$HOME/gopath/bin deps
 script:
-- go test -v ./...
-- $HOME/gopath/bin/roveralls
-- $HOME/gopath/bin/goveralls -coverprofile=roveralls.coverprofile -service=travis-ci -repotoken $COVERALLS_TOKEN
-- GOOS=linux CGO_ENABLED=0 GOARCH=amd64 godep go build -tags netgo -ldflags "-X github.com/coccyx/gogen/config.gitHubClientID=$GITHUB_OAUTH_CLIENT_ID -X github.com/coccyx/gogen/config.gitHubClientSecret=$GITHUB_OAUTH_CLIENT_SECRET -s -w $(govvv -flags)" -o build/linux/gogen
-- GOOS=darwin GOARCH=amd64 godep go build -ldflags "-X github.com/coccyx/gogen/config.gitHubClientID=$GITHUB_OAUTH_CLIENT_ID -X github.com/coccyx/gogen/config.gitHubClientSecret=$GITHUB_OAUTH_CLIENT_SECRET $(govvv -flags)" -o build/osx/gogen
-- GOOS=windows GOARCH=amd64 godep go build -ldflags "-X github.com/coccyx/gogen/config.gitHubClientID=$GITHUB_OAUTH_CLIENT_ID -X github.com/coccyx/gogen/config.gitHubClientSecret=$GITHUB_OAUTH_CLIENT_SECRET $(govvv -flags)" -o build/windows/gogen.exe
+- make test
+- make build
 deploy:
   provider: s3
   region: us-west-1
