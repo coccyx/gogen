@@ -237,6 +237,14 @@ func BuildConfig(cc ConfigConfig) *Config {
 		if c.Global.Output.Timeout == time.Duration(0) {
 			c.Global.Output.Timeout = defaultTimeout
 		}
+		if c.Global.Output.Topic == "" {
+			c.Global.Output.Topic = defaultTopic
+		}
+		if len(c.Global.Output.Headers) == 0 {
+			c.Global.Output.Headers = map[string]string{
+				"Content-Type": "application/json",
+			}
+		}
 
 		c.Global.Output.channelIdx = 0
 		c.Global.Output.channelMap = make(map[string]int)
@@ -1081,12 +1089,22 @@ func (c *Config) SetupSystemTokens() {
 		}
 	}
 	syslogOutput := c.Global.Output.OutputTemplate == "rfc3164" || c.Global.Output.OutputTemplate == "rfc5424"
-	addTime := c.Global.Output.OutputTemplate == "splunkhec" || c.Global.Output.OutputTemplate == "modinput" || strings.Contains(c.Global.Output.OutputTemplate, "splunktcp") || c.Global.AddTime || syslogOutput
+	addTime := c.Global.Output.OutputTemplate == "splunkhec" ||
+		c.Global.Output.OutputTemplate == "modinput" ||
+		strings.Contains(c.Global.Output.OutputTemplate, "splunktcp") ||
+		c.Global.Output.OutputTemplate == "elasticsearch" ||
+		c.Global.AddTime ||
+		syslogOutput
 	if !c.cc.Export && addTime {
 		// Use epochtimestamp for Splunk, or different formats for rfc3164 or rfc5424
 		var tokenType string
 		var tokenReplacement string
-		if addTime && !syslogOutput {
+		tokenName := "_time"
+		if c.Global.Output.OutputTemplate == "elasticsearch" {
+			tokenName = "@timestamp"
+			tokenType = "gotimestamp"
+			tokenReplacement = "2006-01-02T15:04:05.999Z07:00"
+		} else if !syslogOutput {
 			tokenType = "epochtimestamp"
 		} else if c.Global.Output.OutputTemplate == "rfc3164" {
 			tokenType = "gotimestamp"
@@ -1097,7 +1115,7 @@ func (c *Config) SetupSystemTokens() {
 		}
 		for i := 0; i < len(c.Samples); i++ {
 			s := c.Samples[i]
-			addToken(s, "_time", tokenType, tokenReplacement)
+			addToken(s, tokenName, tokenType, tokenReplacement) // Timestamp
 			// Add fields for syslog output
 			if syslogOutput {
 				addField(s, "priority", fmt.Sprintf("%d", defaultSyslogPriority))

@@ -180,7 +180,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "gogen"
 	app.Usage = "Generate data for demos and testing"
-	app.Version = "0.1.0"
+	app.Version = Version
 	cli.VersionFlag = cli.BoolFlag{Name: "version"}
 	app.Compiled = time.Now()
 	app.Authors = []cli.Author{
@@ -513,12 +513,12 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "outputTemplate, ot",
-			Usage:  "Use output template `(raw|csv|json|splunkhec)` for formatting output",
+			Usage:  "Use output template (raw|csv|json|splunkhec|splunktcp|splunktcpuf|rfc3134|rfc5424|elasticsearch) for formatting output",
 			EnvVar: "GOGEN_OUTPUTTEMPLATE",
 		},
 		cli.StringFlag{
 			Name:   "outputter, o",
-			Usage:  "Use outputter `(stdout|devnull|file|http|tcp|splunktcp|splunktcpuf) for output",
+			Usage:  "Use outputter (stdout|devnull|file|http|tcp|splunktcp|splunktcpuf) for output",
 			EnvVar: "GOGEN_OUT",
 		},
 		cli.StringFlag{

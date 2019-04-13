@@ -95,7 +95,7 @@ func write(item *config.OutQueueItem) {
 	var bytes int64
 	defer item.IO.W.Close()
 	switch item.S.Output.OutputTemplate {
-	case "raw", "json", "splunktcp", "splunkhec", "rfc3164", "rfc5424":
+	case "raw", "json", "splunktcp", "splunkhec", "rfc3164", "rfc5424", "elasticsearch":
 		for _, line := range item.Events {
 			var tempbytes int
 			var err error
@@ -139,6 +139,20 @@ func write(item *config.OutQueueItem) {
 						kv = fmt.Sprintf("[meta %s]", kv[1:len(kv)-1])
 					}
 					tempbytes, err = io.WriteString(item.IO.W, fmt.Sprintf("<%s>%d %s %s %s %s - %s %s", line["priority"], 1, line["_time"], line["host"], line["appName"], line["pid"], kv, line["_raw"]))
+				case "elasticsearch":
+					_, err := io.WriteString(item.IO.W, fmt.Sprintf("{ \"index\": { \"_index\": \"%s\", \"_type\": \"doc\" } }\n", line["index"]))
+					if err != nil {
+						break
+					}
+					if _, ok := line["_raw"]; ok {
+						line["message"] = line["_raw"]
+						delete(line, "_raw")
+					}
+					jb, err := json.Marshal(line)
+					if err != nil {
+						break
+					}
+					tempbytes, err = item.IO.W.Write(jb)
 				}
 				if err != nil {
 					log.Errorf("Error writing to IO Buffer: %s", err)
