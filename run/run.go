@@ -26,9 +26,9 @@ func Run(c *config.Config) {
 	go outputter.ROT(c)
 	log.Info("Starting Timers")
 	timerdone := make(chan int)
-	gq := make(chan *config.GenQueueItem, config.MaxGenQueueLength)
+	gq := make(chan *config.GenQueueItem, c.Global.GeneratorQueueLength)
 	gqs := make(chan int)
-	oq := make(chan *config.OutQueueItem, config.MaxOutQueueLength)
+	oq := make(chan *config.OutQueueItem, c.Global.OutputQueueLength)
 	oqs := make(chan int)
 	gens := 0
 	outs := 0
