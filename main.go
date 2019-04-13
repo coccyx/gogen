@@ -40,11 +40,13 @@ func init() {
 		"outputTemplate": "GOGEN_OUTPUTTEMPLATE",
 		"outputter":      "GOGEN_OUT",
 		"filename":       "GOGEN_FILENAME",
+		"topic":          "GOGEN_TOPIC",
 		"url":            "GOGEN_URL",
 		"splunkHECToken": "GOGEN_HEC_TOKEN",
 		"samplesDir":     "GOGEN_SAMPLES_DIR",
 		"config":         "GOGEN_CONFIG",
 		"addTime":        "GOGEN_ADDTIME",
+		"bufferBytes":    "GOGEN_BUFFERBYTES",
 	}
 }
 
@@ -116,6 +118,10 @@ func Setup(clic *cli.Context) {
 		if len(clic.String("filename")) > 0 {
 			log.Infof("Setting filename to '%s'", clic.String("filename"))
 			c.Samples[i].Output.FileName = clic.String("filename")
+		}
+		if len(clic.String("topic")) > 0 {
+			log.Infof("Setting topic to '%s'", clic.String("topic"))
+			c.Samples[i].Output.Topic = clic.String("topic")
 		}
 		if len(clic.String("url")) > 0 {
 			log.Infof("Setting all endpoint urls to '%s'", clic.String("url"))
@@ -519,6 +525,11 @@ func main() {
 			Name:   "filename, f",
 			Usage:  "Set `filename`, only usable with file output",
 			EnvVar: "GOGEN_FILENAME",
+		},
+		cli.StringFlag{
+			Name:   "topic, t",
+			Usage:  "Set `topic`, only usable with Kafka output",
+			EnvVar: "GOGEN_TOPIC",
 		},
 		cli.StringFlag{
 			Name:   "url",

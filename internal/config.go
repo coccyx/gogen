@@ -67,6 +67,7 @@ type Output struct {
 	Headers        map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
 	Protocol       string            `json:"protocol,omitempty" yaml:"protocol,omitempty"`
 	Timeout        time.Duration     `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Topic          string            `json:"topic,omitempty" yaml:"topic,omitempty"`
 
 	// Used for S2S Outputter to maintain state of unique host, source, sourcetype combos
 	channelIdx int

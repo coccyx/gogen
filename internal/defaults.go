@@ -26,6 +26,7 @@ const defaultRater = "default"
 const defaultFileName = "/tmp/test.log"
 const defaultMaxBytes = 10485760
 const defaultBackupFiles = 5
+const defaultTopic = "defaultTopic"
 
 // Default buffer size
 const defaultBufferBytes = 4096
