@@ -113,4 +113,6 @@ Loop3:
 	// }
 
 	// time.Sleep(100 * time.Millisecond)
+
+	outputter.ReadFinal()
 }

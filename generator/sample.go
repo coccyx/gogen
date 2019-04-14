@@ -91,7 +91,7 @@ func getBrokenEvent(item *config.GenQueueItem, i int) map[string]string {
 	s := item.S
 	ret := make(map[string]string, len(s.BrokenLines[i]))
 	choices := make(map[int]int)
-	for k, v := range s.BrokenLines[i] {
+	genSection := func(k string, v []config.StringOrToken, ret map[string]string, choices map[int]int) {
 		event := bp.Get().(*bytes.Buffer)
 		event.Reset()
 		for _, st := range v {
@@ -116,6 +116,18 @@ func getBrokenEvent(item *config.GenQueueItem, i int) map[string]string {
 		}
 		ret[k] = event.String()
 		bp.Put(event)
+	}
+	// Generate _channel token last
+	channelFound := false
+	for k, v := range s.BrokenLines[i] {
+		if k == "_channel" {
+			channelFound = true
+			continue
+		}
+		genSection(k, v, ret, choices)
+	}
+	if channelFound {
+		genSection("_channel", s.BrokenLines[i]["_channel"], ret, choices)
 	}
 	return ret
 }
