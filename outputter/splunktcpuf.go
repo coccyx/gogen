@@ -88,7 +88,14 @@ func (st *splunktcpuf) Flush(buf *ufbuf) error {
 		return err
 	}
 	Account(buf.events, bytes, buf.lastSampleName)
+	buf.event["_raw"] = ""
+	buf.event["_done"] = "_done"
+	_, err = st.s2s.Send(buf.event)
+	if err != nil {
+		return err
+	}
 	delete(buf.event, "_raw")
+	delete(buf.event, "_done")
 	buf.buf.Reset()
 	buf.events = 0
 	return nil

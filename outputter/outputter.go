@@ -70,6 +70,21 @@ func ROT(c *config.Config) {
 	}
 }
 
+func ReadFinal() {
+	totalEvents := int64(0)
+	totalBytes := int64(0)
+	Mutex.RLock()
+	for k := range BytesWritten {
+		totalEvents += EventsWritten[k]
+		totalBytes += BytesWritten[k]
+	}
+	totalGBytes := float64(totalBytes / 1024 / 1024 / 1024)
+	Mutex.RUnlock()
+	log.Infof("Total Events Written: %d", totalEvents)
+	log.Infof("Total Bytes Written: %d", totalBytes)
+	log.Infof("Total Gigabytes Written: %.2f", totalGBytes)
+}
+
 func readStats() {
 	for {
 		select {

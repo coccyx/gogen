@@ -1134,9 +1134,8 @@ func (c *Config) SetupSystemTokens() {
 				addField(s, "_linebreaker", "_linebreaker")
 			}
 			if c.Global.Output.OutputTemplate == "splunktcpuf" {
-				addField(s, "_channel", "$_channel$")
 				addToken(s, "_channel", "_channel", "")
-				addField(s, "_done", "_done")
+				addField(s, "_channel", "$_channel$")
 			}
 			// Fixup existing timestamp tokens to all use the same static group, -1
 			for j := 0; j < len(s.Tokens); j++ {
