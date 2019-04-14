@@ -43,6 +43,7 @@ type Config struct {
 
 // Global represents global configuration options which apply to all of gogen
 type Global struct {
+	UTC                  bool     `json:"utc,omitempty" yaml:"utc,omitempty"`
 	Debug                bool     `json:"debug,omitempty" yaml:"debug,omitempty"`
 	Verbose              bool     `json:"verbose,omitempty" yaml:"verbose,omitempty"`
 	GeneratorWorkers     int      `json:"generatorWorkers,omitempty" yaml:"generatorWorkers,omitempty"`
@@ -1122,7 +1123,7 @@ func (c *Config) SetupSystemTokens() {
 				hostname, _ := os.Hostname()
 				addField(s, "host", hostname)
 				tag := "gogen"
-				if s.Lines[0]["sourcetype"] != "" {
+				if len(s.Lines) > 0 && s.Lines[0]["sourcetype"] != "" {
 					tag = s.Lines[0]["sourcetype"]
 				}
 				addField(s, "tag", tag)
@@ -1250,4 +1251,14 @@ func (c Config) FindSampleByName(name string) *Sample {
 		}
 	}
 	return nil
+}
+
+// covertUTC sets time local to UTC if configured as UTC
+func convertUTC(t time.Time) time.Time {
+	if instance != nil {
+		if instance.Global.UTC {
+			return t.UTC()
+		}
+	}
+	return t
 }

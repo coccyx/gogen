@@ -214,6 +214,7 @@ func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.T
 		}
 		rd := time.Duration(tdr)
 		replacementTime := lt.Add(rd * -1)
+		replacementTime = convertUTC(replacementTime)
 		switch t.Type {
 		case "timestamp":
 			return strftime.Format(t.Replacement, replacementTime), -1, nil

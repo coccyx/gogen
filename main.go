@@ -92,6 +92,10 @@ func Setup(clic *cli.Context) {
 
 	c = config.NewConfig()
 
+	if clic.Bool("utc") {
+		c.Global.UTC = true
+	}
+
 	if clic.Int("generators") > 0 {
 		log.Infof("Setting generators to %d", clic.Int("generators"))
 		c.Global.GeneratorWorkers = clic.Int("generators")
@@ -491,6 +495,11 @@ func main() {
 		return nil
 	}
 	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:   "utc, u",
+			Usage:  "Outputs time in UTC",
+			EnvVar: "GOGEN_UTC",
+		},
 		cli.BoolFlag{
 			Name:   "info, v",
 			Usage:  "Sets info level logging",
