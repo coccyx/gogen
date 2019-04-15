@@ -65,11 +65,16 @@ func ROT(c *config.Config) {
 			lastBytesWritten[k] = tempBW
 		}
 		Mutex.RUnlock()
-		log.Infof("Events/Sec: %.2f Kilobytes/Sec: %.2f GB/Day: %.2f", eventssec, kbytessec, gbday)
+		log.WithFields(log.Fields{
+			"eventsSec": eventssec,
+			"kbytesSec": kbytessec,
+			"gbDay":     gbday,
+		}).Infof("Events/Sec: %.2f Kilobytes/Sec: %.2f GB/Day: %.2f", eventssec, kbytessec, gbday)
 		lastTS = n
 	}
 }
 
+// ReadFinal outputs final statistics about our run
 func ReadFinal() {
 	totalEvents := int64(0)
 	totalBytes := int64(0)
@@ -80,9 +85,9 @@ func ReadFinal() {
 	}
 	totalGBytes := float64(totalBytes / 1024 / 1024 / 1024)
 	Mutex.RUnlock()
-	log.Infof("Total Events Written: %d", totalEvents)
-	log.Infof("Total Bytes Written: %d", totalBytes)
-	log.Infof("Total Gigabytes Written: %.2f", totalGBytes)
+	log.WithField("totalEvents", totalEvents).Infof("Total Events Written: %d", totalEvents)
+	log.WithField("totalBytes", totalBytes).Infof("Total Bytes Written: %d", totalBytes)
+	log.WithField("totalGBytes", totalGBytes).Infof("Total Gigabytes Written: %.2f", totalGBytes)
 }
 
 func readStats() {
@@ -273,7 +278,7 @@ func setup(generator *rand.Rand, item *config.OutQueueItem, num int) config.Outp
 	item.IO = config.NewOutputIO()
 
 	if gout[num] == nil {
-		log.Infof("Setting sample '%s' to outputter '%s'", item.S.Name, item.S.Output.Outputter)
+		log.Infof("Setting outputter %d to outputter '%s'", num, item.S.Output.Outputter)
 		switch item.S.Output.Outputter {
 		case "stdout":
 			gout[num] = new(stdout)
