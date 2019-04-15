@@ -60,6 +60,9 @@ func Setup(clic *cli.Context) {
 	if len(clic.String("logFile")) > 0 {
 		log.SetOutput(os.ExpandEnv(clic.String("logFile")))
 	}
+	if len(clic.String("logJson")) > 0 {
+		log.EnableJSONOutput()
+	}
 
 	if len(clic.String("configDir")) > 0 {
 		os.Setenv("GOGEN_CONFIG_DIR", clic.String("configDir"))
@@ -198,9 +201,9 @@ func main() {
 			Name:  "gen",
 			Usage: "Generate Events",
 			Flags: []cli.Flag{
-				cli.StringFlag{
+				cli.StringSliceFlag{
 					Name:  "sample, s",
-					Usage: "Only run sample `name`",
+					Usage: "Only run sample `name`, can specify multiple",
 				},
 				cli.IntFlag{
 					Name:  "count, c",
@@ -273,18 +276,24 @@ func main() {
 						}
 					}
 				}
-				if len(clic.String("sample")) > 0 {
-					log.Infof("Generating only for sample '%s'", clic.String("sample"))
+				samplesSlice := clic.StringSlice("sample")
+				samplesStr := strings.Join(samplesSlice, " ")
+				samplesMap := make(map[string]bool, len(samplesSlice))
+				for _, sampleName := range samplesSlice {
+					samplesMap[sampleName] = true
+				}
+				if len(samplesSlice) > 0 {
+					log.Infof("Generating only for samples '%s'", samplesStr)
 					matched := false
 					for i := 0; i < len(c.Samples); i++ {
-						if c.Samples[i].Name == clic.String("sample") {
+						if samplesMap[c.Samples[i].Name] {
 							matched = true
 						} else {
 							c.Samples[i].Disabled = true
 						}
 					}
 					if !matched {
-						log.Errorf("No sample matched for '%s'", clic.String("sample"))
+						log.Errorf("No sample matched for '%s'", samplesStr)
 						os.Exit(1)
 					}
 				}
@@ -584,6 +593,11 @@ func main() {
 			Name:   "logFile, lf",
 			Usage:  "Output internal logs to a file instead of stderr",
 			EnvVar: "GOGEN_LOGFILE",
+		},
+		cli.StringFlag{
+			Name:   "logJson, lj",
+			Usage:  "Output internal logs as JSON instead of human readable",
+			EnvVar: "GOGEN_LOGJSON",
 		},
 	}
 	app.Run(os.Args)

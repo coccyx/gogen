@@ -4,17 +4,19 @@ import (
 	"time"
 
 	config "github.com/coccyx/gogen/internal"
+	log "github.com/coccyx/gogen/logger"
 	"github.com/coccyx/gogen/rater"
 )
 
 // Timer will put work into the generator queue on an interval specified by the Sample.
 // One instance is created per sample.
 type Timer struct {
-	S    *config.Sample
-	cur  int
-	GQ   chan *config.GenQueueItem
-	OQ   chan *config.OutQueueItem
-	Done chan int
+	S      *config.Sample
+	cur    int
+	GQ     chan *config.GenQueueItem
+	OQ     chan *config.OutQueueItem
+	Done   chan int
+	closed bool
 }
 
 // NewTimer creates a new Timer for a sample which will put work into the generator queue on each interval
@@ -31,26 +33,16 @@ func (t *Timer) NewTimer() {
 			endtime = n
 		}
 		// Run through as many intervals until we're at endtime
-		for s.Current.Before(endtime) {
-			// log.Debugf("Backfilling, at %s, ending at %s", t.S.Current, endtime)
-			t.genWork()
-			t.inc()
-		}
+		t.backfill(endtime)
 		// If we had no endtime set, then keep going in realtime mode
 		if s.EndParsed.IsZero() {
-			for s.Current.Before(time.Now()) {
-				t.genWork()
-				t.inc()
-			}
+			t.backfill(time.Now())
 			s.Realtime = true
 		}
 	}
 	// Endtime can be greater than now, so continue until we've reached the end time... Realtime won't get set, so we'll end after this
 	if !t.S.Realtime {
-		for s.Current.Before(s.EndParsed) {
-			t.genWork()
-			t.inc()
-		}
+		t.backfill(s.EndParsed)
 	}
 	// In realtime mode, continue until we get an interrupt
 	if s.Realtime {
@@ -67,9 +59,21 @@ func (t *Timer) NewTimer() {
 				<-timer.C
 				t.genWork()
 			}
+			if t.closed {
+				break
+			}
 		}
-	} else {
-		t.Done <- 1
+	}
+	t.Done <- 1
+}
+
+func (t *Timer) backfill(until time.Time) {
+	for t.S.Current.Before(until) {
+		t.genWork()
+		t.inc()
+		if t.closed {
+			break
+		}
 	}
 }
 
@@ -89,7 +93,18 @@ func (t *Timer) genWork() {
 		item = &config.GenQueueItem{S: s, Count: count, Event: -1, Earliest: earliest, Latest: latest, Now: now, OQ: t.OQ}
 	}
 	// log.Debugf("Placing item in queue for sample '%s': %#v", t.S.Name, item)
-	t.GQ <- item
+Loop1:
+	for {
+		select {
+		case t.GQ <- item:
+			break Loop1
+		case <-time.After(1 * time.Second):
+			if t.closed {
+				break Loop1
+			}
+			continue
+		}
+	}
 }
 
 func (t *Timer) inc() {
@@ -103,4 +118,10 @@ func (t *Timer) inc() {
 	} else {
 		s.Current = s.Current.Add(time.Duration(s.Interval) * time.Second)
 	}
+}
+
+// Close shuts down a timer
+func (t *Timer) Close() {
+	log.Infof("Closing timer for sample %s", t.S.Name)
+	t.closed = true
 }

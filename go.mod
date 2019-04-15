@@ -34,7 +34,7 @@ require (
 	github.com/yuin/gopher-lua v0.0.0-20160919070314-dd0fd531098d
 	golang.org/x/oauth2 v0.0.0-20160902055913-3c3a985cb79f
 	golang.org/x/tools v0.0.0-20190411180116-681f9ce8ac52 // indirect
-	google.golang.org/appengine v1.5.0 // indirect
+	google.golang.org/appengine v1.5.0
 	gopkg.in/urfave/cli.v1 v1.18.1
 	gopkg.in/yaml.v2 v2.0.0-20160928153709-a5b47d31c556
 )

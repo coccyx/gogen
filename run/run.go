@@ -1,6 +1,9 @@
 package run
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/coccyx/gogen/generator"
@@ -32,16 +35,16 @@ func Run(c *config.Config) {
 	oqs := make(chan int)
 	gens := 0
 	outs := 0
-	timers := 0
+	timers := []*timer.Timer{}
 	for i := 0; i < len(c.Samples); i++ {
 		s := c.Samples[i]
 		if !s.Disabled {
 			t := timer.Timer{S: s, GQ: gq, OQ: oq, Done: timerdone}
 			go t.NewTimer()
-			timers++
+			timers = append(timers, &t)
 		}
 	}
-	log.Infof("%d Timers started", timers)
+	log.Infof("%d Timers started", len(timers))
 
 	log.Infof("Starting Generators")
 	for i := 0; i < c.Global.GeneratorWorkers; i++ {
@@ -62,20 +65,41 @@ func Run(c *config.Config) {
 	// time.Sleep(1000 * time.Millisecond)
 
 	// Check if any timers are done
-Loop1:
-	for {
-		select {
-		case <-timerdone:
-			timers--
-			log.Debugf("Timer done, timers left %d", timers)
-			if timers == 0 {
-				break Loop1
+	donechan := make(chan bool)
+	go func() {
+		timerCount := len(timers)
+		for {
+			select {
+			case <-timerdone:
+				timerCount--
+				log.Debugf("Timer done, timers left %d", timerCount)
+				if timerCount == 0 {
+					log.Infof("Timers all done, closing generating queue")
+					donechan <- true
+				}
 			}
 		}
-	}
+	}()
+
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, os.Interrupt)
+	signal.Notify(sigchan, syscall.SIGTERM)
+	go func() {
+		for range sigchan {
+			log.Infof("Caught interrupt, shutting down")
+			// Shut down timers
+			for _, t := range timers {
+				t.Close()
+			}
+			// Drain generator queue
+			for range gq {
+				continue
+			}
+		}
+	}()
 
 	// Close our channels to signal to the workers to shut down when the queue is clear
-	log.Infof("Timers all done, closing generating queue")
+	<-donechan
 	close(gq)
 
 	// Check for all the workers to signal back they're done
