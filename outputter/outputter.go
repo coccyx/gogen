@@ -278,7 +278,7 @@ func setup(generator *rand.Rand, item *config.OutQueueItem, num int) config.Outp
 	item.IO = config.NewOutputIO()
 
 	if gout[num] == nil {
-		log.Infof("Setting sample '%s' to outputter '%s'", item.S.Name, item.S.Output.Outputter)
+		log.Infof("Setting outputter %d to outputter '%s'", num, item.S.Output.Outputter)
 		switch item.S.Output.Outputter {
 		case "stdout":
 			gout[num] = new(stdout)

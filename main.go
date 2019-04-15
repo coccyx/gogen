@@ -201,9 +201,9 @@ func main() {
 			Name:  "gen",
 			Usage: "Generate Events",
 			Flags: []cli.Flag{
-				cli.StringFlag{
+				cli.StringSliceFlag{
 					Name:  "sample, s",
-					Usage: "Only run sample `name`",
+					Usage: "Only run sample `name`, can specify multiple",
 				},
 				cli.IntFlag{
 					Name:  "count, c",
@@ -276,18 +276,24 @@ func main() {
 						}
 					}
 				}
-				if len(clic.String("sample")) > 0 {
-					log.Infof("Generating only for sample '%s'", clic.String("sample"))
+				samplesSlice := clic.StringSlice("sample")
+				samplesStr := strings.Join(samplesSlice, " ")
+				samplesMap := make(map[string]bool, len(samplesSlice))
+				for _, sampleName := range samplesSlice {
+					samplesMap[sampleName] = true
+				}
+				if len(samplesSlice) > 0 {
+					log.Infof("Generating only for samples '%s'", samplesStr)
 					matched := false
 					for i := 0; i < len(c.Samples); i++ {
-						if c.Samples[i].Name == clic.String("sample") {
+						if samplesMap[c.Samples[i].Name] {
 							matched = true
 						} else {
 							c.Samples[i].Disabled = true
 						}
 					}
 					if !matched {
-						log.Errorf("No sample matched for '%s'", clic.String("sample"))
+						log.Errorf("No sample matched for '%s'", samplesStr)
 						os.Exit(1)
 					}
 				}
