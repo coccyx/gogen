@@ -60,7 +60,7 @@ func Setup(clic *cli.Context) {
 	if len(clic.String("logFile")) > 0 {
 		log.SetOutput(os.ExpandEnv(clic.String("logFile")))
 	}
-	if len(clic.String("logJson")) > 0 {
+	if clic.Bool("logJson") {
 		log.EnableJSONOutput()
 	}
 
@@ -594,7 +594,7 @@ func main() {
 			Usage:  "Output internal logs to a file instead of stderr",
 			EnvVar: "GOGEN_LOGFILE",
 		},
-		cli.StringFlag{
+		cli.BoolFlag{
 			Name:   "logJson, lj",
 			Usage:  "Output internal logs as JSON instead of human readable",
 			EnvVar: "GOGEN_LOGJSON",
