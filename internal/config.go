@@ -1053,6 +1053,7 @@ func (c *Config) SetupSystemTokens() {
 				Field:  tokenName,
 				Token:  fmt.Sprintf("$%s$", tokenName),
 				Group:  -1,
+				Parent: s,
 			}
 			if tokenReplacement != "" {
 				tt.Replacement = tokenReplacement
