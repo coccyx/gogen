@@ -181,7 +181,7 @@ func write(item *config.OutQueueItem) {
 				tempbytes = len(line["_raw"])
 			}
 			bytes += int64(tempbytes) + 1
-			if item.S.Output.Outputter != "devnull" && item.S.Output.Outputter != "splunktcp" {
+			if item.S.Output.Outputter != "devnull" && item.S.Output.Outputter != "splunktcp" && item.S.Output.Outputter != "kafka" {
 				_, err = io.WriteString(item.IO.W, "\n")
 				if err != nil {
 					log.Errorf("Error writing to IO Buffer: %s", err)
