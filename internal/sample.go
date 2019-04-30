@@ -38,7 +38,7 @@ type Sample struct {
 	Begin           string              `json:"begin,omitempty" yaml:"begin,omitempty"`
 	End             string              `json:"end,omitempty" yaml:"end,omitempty"`
 	EndIntervals    int                 `json:"endIntervals,omitempty" yaml:"endIntervals,omitempty"`
-	RandomizeCount  float32             `json:"randomizeCount,omitempty" yaml:"randomizeCount,omitempty"`
+	RandomizeCount  float64             `json:"randomizeCount,omitempty" yaml:"randomizeCount,omitempty"`
 	RandomizeEvents bool                `json:"randomizeEvents,omitempty" yaml:"randomizeEvents,omitempty"`
 	Tokens          []Token             `json:"tokens,omitempty" yaml:"tokens,omitempty"`
 	Lines           []map[string]string `json:"lines,omitempty" yaml:"lines,omitempty"`
