@@ -10,6 +10,8 @@ github.com/coccyx/go-s2s v0.0.0-20190413180338-bdc39b6946f5 h1:2GFB4vlbR4HFLl0EB
 github.com/coccyx/go-s2s v0.0.0-20190413180338-bdc39b6946f5/go.mod h1:IeRVSXEAmvfTpIc62ng3mWS6ZAE+/Oj7DRSig8Zt2eI=
 github.com/coccyx/go-s2s v0.0.0-20190615182345-b2ea504679db h1:cMspoIQGVs7t7ZCek3imq1APh8dCz1r+hUCvB0Qjo/Q=
 github.com/coccyx/go-s2s v0.0.0-20190615182345-b2ea504679db/go.mod h1:IeRVSXEAmvfTpIc62ng3mWS6ZAE+/Oj7DRSig8Zt2eI=
+github.com/coccyx/go-s2s v0.0.0-20190615184235-2f7a532dc47c h1:k8OMPxosn0GBL3snD95aUcdmW0vpwp/eA2+zWIVVvM4=
+github.com/coccyx/go-s2s v0.0.0-20190615184235-2f7a532dc47c/go.mod h1:IeRVSXEAmvfTpIc62ng3mWS6ZAE+/Oj7DRSig8Zt2eI=
 github.com/coccyx/gogen v0.0.0-20190326034030-6c6846b20c52 h1:jotcDFXROtv2HPzNULaHiV/E0gvP75+jhoYwc/OtiAg=
 github.com/coccyx/gogen v0.0.0-20190326034030-6c6846b20c52/go.mod h1:6CFo9JaAHtClKxuAXtdsq7Q++loj3YT1xSBRdmUWvMA=
 github.com/coccyx/timeparser v0.0.0-20160911001308-9d8b37af28f5 h1:2nmvKzaEoJDC6IaWYa37GDemOUbtl+ygTTrjZ109mU8=
