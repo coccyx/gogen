@@ -4,16 +4,6 @@ github.com/Sirupsen/logrus
 github.com/cactus/gostrftime
 # github.com/coccyx/go-s2s v0.0.0-20190413180338-bdc39b6946f5
 github.com/coccyx/go-s2s/s2s
-# github.com/coccyx/gogen v0.0.0-20190326034030-6c6846b20c52
-github.com/coccyx/gogen/internal
-github.com/coccyx/gogen/logger
-github.com/coccyx/gogen/run
-github.com/coccyx/gogen/rater
-github.com/coccyx/gogen/template
-github.com/coccyx/gogen/outputter
-github.com/coccyx/gogen/generator
-github.com/coccyx/gogen/timer
-github.com/coccyx/gogen/tests
 # github.com/coccyx/timeparser v0.0.0-20160911001308-9d8b37af28f5
 github.com/coccyx/timeparser
 # github.com/davecgh/go-spew v1.1.0
@@ -66,13 +56,13 @@ github.com/yuin/gopher-lua
 github.com/yuin/gopher-lua/ast
 github.com/yuin/gopher-lua/parse
 github.com/yuin/gopher-lua/pm
-# golang.org/x/net v0.0.0-20180724234803-3673e40ba225
+# golang.org/x/net v0.0.0-20190311183353-d8887717615a
 golang.org/x/net/context
 # golang.org/x/oauth2 v0.0.0-20160902055913-3c3a985cb79f
 golang.org/x/oauth2
 golang.org/x/oauth2/github
 golang.org/x/oauth2/internal
-# golang.org/x/sys v0.0.0-20161023150541-c200b10b5d5e
+# golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
 golang.org/x/sys/unix
 # google.golang.org/appengine v1.5.0
 google.golang.org/appengine/urlfetch

@@ -357,11 +357,14 @@ func (st *S2S) reconnect(force bool) error {
 
 func (st *S2S) readAndDiscard() {
 	// Attempt to read from connection to see if it's closed
-	// err := st.conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
-	// err := st.conn.SetReadDeadline(time.Time{})
+	tmp := make([]byte, 0, 4096)
 	for {
-		one := []byte{}
-		_, err := st.conn.Read(one)
+		err := st.conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+		if err != nil {
+			// TODO Maybe infinite loop here?
+			st.reconnect(true)
+		}
+		rbytes, err := st.conn.Read(tmp)
 		if err != nil {
 			st.mutex.RLock()
 			if !(strings.Contains(err.Error(), "use of closed network connection") && st.ignoreNextClosed) {
@@ -374,6 +377,11 @@ func (st *S2S) readAndDiscard() {
 				st.mutex.RUnlock()
 			}
 			break
+		// If we have no data, sleep for 100ms before trying again. We're not doing anything with this data, so fuck it.
+		// This is a result of CPU thrashing waiting for reads. There is no non-blocking way to read data in Go using net.Conn.
+		// Blocking reads thrash the CPU. See: https://github.com/golang/go/issues/27315
+		} else if rbytes == 0 {
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
