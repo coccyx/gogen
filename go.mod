@@ -7,7 +7,7 @@ require (
 	github.com/Sirupsen/logrus v0.0.0-20160829202321-3ec0642a7fb6
 	github.com/ahmetb/govvv v0.2.0 // indirect
 	github.com/cactus/gostrftime v0.0.0-20160820080632-908b7e9ab9b8
-	github.com/coccyx/go-s2s v0.0.0-20190413180338-bdc39b6946f5
+	github.com/coccyx/go-s2s v0.0.0-20190615182345-b2ea504679db
 	github.com/coccyx/timeparser v0.0.0-20160911001308-9d8b37af28f5
 	github.com/google/go-github v0.0.0-20160930184301-3e246d29992b
 	github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5 // indirect
@@ -34,7 +34,7 @@ require (
 	github.com/yuin/gopher-lua v0.0.0-20160919070314-dd0fd531098d
 	golang.org/x/oauth2 v0.0.0-20160902055913-3c3a985cb79f
 	golang.org/x/tools v0.0.0-20190411180116-681f9ce8ac52 // indirect
-	google.golang.org/appengine v1.5.0
+	google.golang.org/appengine v1.5.0 // indirect
 	gopkg.in/urfave/cli.v1 v1.18.1
 	gopkg.in/yaml.v2 v2.0.0-20160928153709-a5b47d31c556
 )

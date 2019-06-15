@@ -8,6 +8,8 @@ github.com/cactus/gostrftime v0.0.0-20160820080632-908b7e9ab9b8 h1:obM8OBXqb463/
 github.com/cactus/gostrftime v0.0.0-20160820080632-908b7e9ab9b8/go.mod h1:OUM5bzoyxlhh7aPq8iO7vbl/jsiWvrbn70uCqOVOPkE=
 github.com/coccyx/go-s2s v0.0.0-20190413180338-bdc39b6946f5 h1:2GFB4vlbR4HFLl0EBcXrXjC+iBeSQ9Qx3TXcTEFdZ0E=
 github.com/coccyx/go-s2s v0.0.0-20190413180338-bdc39b6946f5/go.mod h1:IeRVSXEAmvfTpIc62ng3mWS6ZAE+/Oj7DRSig8Zt2eI=
+github.com/coccyx/go-s2s v0.0.0-20190615182345-b2ea504679db h1:cMspoIQGVs7t7ZCek3imq1APh8dCz1r+hUCvB0Qjo/Q=
+github.com/coccyx/go-s2s v0.0.0-20190615182345-b2ea504679db/go.mod h1:IeRVSXEAmvfTpIc62ng3mWS6ZAE+/Oj7DRSig8Zt2eI=
 github.com/coccyx/gogen v0.0.0-20190326034030-6c6846b20c52 h1:jotcDFXROtv2HPzNULaHiV/E0gvP75+jhoYwc/OtiAg=
 github.com/coccyx/gogen v0.0.0-20190326034030-6c6846b20c52/go.mod h1:6CFo9JaAHtClKxuAXtdsq7Q++loj3YT1xSBRdmUWvMA=
 github.com/coccyx/timeparser v0.0.0-20160911001308-9d8b37af28f5 h1:2nmvKzaEoJDC6IaWYa37GDemOUbtl+ygTTrjZ109mU8=
@@ -76,6 +78,7 @@ golang.org/x/oauth2 v0.0.0-20160902055913-3c3a985cb79f h1:VWt05OS3Al9w09GSPgltoH
 golang.org/x/oauth2 v0.0.0-20160902055913-3c3a985cb79f/go.mod h1:N/0e6XlmueqKjAGxoOufVs8QHGRruUQn6yWY3a++T0U=
 golang.org/x/sys v0.0.0-20161023150541-c200b10b5d5e h1:uau++4dmjGy3TuvPvRbhZHY+TQVsImIxtWY5HRh9eho=
 golang.org/x/sys v0.0.0-20161023150541-c200b10b5d5e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a h1:1BGLXjeY4akVXGgbC9HugT3Jv3hCI0z56oJR5vAMgBU=
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/tools v0.0.0-20190411180116-681f9ce8ac52 h1:9RlW/mHPSeoxtqVWkJ7ZugoTFX8WFZRzmCep/niCbtU=
