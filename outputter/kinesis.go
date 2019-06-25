@@ -70,8 +70,13 @@ func (k *kinesisout) flush() error {
 
 	if e == nil {
 		if *results.FailedRecordCount > 0 {
-			print(*results.FailedRecordCount, " records failed.")
-			// TODO: find and retry failed records
+			print(*results.FailedRecordCount, " records failed.\n")
+			for i, record := range results.Records {
+				if record.ErrorCode != nil {
+					print(i, " failed with error ", record.ErrorMessage, "\n")
+					k.buf = append(records[i:i], k.buf...)
+				}
+			}
 		}
 	}
 
