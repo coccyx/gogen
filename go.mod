@@ -6,7 +6,7 @@ require (
 	github.com/LawrenceWoodman/roveralls v0.0.0-20171119193843-51b78509b607 // indirect
 	github.com/Sirupsen/logrus v0.0.0-20160829202321-3ec0642a7fb6
 	github.com/ahmetb/govvv v0.2.0 // indirect
-	github.com/aws/aws-sdk-go v1.20.7 // indirect
+	github.com/aws/aws-sdk-go v1.20.7
 	github.com/cactus/gostrftime v0.0.0-20160820080632-908b7e9ab9b8
 	github.com/coccyx/go-s2s v0.0.0-20190615184235-2f7a532dc47c
 	github.com/coccyx/timeparser v0.0.0-20160911001308-9d8b37af28f5
