@@ -73,7 +73,7 @@ func (k *kinesisout) flush() error {
 			print(*results.FailedRecordCount, " records failed.\n")
 			for i, record := range results.Records {
 				if record.ErrorCode != nil {
-					print(i, " failed with error ", record.ErrorMessage, "\n")
+					print(i, " failed with error ", *record.ErrorMessage, "\n")
 					k.buf = append(records[i:i], k.buf...)
 				}
 			}
