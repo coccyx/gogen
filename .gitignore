@@ -18,3 +18,4 @@ splunk_app_gogen.spl
 .configcache*
 .versioncache*
 roveralls*
+.idea/*

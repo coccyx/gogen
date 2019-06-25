@@ -363,6 +363,7 @@ func (st *S2S) readAndDiscard() {
 		if err != nil {
 			// TODO Maybe infinite loop here?
 			st.reconnect(true)
+			break
 		}
 		rbytes, err := st.conn.Read(tmp)
 		if err != nil {
@@ -377,9 +378,9 @@ func (st *S2S) readAndDiscard() {
 				st.mutex.RUnlock()
 			}
 			break
-		// If we have no data, sleep for 100ms before trying again. We're not doing anything with this data, so fuck it.
-		// This is a result of CPU thrashing waiting for reads. There is no non-blocking way to read data in Go using net.Conn.
-		// Blocking reads thrash the CPU. See: https://github.com/golang/go/issues/27315
+			// If we have no data, sleep for 100ms before trying again. We're not doing anything with this data, so fuck it.
+			// This is a result of CPU thrashing waiting for reads. There is no non-blocking way to read data in Go using net.Conn.
+			// Blocking reads thrash the CPU. See: https://github.com/golang/go/issues/27315
 		} else if rbytes == 0 {
 			time.Sleep(100 * time.Millisecond)
 		}

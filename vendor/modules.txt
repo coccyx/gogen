@@ -1,8 +1,43 @@
 # github.com/Sirupsen/logrus v0.0.0-20160829202321-3ec0642a7fb6
 github.com/Sirupsen/logrus
+# github.com/aws/aws-sdk-go v1.20.7
+github.com/aws/aws-sdk-go/aws/session
+github.com/aws/aws-sdk-go/service/kinesis
+github.com/aws/aws-sdk-go/aws
+github.com/aws/aws-sdk-go/aws/awserr
+github.com/aws/aws-sdk-go/aws/client
+github.com/aws/aws-sdk-go/aws/corehandlers
+github.com/aws/aws-sdk-go/aws/credentials
+github.com/aws/aws-sdk-go/aws/credentials/processcreds
+github.com/aws/aws-sdk-go/aws/credentials/stscreds
+github.com/aws/aws-sdk-go/aws/csm
+github.com/aws/aws-sdk-go/aws/defaults
+github.com/aws/aws-sdk-go/aws/endpoints
+github.com/aws/aws-sdk-go/aws/request
+github.com/aws/aws-sdk-go/internal/ini
+github.com/aws/aws-sdk-go/internal/shareddefaults
+github.com/aws/aws-sdk-go/aws/awsutil
+github.com/aws/aws-sdk-go/aws/client/metadata
+github.com/aws/aws-sdk-go/aws/signer/v4
+github.com/aws/aws-sdk-go/private/protocol
+github.com/aws/aws-sdk-go/private/protocol/eventstream
+github.com/aws/aws-sdk-go/private/protocol/eventstream/eventstreamapi
+github.com/aws/aws-sdk-go/private/protocol/jsonrpc
+github.com/aws/aws-sdk-go/private/protocol/rest
+github.com/aws/aws-sdk-go/internal/sdkio
+github.com/aws/aws-sdk-go/internal/sdkrand
+github.com/aws/aws-sdk-go/service/sts
+github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds
+github.com/aws/aws-sdk-go/aws/credentials/endpointcreds
+github.com/aws/aws-sdk-go/aws/ec2metadata
+github.com/aws/aws-sdk-go/private/protocol/json/jsonutil
+github.com/aws/aws-sdk-go/private/protocol/query
+github.com/aws/aws-sdk-go/internal/sdkuri
+github.com/aws/aws-sdk-go/private/protocol/query/queryutil
+github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil
 # github.com/cactus/gostrftime v0.0.0-20160820080632-908b7e9ab9b8
 github.com/cactus/gostrftime
-# github.com/coccyx/go-s2s v0.0.0-20190413180338-bdc39b6946f5
+# github.com/coccyx/go-s2s v0.0.0-20190615184235-2f7a532dc47c
 github.com/coccyx/go-s2s/s2s
 # github.com/coccyx/timeparser v0.0.0-20160911001308-9d8b37af28f5
 github.com/coccyx/timeparser
@@ -18,6 +53,8 @@ github.com/google/go-querystring/query
 github.com/hhkbp2/go-strftime
 # github.com/jehiah/go-strftime v0.0.0-20171201141054-1d33003b3869
 github.com/jehiah/go-strftime
+# github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
+github.com/jmespath/go-jmespath
 # github.com/joyt/godate v0.0.0-20150226210126-7151572574a7
 github.com/joyt/godate
 # github.com/kr/pretty v0.0.0-20160823170715-cfb55aafdaf3

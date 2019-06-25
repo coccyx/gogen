@@ -298,6 +298,8 @@ func setup(generator *rand.Rand, item *config.OutQueueItem, num int) config.Outp
 			gout[num] = new(network)
 		case "kafka":
 			gout[num] = new(kafkaout)
+		case "kinesis":
+			gout[num] = new(kinesisout)
 		default:
 			gout[num] = new(stdout)
 		}
