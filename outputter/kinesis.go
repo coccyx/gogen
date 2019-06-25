@@ -4,6 +4,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	config "github.com/coccyx/gogen/internal"
+	"math/rand"
 )
 
 type kinesisout struct {
@@ -22,6 +23,7 @@ func (k *kinesisout) Send(item *config.OutQueueItem) error {
 			return err
 		}
 		k.client = kinesis.New(sess)
+		k.endpoint = item.S.Output.Endpoints[rand.Intn(len(item.S.Output.Endpoints))]
 	}
 
 	for _, e := range item.Events {
@@ -42,6 +44,9 @@ func (k *kinesisout) Send(item *config.OutQueueItem) error {
 
 func (k *kinesisout) flush() error {
 	var records []*kinesis.PutRecordsRequestEntry
+	if len(k.buf) == 0 {
+		return nil
+	}
 	if len(k.buf) > 500 {
 		records = k.buf[:500]
 		k.buf = k.buf[500:]
@@ -55,7 +60,12 @@ func (k *kinesisout) flush() error {
 		StreamName: &k.endpoint,
 	}
 
-	_, e := k.client.PutRecords(&kinesisRequest)
+	results, e := k.client.PutRecords(&kinesisRequest)
+
+	if e == nil {
+		print(*results.FailedRecordCount)
+		print("\n")
+	}
 
 	return e
 }
