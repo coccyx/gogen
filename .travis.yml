@@ -1,20 +1,18 @@
 language: go
 sudo: false
-os:
-- linux
-- osx
+# os:
+# - linux
+# - osx
+env:
+- GO111MODULE=on
 go:
-- 1.7.3
+- 1.12.x
 before_script:
-- printf "$GITHUB_OAUTH_TOKEN" > .githubtoken
-- go get -u github.com/mattn/goveralls
-- go get -u github.com/LawrenceWoodman/roveralls
+# - printf "$GITHUB_OAUTH_TOKEN" > .githubtoken
+- make GOBIN=$HOME/gopath/bin deps
 script:
-- go test -v ./...
-- $HOME/gopath/bin/roveralls
-- $HOME/gopath/bin/goveralls -coverprofile=roveralls.coverprofile -service=travis-ci -repotoken $COVERALLS_TOKEN
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]];   then go build -ldflags "-X github.com/coccyx/gogen/config.gitHubClientID=$GITHUB_OAUTH_CLIENT_ID -X github.com/coccyx/gogen/config.gitHubClientSecret=$GITHUB_OAUTH_CLIENT_SECRET" -o build/osx/gogen  ; fi
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then go build -ldflags "-X github.com/coccyx/gogen/config.gitHubClientID=$GITHUB_OAUTH_CLIENT_ID -X github.com/coccyx/gogen/config.gitHubClientSecret=$GITHUB_OAUTH_CLIENT_SECRET" -o build/linux/gogen; fi
+- make GOBIN=$HOME/gopath/bin test
+- make GOBIN=$HOME/gopath/bin build
 deploy:
   provider: s3
   region: us-west-1
@@ -26,3 +24,4 @@ deploy:
   bucket: gogen-artifacts
   on:
     repo: coccyx/gogen
+

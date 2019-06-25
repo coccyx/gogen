@@ -1,6 +1,8 @@
 package outputter
 
 import (
+	"time"
+
 	"github.com/coccyx/go-s2s/s2s"
 	config "github.com/coccyx/gogen/internal"
 )
@@ -29,8 +31,12 @@ func (st *splunktcp) Send(item *config.OutQueueItem) error {
 }
 
 func (st *splunktcp) Close() error {
-	if !st.closed {
-		st.s2s.Close()
+	if !st.closed && st.initialized {
+		time.Sleep(500 * time.Millisecond) // Hack for Cribl flush bug
+		err := st.s2s.Close()
+		if err != nil {
+			return err
+		}
 		st.closed = true
 	}
 	return nil

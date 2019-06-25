@@ -28,16 +28,15 @@ func New(name string, template string) error {
 				return string(a)
 			},
 			"splunkhec": func(v interface{}) string {
-				tv := v.(map[string]string)
-				if _, ok := tv["_raw"]; ok {
-					tv["event"] = tv["_raw"]
-					delete(tv, "_raw")
+				if _, ok := v.(map[string]string)["_raw"]; ok {
+					v.(map[string]string)["event"] = v.(map[string]string)["_raw"]
+					delete(v.(map[string]string), "_raw")
 				}
-				if _, ok = tv["_time"]; ok {
-					tv["time"] = tv["_time"]
-					delete(tv, "_time")
+				if _, ok = v.(map[string]string)["_time"]; ok {
+					v.(map[string]string)["time"] = v.(map[string]string)["_time"]
+					delete(v.(map[string]string), "_time")
 				}
-				a, _ := json.Marshal(tv)
+				a, _ := json.Marshal(v)
 				return string(a)
 			},
 			"modinput": func(v interface{}) string {

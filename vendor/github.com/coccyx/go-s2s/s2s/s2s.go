@@ -15,8 +15,18 @@ import (
 	"time"
 
 	"encoding/binary"
-	"syscall"
 )
+
+var bp sync.Pool
+
+func init() {
+	bp = sync.Pool{
+		New: func() interface{} {
+			bb := bytes.NewBuffer([]byte{})
+			return bb
+		},
+	}
+}
 
 // S2S sends data to Splunk using the Splunk to Splunk protocol
 type S2S struct {
@@ -26,7 +36,6 @@ type S2S struct {
 	endpoint           string
 	endpoints          []string
 	closed             bool
-	sent               int64
 	bufferBytes        int
 	tls                bool
 	cert               string
@@ -37,6 +46,7 @@ type S2S struct {
 	maxIdleTime        int
 	lastSendTime       time.Time
 	mutex              *sync.RWMutex
+	ignoreNextClosed   bool
 }
 
 type splunkSignature struct {
@@ -79,6 +89,10 @@ insecureSkipVerify specifies whether to skip verification of the server certific
 func NewS2STLS(endpoints []string, bufferBytes int, tls bool, cert string, serverName string, insecureSkipVerify bool) (*S2S, error) {
 	st := new(S2S)
 
+	if len(endpoints) < 1 {
+		return nil, fmt.Errorf("No endpoints specified")
+	}
+
 	st.mutex = &sync.RWMutex{}
 	st.endpoints = endpoints
 	st.bufferBytes = bufferBytes
@@ -91,11 +105,7 @@ func NewS2STLS(endpoints []string, bufferBytes int, tls bool, cert string, serve
 	}
 	st.insecureSkipVerify = insecureSkipVerify
 
-	err := st.newBuf(false)
-	if err != nil {
-		return nil, err
-	}
-	err = st.sendSig()
+	err := st.reconnect(true)
 	if err != nil {
 		return nil, err
 	}
@@ -110,11 +120,13 @@ func NewS2STLS(endpoints []string, bufferBytes int, tls bool, cert string, serve
 // Connect opens a connection to Splunk
 // endpoint is the format of 'host:port'
 func (st *S2S) connect(endpoint string) error {
+	st.mutex.Lock()
 	var err error
 	st.conn, err = net.DialTimeout("tcp", endpoint, 2*time.Second)
 	if err != nil {
 		return err
 	}
+	st.buf = bufio.NewWriterSize(st.conn, st.bufferBytes)
 	if st.tls {
 		config := &tls.Config{
 			InsecureSkipVerify: st.insecureSkipVerify,
@@ -129,11 +141,16 @@ func (st *S2S) connect(endpoint string) error {
 			config.RootCAs = roots
 		}
 
-		st.mutex.Lock()
 		st.conn = tls.Client(st.conn, config)
-		st.mutex.Unlock()
+	}
+	st.mutex.Unlock()
+	err = st.sendSig()
+	if err != nil {
+		return err
 	}
 	go st.readAndDiscard()
+	st.lastConnectTime = time.Now()
+	st.lastSendTime = time.Now()
 	return err
 }
 
@@ -153,6 +170,8 @@ func (st *S2S) SetRebalanceInterval(interval int) {
 // 	char _mgmtPort[16];
 // };
 func (st *S2S) sendSig() error {
+	st.mutex.RLock()
+	defer st.mutex.RUnlock()
 	endpointParts := strings.Split(st.endpoint, ":")
 	if len(endpointParts) != 2 {
 		return fmt.Errorf("Endpoint malformed.  Should look like server:port")
@@ -174,106 +193,103 @@ func (st *S2S) sendSig() error {
 // encodeString encodes a string to be sent across the wire to Splunk
 // Wire protocol has an unsigned integer of the length of the string followed
 // by a null terminated string.
-func encodeString(tosend string) []byte {
-	// buf := bp.Get().(*bytes.Buffer)
-	// defer bp.Put(buf)
-	// buf.Reset()
-	buf := &bytes.Buffer{}
+func encodeString(tosend string, buf *bytes.Buffer) {
 	l := uint32(len(tosend) + 1)
 	binary.Write(buf, binary.BigEndian, l)
 	binary.Write(buf, binary.BigEndian, []byte(tosend))
 	binary.Write(buf, binary.BigEndian, []byte{0})
-	return buf.Bytes()
 }
 
 // encodeKeyValue encodes a key/value pair to send across the wire to splunk
 // A key value pair is merely a concatenated set of encoded strings.
-func encodeKeyValue(key, value string) []byte {
-	// buf := bp.Get().(*bytes.Buffer)
-	// defer bp.Put(buf)
-	// buf.Reset()
-	buf := &bytes.Buffer{}
-	buf.Write(encodeString(key))
-	buf.Write(encodeString(value))
-	return buf.Bytes()
+func encodeKeyValue(key, value string, buf *bytes.Buffer) {
+	encodeString(key, buf)
+	encodeString(value, buf)
 }
 
 // EncodeEvent encodes a full Splunk event
-func EncodeEvent(line map[string]string) (buf *bytes.Buffer) {
-	// buf := bp.Get().(*bytes.Buffer)
-	// defer bp.Put(buf)
-	// buf.Reset()
-	buf = &bytes.Buffer{}
+func EncodeEvent(line map[string]string) []byte {
+	buf := bp.Get().(*bytes.Buffer)
+	defer bp.Put(buf)
+	buf.Reset()
+	binary.Write(buf, binary.BigEndian, uint32(0)) // Message Size
+	binary.Write(buf, binary.BigEndian, uint32(0)) // Map Count
 
-	var msgSize uint32
-	msgSize = 8 // Two unsigned 32 bit integers included, the number of maps and a 0 between the end of raw the _raw trailer
-	maps := make([][]byte, 0)
+	// These fields should be present in every event
+	_time := line["_time"]
+	host := line["host"]
+	source := line["source"]
+	sourcetype := line["sourcetype"]
+	index := line["index"]
 
+	// These are optional
+	channel, hasChannel := line["_channel"]
+	conf, hasConf := line["_conf"]
+	_, hasLineBreaker := line["_linebreaker"]
+	_, hasDone := line["_done"]
 	var indexFields string
+
+	// Check time for subseconds
+	if strings.ContainsRune(_time, '.') {
+		timeparts := strings.Split(_time, ".")
+		_time = timeparts[0]
+		indexFields += "_subsecond::" + timeparts[1] + " "
+	}
+
 	for k, v := range line {
 		switch k {
-		case "source":
-			encodedSource := encodeKeyValue("MetaData:Source", "source::"+v)
-			maps = append(maps, encodedSource)
-			msgSize += uint32(len(encodedSource))
-		case "sourcetype":
-			encodedSourcetype := encodeKeyValue("MetaData:Sourcetype", "sourcetype::"+v)
-			maps = append(maps, encodedSourcetype)
-			msgSize += uint32(len(encodedSourcetype))
-		case "host":
-			encodedHost := encodeKeyValue("MetaData:Host", "host::"+v)
-			maps = append(maps, encodedHost)
-			msgSize += uint32(len(encodedHost))
-		case "index":
-			encodedIndex := encodeKeyValue("_MetaData:Index", v)
-			maps = append(maps, encodedIndex)
-			msgSize += uint32(len(encodedIndex))
-		case "_raw":
+		case "source", "sourcetype", "host", "index", "_raw", "_time", "_channel", "_conf", "_linebreaker", "_done":
 			break
-		case "_time":
-			encoded := encodeKeyValue(k, v)
-			maps = append(maps, encoded)
-			msgSize += uint32(len(encoded))
-			if strings.ContainsRune(v, '.') {
-				subsecs := "." + strings.Split(v, ".")[1]
-				indexFields += "_subsecond::" + subsecs + " "
-			}
 		default:
 			indexFields += k + "::" + v + " "
 		}
 	}
 
+	maps := 7
+	encodeKeyValue("_raw", line["_raw"], buf)
 	if len(indexFields) > 0 {
 		indexFields = strings.TrimRight(indexFields, " ")
-		encoded := encodeKeyValue("_meta", indexFields)
-		maps = append(maps, encoded)
-		msgSize += uint32(len(encoded))
+		encodeKeyValue("_meta", indexFields, buf)
+		maps++
 	}
-
-	encodedRaw := encodeKeyValue("_raw", line["_raw"])
-	msgSize += uint32(len(encodedRaw))
-	encodedRawTrailer := encodeString("_raw")
-	msgSize += uint32(len(encodedRawTrailer))
-	encodedDone := encodeKeyValue("_done", "_done")
-	msgSize += uint32(len(encodedDone))
-
-	binary.Write(buf, binary.BigEndian, msgSize)
-	binary.Write(buf, binary.BigEndian, uint32(len(maps)+2)) // Include extra map for _done key and one for _raw
-	for _, m := range maps {
-		binary.Write(buf, binary.BigEndian, m)
+	if hasDone {
+		encodeKeyValue("_done", "_done", buf)
+		maps++
 	}
-	binary.Write(buf, binary.BigEndian, encodedDone)
-	binary.Write(buf, binary.BigEndian, encodedRaw)
-	binary.Write(buf, binary.BigEndian, uint32(0))
-	binary.Write(buf, binary.BigEndian, encodedRawTrailer)
+	if hasLineBreaker {
+		encodeKeyValue("_linebreaker", "_linebreaker", buf)
+		maps++
+	}
+	encodeKeyValue("_hpn", "_hpn", buf)
+	encodeKeyValue("_time", _time, buf)
+	if hasConf {
+		encodeKeyValue("_conf", conf, buf)
+		maps++
+	}
+	encodeKeyValue("MetaData:Source", "source::"+source, buf)
+	encodeKeyValue("MetaData:Host", "host::"+host, buf)
+	encodeKeyValue("MetaData:Sourcetype", "sourcetype::"+sourcetype, buf)
+	if hasChannel {
+		encodeKeyValue("_channel", channel, buf)
+		maps++
+	}
+	encodeKeyValue("_MetaData:Index", index, buf)
 
-	return buf
+	binary.Write(buf, binary.BigEndian, uint32(0)) // Null terminate raw
+	encodeString("_raw", buf)                      // Raw trailer
+
+	ret := buf.Bytes()
+
+	binary.BigEndian.PutUint32(ret, uint32(len(ret)-4)) // Don't include null terminator in message size
+	binary.BigEndian.PutUint32(ret[4:], uint32(maps))   // Include extra map for _done key and one for _raw
+
+	return ret
 }
 
 // Send sends an event to Splunk, represented as a map[string]string containing keys of index, host, source, sourcetype, and _raw.
 // It is a convenience function, wrapping EncodeEvent and Copy
 func (st *S2S) Send(event map[string]string) (int64, error) {
-	return st.Copy(EncodeEvent(event))
+	return st.Copy(bytes.NewBuffer(EncodeEvent(event)))
 }
 
 // Copy takes a io.Reader and copies it to Splunk, needs to be encoded by EncodeEvent
@@ -282,43 +298,16 @@ func (st *S2S) Copy(r io.Reader) (int64, error) {
 		return 0, fmt.Errorf("cannot send on closed connection")
 	}
 	if time.Now().Sub(st.lastSendTime) > time.Duration(st.maxIdleTime)*time.Second {
-		st.newBuf(true)
+		st.reconnect(true)
 	}
-	buf := &bytes.Buffer{}
-	io.Copy(buf, r)
 
-	bytes, err := io.Copy(st.buf, buf)
+	bytes, err := io.Copy(st.buf, r)
 	if err != nil {
-		// Catch closed pipe error, resend
-		switch e := err.(type) {
-		case *net.OpError:
-			if e.Err == syscall.EPIPE {
-				err = st.newBuf(true)
-				if err != nil {
-					return 0, err
-				}
-				bytes, err = io.Copy(st.buf, buf)
-				if err != nil {
-					return 0, err
-				}
-			}
-		default:
-			return 0, err
-		}
+		return bytes, err
 	}
 
-	st.sent += bytes
-	if st.sent > int64(st.bufferBytes) {
-		st.mutex.RLock()
-		err := st.buf.Flush()
-		st.mutex.RUnlock()
-		if err != nil {
-			return 0, err
-		}
-		st.newBuf(false)
-		st.sent = 0
-		st.lastSendTime = time.Now()
-	}
+	st.lastSendTime = time.Now()
+	st.reconnect(false)
 	return bytes, nil
 }
 
@@ -345,11 +334,12 @@ func (st *S2S) close() error {
 	if err != nil {
 		return err
 	}
+	st.ignoreNextClosed = true
 	return nil
 }
 
-func (st *S2S) newBuf(force bool) error {
-	if time.Now().Sub(st.lastConnectTime) > time.Duration(st.rebalanceInterval)*time.Second || force {
+func (st *S2S) reconnect(force bool) error {
+	if (len(st.endpoints) > 1 && time.Now().Sub(st.lastConnectTime) > time.Duration(st.rebalanceInterval)*time.Second) || force {
 		st.endpoint = st.endpoints[rand.Intn(len(st.endpoints))]
 		if st.conn != nil {
 			err := st.close()
@@ -362,26 +352,36 @@ func (st *S2S) newBuf(force bool) error {
 			return err
 		}
 	}
-	st.buf = bufio.NewWriter(st.conn)
-	st.lastConnectTime = time.Now()
 	return nil
 }
 
 func (st *S2S) readAndDiscard() {
 	// Attempt to read from connection to see if it's closed
-	// err := st.conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
-	// err := st.conn.SetReadDeadline(time.Time{})
+	tmp := make([]byte, 0, 4096)
 	for {
-		err := st.conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+		err := st.conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
 		if err != nil {
-			st.newBuf(true)
-			break
+			// TODO Maybe infinite loop here?
+			st.reconnect(true)
 		}
-		one := []byte{}
-		_, err = st.conn.Read(one)
+		rbytes, err := st.conn.Read(tmp)
 		if err != nil {
-			st.newBuf(true)
+			st.mutex.RLock()
+			if !(strings.Contains(err.Error(), "use of closed network connection") && st.ignoreNextClosed) {
+				st.mutex.RUnlock()
+				st.mutex.Lock()
+				st.ignoreNextClosed = false
+				st.mutex.Unlock()
+				st.reconnect(true)
+			} else {
+				st.mutex.RUnlock()
+			}
 			break
+		// If we have no data, sleep for 100ms before trying again. We're not doing anything with this data, so fuck it.
+		// This is a result of CPU thrashing waiting for reads. There is no non-blocking way to read data in Go using net.Conn.
+		// Blocking reads thrash the CPU. See: https://github.com/golang/go/issues/27315
+		} else if rbytes == 0 {
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }

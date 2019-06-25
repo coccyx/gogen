@@ -50,7 +50,7 @@ func (hook ContextHook) Fire(entry *logrus.Entry) error {
 }
 
 func init() {
-	logrus.SetFormatter(&prefixed.TextFormatter{TimestampFormat: "Jan 02 03:04:05.000"})
+	logrus.SetFormatter(&prefixed.TextFormatter{TimestampFormat: "Jan 02 15:04:05.000"})
 	logrus.AddHook(ContextHook{})
 	logrus.SetLevel(DefaultLogLevel)
 }
@@ -147,6 +147,7 @@ func EnableTextOutput() {
 
 // SetOutput sets output a specified file name
 func SetOutput(name string) {
+	logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true, DisableColors: true})
 	out, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0755)
 	if err != nil {
 		logrus.SetOutput(os.Stderr)

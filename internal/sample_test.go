@@ -11,6 +11,81 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestGetReplacementOffsets(t *testing.T) {
+	// Setup environment
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+	os.Setenv("GOGEN_FULLCONFIG", "")
+	home := ".."
+	os.Setenv("GOGEN_SAMPLES_DIR", filepath.Join(home, "tests", "tokens", "tokens-find.yml"))
+
+	c := NewConfig()
+	s := c.FindSampleByName("tokens-find")
+
+	_, err := s.Tokens[0].GetReplacementOffsets("foo")
+	assert.Error(t, err)
+
+	offsets, err := s.Tokens[0].GetReplacementOffsets(s.Lines[0]["_raw"])
+	assert.NoError(t, err)
+	assert.Equal(t, 4, offsets[0][0])
+	assert.Equal(t, 14, offsets[0][1])
+	assert.Equal(t, 15, offsets[1][0])
+	assert.Equal(t, 25, offsets[1][1])
+
+	offsets, err = s.Tokens[1].GetReplacementOffsets(s.Lines[0]["_raw"])
+	assert.NoError(t, err)
+	assert.Equal(t, 4, offsets[0][0])
+	assert.Equal(t, 14, offsets[0][1])
+	assert.Equal(t, 15, offsets[1][0])
+	assert.Equal(t, 25, offsets[1][1])
+}
+
+func TestReplacement(t *testing.T) {
+	// Setup environment
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+	os.Setenv("GOGEN_FULLCONFIG", "")
+	home := ".."
+	os.Setenv("GOGEN_SAMPLES_DIR", filepath.Join(home, "tests", "tokens", "tokens-find.yml"))
+	loc, _ := time.LoadLocation("UTC")
+	source := rand.NewSource(0)
+	randgen := rand.New(source)
+	fullevent := make(map[string]string)
+
+	n := time.Date(2001, 10, 20, 12, 0, 0, 100000, loc)
+	now := func() time.Time {
+		return n
+	}
+
+	c := NewConfig()
+	s := c.FindSampleByName("tokens-find")
+
+	event := "foo"
+	_, err := s.Tokens[0].Replace(&event, -1, now(), now(), now(), randgen, fullevent)
+	assert.NoError(t, err)
+	assert.Equal(t, "foo", event)
+
+	event = s.Lines[0]["_raw"]
+	_, err = s.Tokens[0].Replace(&event, -1, now(), now(), now(), randgen, fullevent)
+	assert.NoError(t, err)
+	assert.Equal(t, "foo newfoo newfoo", event)
+
+	event = s.Lines[0]["_raw"]
+	_, err = s.Tokens[1].Replace(&event, -1, now(), now(), now(), randgen, fullevent)
+	assert.NoError(t, err)
+	assert.Equal(t, "foo newfoo newfoo", event)
+
+	event = s.Lines[1]["_raw"]
+	_, err = s.Tokens[0].Replace(&event, -1, now(), now(), now(), randgen, fullevent)
+	assert.NoError(t, err)
+	assert.Equal(t, "newfoo foo newfoo foo some other", event)
+
+	event = s.Lines[1]["_raw"]
+	_, err = s.Tokens[1].Replace(&event, -1, now(), now(), now(), randgen, fullevent)
+	assert.NoError(t, err)
+	assert.Equal(t, "newfoo foo newfoo foo some other", event)
+}
+
 func TestGenReplacement(t *testing.T) {
 	// Setup environment
 	os.Setenv("GOGEN_HOME", "..")
@@ -21,6 +96,7 @@ func TestGenReplacement(t *testing.T) {
 	loc, _ := time.LoadLocation("UTC")
 	source := rand.NewSource(0)
 	randgen := rand.New(source)
+	fullevent := make(map[string]string)
 
 	n := time.Date(2001, 10, 20, 12, 0, 0, 100000, loc)
 	now := func() time.Time {
@@ -43,15 +119,15 @@ func TestGenReplacement(t *testing.T) {
 	testToken(13, "1003579200", s, t)
 
 	token := s.Tokens[5]
-	replacement, _, _ := token.GenReplacement(-1, now(), now(), now(), randgen)
+	replacement, _, _ := token.GenReplacement(-1, now(), now(), now(), randgen, fullevent)
 	assert.Equal(t, "a", replacement)
-	replacement, _, _ = token.GenReplacement(-1, now(), now(), now(), randgen)
+	replacement, _, _ = token.GenReplacement(-1, now(), now(), now(), randgen, fullevent)
 	assert.Equal(t, "a", replacement)
 
 	token = s.Tokens[6]
 	choices := make(map[int]int)
 	for i := 0; i < 1000; i++ {
-		_, choice, _ := token.GenReplacement(-1, now(), now(), now(), randgen)
+		_, choice, _ := token.GenReplacement(-1, now(), now(), now(), randgen, fullevent)
 		choices[choice] = choices[choice] + 1
 	}
 	if choices[0] != 315 || choices[1] != 570 || choices[2] != 115 {
@@ -59,7 +135,7 @@ func TestGenReplacement(t *testing.T) {
 	}
 
 	token = s.Tokens[8]
-	replacement, _, _ = token.GenReplacement(-1, now(), now(), now(), randgen)
+	replacement, _, _ = token.GenReplacement(-1, now(), now(), now(), randgen, fullevent)
 	fmt.Printf("UUID: %s\n", replacement)
 }
 
@@ -67,12 +143,13 @@ func testToken(i int, value string, s *Sample, t *testing.T) {
 	loc, _ := time.LoadLocation("UTC")
 	source := rand.NewSource(0)
 	randgen := rand.New(source)
+	fullevent := make(map[string]string)
 	n := time.Date(2001, 10, 20, 12, 0, 0, 100000, loc)
 	now := func() time.Time {
 		return n
 	}
 	token := s.Tokens[i]
-	replacement, _, _ := token.GenReplacement(-1, now(), now(), now(), randgen)
+	replacement, _, _ := token.GenReplacement(-1, now(), now(), now(), randgen, fullevent)
 	assert.Equal(t, value, replacement)
 }
 
@@ -137,6 +214,7 @@ func benchmarkToken(conf string, i int, b *testing.B) {
 	loc, _ := time.LoadLocation("Local")
 	source := rand.NewSource(0)
 	randgen := rand.New(source)
+	fullevent := make(map[string]string)
 
 	n := time.Date(2001, 10, 20, 12, 0, 0, 100000, loc)
 	now := func() time.Time {
@@ -148,7 +226,7 @@ func benchmarkToken(conf string, i int, b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		token := s.Tokens[i]
-		_, _, _ = token.GenReplacement(-1, now(), now(), now(), randgen)
+		_, _, _ = token.GenReplacement(-1, now(), now(), now(), randgen, fullevent)
 	}
 }
 
@@ -161,6 +239,7 @@ func BenchmarkReplacement(b *testing.B) {
 	loc, _ := time.LoadLocation("Local")
 	source := rand.NewSource(0)
 	randgen := rand.New(source)
+	fullevent := make(map[string]string)
 
 	n := time.Date(2001, 10, 20, 12, 0, 0, 100000, loc)
 	now := func() time.Time {
@@ -174,7 +253,7 @@ func BenchmarkReplacement(b *testing.B) {
 	event := "$static$"
 
 	for n := 0; n < b.N; n++ {
-		_, _ = t.Replace(&event, -1, now(), now(), now(), randgen)
+		_, _ = t.Replace(&event, -1, now(), now(), now(), randgen, fullevent)
 		event = "$static$"
 	}
 }

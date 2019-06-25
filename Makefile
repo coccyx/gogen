@@ -1,6 +1,12 @@
 GITHUB_OAUTH_CLIENT_ID = 39c483e563cd5cedf7c1
 GITHUB_OAUTH_CLIENT_SECRET = 024b16270452504c35f541aca4bf78781cd06db9
 APP_NAME = $(shell basename $(GOGEN_EMBED))
+GOVVV = $(shell govvv -flags)
+FLAGS = -ldflags "-X github.com/coccyx/gogen/internal.gitHubClientID=$(GITHUB_OAUTH_CLIENT_ID) -X github.com/coccyx/gogen/internal.gitHubClientSecret=$(GITHUB_OAUTH_CLIENT_SECRET) $(GOVVV)"
+GOBIN ?= $(HOME)/go/bin
+
+
+.PHONY: all build deps install test docker splunkapp embed
 
 ifeq ($(OS),Windows_NT)
 	dockercmd := docker run -e TERM -e HOME=/go/src/github.com/coccyx/gogen --rm -it -v $(CURDIR):/go/src/github.com/coccyx/gogen -v $(HOME)/.ssh:/root/.ssh clintsharp/gogen bash
@@ -12,13 +18,22 @@ endif
 all: install
 
 build:
-	godep go build -ldflags "-X github.com/coccyx/gogen/internal.gitHubClientID=$(GITHUB_OAUTH_CLIENT_ID) -X github.com/coccyx/gogen/internal.gitHubClientSecret=$(GITHUB_OAUTH_CLIENT_SECRET)"
+	$(GOBIN)/roveralls
+	$(GOBIN)/goveralls -coverprofile=roveralls.coverprofile -service=travis-ci -repotoken $$COVERALLS_TOKEN
+	GOOS=linux CGO_ENABLED=0 GOARCH=amd64 go build -tags netgo $(FLAGS) -o build/linux/gogen
+	GOOS=darwin GOARCH=amd64 go build $(FLAGS) -o build/osx/gogen
+	GOOS=windows GOARCH=amd64 go build $(FLAGS) -o build/windows/gogen.exe
+
+deps:
+	go get -u github.com/mattn/goveralls
+	go get -u github.com/LawrenceWoodman/roveralls
+	go get github.com/ahmetb/govvv
 
 install:
-	godep go install -ldflags "-X github.com/coccyx/gogen/internal.gitHubClientID=$(GITHUB_OAUTH_CLIENT_ID) -X github.com/coccyx/gogen/internal.gitHubClientSecret=$(GITHUB_OAUTH_CLIENT_SECRET)"
+	go install -ldflags "-X github.com/coccyx/gogen/internal.gitHubClientID=$(GITHUB_OAUTH_CLIENT_ID) -X github.com/coccyx/gogen/internal.gitHubClientSecret=$(GITHUB_OAUTH_CLIENT_SECRET) $(GOVVV)"
 
 test:
-	godep go test -v ./...
+	go test -v ./...
 
 docker:
 	$(dockercmd)

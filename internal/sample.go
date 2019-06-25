@@ -38,7 +38,7 @@ type Sample struct {
 	Begin           string              `json:"begin,omitempty" yaml:"begin,omitempty"`
 	End             string              `json:"end,omitempty" yaml:"end,omitempty"`
 	EndIntervals    int                 `json:"endIntervals,omitempty" yaml:"endIntervals,omitempty"`
-	RandomizeCount  float32             `json:"randomizeCount,omitempty" yaml:"randomizeCount,omitempty"`
+	RandomizeCount  float64             `json:"randomizeCount,omitempty" yaml:"randomizeCount,omitempty"`
 	RandomizeEvents bool                `json:"randomizeEvents,omitempty" yaml:"randomizeEvents,omitempty"`
 	Tokens          []Token             `json:"tokens,omitempty" yaml:"tokens,omitempty"`
 	Lines           []map[string]string `json:"lines,omitempty" yaml:"lines,omitempty"`
@@ -143,45 +143,67 @@ type StringOrToken struct {
 // Replace replaces any instances of this token in the string pointed to by event.  Since time is native is Gogen, we can pass in
 // earliest and latest time ranges to generate the event between.  Lastly, some times we want to span a selected choice over multiple
 // tokens.  Passing in a pointer to choice allows the replacement to choose a preselected row in FieldChoice or Choice.
-func (t Token) Replace(event *string, choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand) (int, error) {
+func (t Token) Replace(event *string, choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand, fullevent map[string]string) (int, error) {
 	// s := t.Sample
 	e := *event
 
-	if pos1, pos2, err := t.GetReplacementOffsets(*event); err != nil {
+	if offsets, err := t.GetReplacementOffsets(*event); err != nil {
 		return choice, nil
 	} else {
-		replacement, choice, err := t.GenReplacement(choice, et, lt, now, randgen)
-		if err != nil {
-			return -1, err
+		retchoice := choice
+		lastoffset := 0
+		*event = ""
+		for _, match := range offsets {
+			replacement, newchoice, err := t.GenReplacement(retchoice, et, lt, now, randgen, fullevent)
+			if err != nil {
+				return -1, err
+			}
+			*event = *event + e[lastoffset:match[0]] + replacement
+			retchoice = newchoice
+			lastoffset = match[1]
 		}
-		*event = e[:pos1] + replacement + e[pos2:]
-		return choice, nil
+		*event += e[lastoffset:]
+		return retchoice, nil
 	}
 }
 
 // GetReplacementOffsets returns the beginning and end of a token inside an event string
-func (t Token) GetReplacementOffsets(event string) (int, int, error) {
+func (t Token) GetReplacementOffsets(event string) ([][]int, error) {
+	ret := make([][]int, 0)
 	switch t.Format {
 	case "template":
-		if pos := strings.Index(event, t.Token); pos >= 0 {
-			return pos, pos + len(t.Token), nil
+		offset := 0
+		for {
+			pos := strings.Index(event[offset:], t.Token)
+			if pos < 0 {
+				break
+			}
+			ret = append(ret, []int{offset + pos, offset + pos + len(t.Token)})
+			offset += pos + len(t.Token)
 		}
 	case "regex":
 		re, err := regexp.Compile(t.Token)
 		if err != nil {
-			return -1, -1, err
+			return ret, err
 		}
-		match := re.FindStringSubmatchIndex(event)
-		if match != nil && len(match) >= 4 {
-			return match[2], match[3], nil
+		matches := re.FindAllStringSubmatchIndex(event, -1)
+		if matches != nil {
+			for _, match := range matches {
+				if len(match) >= 4 {
+					ret = append(ret, []int{match[2], match[3]})
+				}
+			}
 		}
 	}
-	return -1, -1, fmt.Errorf("Token '%s' not found in field '%s': '%s'", t.Token, t.Field, event)
+	if len(ret) > 0 {
+		return ret, nil
+	}
+	return ret, fmt.Errorf("Token '%s' not found in field '%s': '%s'", t.Token, t.Field, event)
 }
 
 // GenReplacement generates a replacement value for the token.  choice allows the user to specify
 // a specific value to choose in the array.  This is useful for saving picks amongst tokens.
-func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand) (string, int, error) {
+func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand, fullevent map[string]string) (string, int, error) {
 	switch t.Type {
 	case "timestamp", "gotimestamp", "epochtimestamp":
 		td := lt.Sub(et)
@@ -192,6 +214,7 @@ func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.T
 		}
 		rd := time.Duration(tdr)
 		replacementTime := lt.Add(rd * -1)
+		replacementTime = convertUTC(replacementTime)
 		switch t.Type {
 		case "timestamp":
 			return strftime.Format(t.Replacement, replacementTime), -1, nil
@@ -324,6 +347,18 @@ func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.T
 			log.Errorf("Error executing script for token '%s' in sample '%s': %s", t.Name, t.Parent.Name, err)
 		}
 		return lua.LVAsString(L.Get(-1)), -1, nil
+	case "_channel":
+		channelConfStr := strings.Join([]string{"host::", fullevent["host"], "|source::", fullevent["source"], "|", fullevent["sourcetype"], "|"}, "")
+		var chanIdx int
+		var ok bool
+		if chanIdx, ok = t.Parent.Output.channelMap[channelConfStr]; !ok {
+			chanIdx = t.Parent.Output.channelIdx
+			t.Parent.Output.channelMap[channelConfStr] = chanIdx
+			t.Parent.Output.channelIdx++
+		}
+		chanStr := strconv.Itoa(chanIdx)
+		fullevent["_conf"] = channelConfStr + chanStr // HACK side effect shouldn't really be doing this here but it's faster and easier than trying to get the state to another token
+		return chanStr, -1, nil
 	}
 	return "", -1, fmt.Errorf("GenReplacement called with invalid type for token '%s' with type '%s'", t.Name, t.Type)
 }

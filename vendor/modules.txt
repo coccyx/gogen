@@ -1,0 +1,78 @@
+# github.com/Sirupsen/logrus v0.0.0-20160829202321-3ec0642a7fb6
+github.com/Sirupsen/logrus
+# github.com/cactus/gostrftime v0.0.0-20160820080632-908b7e9ab9b8
+github.com/cactus/gostrftime
+# github.com/coccyx/go-s2s v0.0.0-20190413180338-bdc39b6946f5
+github.com/coccyx/go-s2s/s2s
+# github.com/coccyx/timeparser v0.0.0-20160911001308-9d8b37af28f5
+github.com/coccyx/timeparser
+# github.com/davecgh/go-spew v1.1.0
+github.com/davecgh/go-spew/spew
+# github.com/golang/protobuf v1.2.0
+github.com/golang/protobuf/proto
+# github.com/google/go-github v0.0.0-20160930184301-3e246d29992b
+github.com/google/go-github/github
+# github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5
+github.com/google/go-querystring/query
+# github.com/hhkbp2/go-strftime v0.0.0-20150709091403-d82166ec6782
+github.com/hhkbp2/go-strftime
+# github.com/jehiah/go-strftime v0.0.0-20171201141054-1d33003b3869
+github.com/jehiah/go-strftime
+# github.com/joyt/godate v0.0.0-20150226210126-7151572574a7
+github.com/joyt/godate
+# github.com/kr/pretty v0.0.0-20160823170715-cfb55aafdaf3
+github.com/kr/pretty
+# github.com/kr/text v0.0.0-20160504234017-7cafcd837844
+github.com/kr/text
+# github.com/layeh/gopher-luar v0.0.0-20160805223923-921d03e21a78
+github.com/layeh/gopher-luar
+# github.com/mattn/go-runewidth v0.0.1
+github.com/mattn/go-runewidth
+# github.com/mgutz/ansi v0.0.0-20150914162238-c286dcecd19f
+github.com/mgutz/ansi
+# github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
+github.com/mohae/deepcopy
+# github.com/olekukonko/tablewriter v0.0.0-20160923125401-bdcc175572fd
+github.com/olekukonko/tablewriter
+# github.com/pbnjay/strptime v0.0.0-20140226051138-5c05b0d668c9
+github.com/pbnjay/strptime
+# github.com/pkg/profile v0.0.0-20160923224949-030571e6da0f
+github.com/pkg/profile
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
+# github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
+github.com/satori/go.uuid
+# github.com/segmentio/kafka-go v0.0.0-20190407014825-afec9cd1014e
+github.com/segmentio/kafka-go
+github.com/segmentio/kafka-go/sasl
+# github.com/skratchdot/open-golang v0.0.0-20160302144031-75fb7ed4208c
+github.com/skratchdot/open-golang/open
+# github.com/stretchr/testify v1.3.0
+github.com/stretchr/testify/assert
+# github.com/x-cray/logrus-prefixed-formatter v0.2.0
+github.com/x-cray/logrus-prefixed-formatter
+# github.com/yuin/gopher-lua v0.0.0-20160919070314-dd0fd531098d
+github.com/yuin/gopher-lua
+github.com/yuin/gopher-lua/ast
+github.com/yuin/gopher-lua/parse
+github.com/yuin/gopher-lua/pm
+# golang.org/x/net v0.0.0-20190311183353-d8887717615a
+golang.org/x/net/context
+# golang.org/x/oauth2 v0.0.0-20160902055913-3c3a985cb79f
+golang.org/x/oauth2
+golang.org/x/oauth2/github
+golang.org/x/oauth2/internal
+# golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
+golang.org/x/sys/unix
+# google.golang.org/appengine v1.5.0
+google.golang.org/appengine/urlfetch
+google.golang.org/appengine/internal
+google.golang.org/appengine/internal/urlfetch
+google.golang.org/appengine/internal/base
+google.golang.org/appengine/internal/datastore
+google.golang.org/appengine/internal/log
+google.golang.org/appengine/internal/remote_api
+# gopkg.in/urfave/cli.v1 v1.18.1
+gopkg.in/urfave/cli.v1
+# gopkg.in/yaml.v2 v2.0.0-20160928153709-a5b47d31c556
+gopkg.in/yaml.v2

@@ -62,6 +62,8 @@ Output options:
 | outputTemplate   | Set the output template to format output, builtins include csv, json, splunkhec, modinput      | string      |
 | endpoints        | For http, splunktcp or potentially others, lists endpoints to send data to.                    | string list |
 | headers          | For http, sets headers                                                                         | string obj  |
+| protocol         | For network, set to `tcp` or `udp`                                                             | string      |
+| timeout          | For network based outputs, a time in seconds, default `10s`                                    | string      |
 
 ### Sample
 
