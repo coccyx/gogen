@@ -69,8 +69,10 @@ func (k *kinesisout) flush() error {
 	results, e := k.client.PutRecords(&kinesisRequest)
 
 	if e == nil {
-		print(*results.FailedRecordCount)
-		print("\n")
+		if *results.FailedRecordCount > 0 {
+			print(*results.FailedRecordCount, " records failed.")
+			// TODO: find and retry failed records
+		}
 	}
 
 	return e
