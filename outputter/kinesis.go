@@ -28,9 +28,15 @@ func (k *kinesisout) Send(item *config.OutQueueItem) error {
 
 	for _, e := range item.Events {
 		partkey := e["host"]
+
+		evt := e["_raw"]
+
+		if evt[len(evt) - 1] != '\n' {
+			evt = evt + "\n"
+		}
 		rec := kinesis.PutRecordsRequestEntry{
 			PartitionKey: &partkey,
-			Data: []byte(e["_raw"]),
+			Data: []byte(evt),
 		}
 		k.buf = append(k.buf, &rec)
 	}
