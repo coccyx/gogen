@@ -3,8 +3,8 @@ package logging
 import (
 	"os"
 
-	logrus "github.com/Sirupsen/logrus"
-	prefixed "github.com/x-cray/logrus-prefixed-formatter"
+	logrus "github.com/sirupsen/logrus"
+	// prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
 	"path"
 	"runtime"
@@ -37,7 +37,7 @@ func (hook ContextHook) Fire(entry *logrus.Entry) error {
 	for i := 0; i < cnt; i++ {
 		fu := runtime.FuncForPC(pc[i] - 2)
 		name := fu.Name()
-		if !strings.Contains(name, "github.com/Sirupsen/logrus") &&
+		if !strings.Contains(name, "github.com/sirupsen/logrus") &&
 			!strings.Contains(name, "github.com/coccyx/gogen/logger") {
 			file, line := fu.FileLine(pc[i] - 2)
 			entry.Data["file"] = path.Base(file)
@@ -50,7 +50,7 @@ func (hook ContextHook) Fire(entry *logrus.Entry) error {
 }
 
 func init() {
-	logrus.SetFormatter(&prefixed.TextFormatter{TimestampFormat: "Jan 02 15:04:05.000"})
+	// logrus.SetFormatter(&prefixed.TextFormatter{TimestampFormat: "Jan 02 15:04:05.000"})
 	logrus.AddHook(ContextHook{})
 	logrus.SetLevel(DefaultLogLevel)
 }
