@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -393,14 +394,7 @@ func BuildConfig(cc ConfigConfig) *Config {
 		c.validate(c.Samples[i])
 	}
 
-	// Clean up disabled and informational samples
-	samples := make([]*Sample, 0, len(c.Samples))
-	for i := 0; i < len(c.Samples); i++ {
-		if c.Samples[i].realSample && !c.Samples[i].Disabled {
-			samples = append(samples, c.Samples[i])
-		}
-	}
-	c.Samples = samples
+	c.Clean()
 
 	// Add support for the mix statements
 	if !cc.Export {
@@ -626,10 +620,10 @@ func (c *Config) validate(s *Sample) {
 			if s.Tokens[i].Format == "template" && s.Tokens[i].Token == "" {
 				s.Tokens[i].Token = "$" + s.Tokens[i].Name + "$"
 			}
+			s.Tokens[i].Parent = s
+			s.Tokens[i].luaState = new(lua.LTable)
 			// log.Debugf("Resolving token '%s' for sample '%s'", s.Tokens[i].Name, s.Name)
 			for j := 0; j < len(c.Samples); j++ {
-				s.Tokens[i].Parent = s
-				s.Tokens[i].luaState = new(lua.LTable)
 				if s.Tokens[i].SampleString != "" && s.Tokens[i].SampleString == c.Samples[j].Name {
 					log.Debugf("Resolving sample '%s' for token '%s'", c.Samples[j].Name, s.Tokens[i].Name)
 					s.Tokens[i].Sample = c.Samples[j]
@@ -1262,4 +1256,17 @@ func convertUTC(t time.Time) time.Time {
 		}
 	}
 	return t
+}
+
+// Clean frees memory from disabled samples
+func (c *Config) Clean() {
+	// Clean up disabled and informational samples
+	samples := make([]*Sample, 0)
+	for i := 0; i < len(c.Samples); i++ {
+		if c.Samples[i].realSample && !c.Samples[i].Disabled {
+			samples = append(samples, c.Samples[i])
+		}
+	}
+	c.Samples = samples
+	debug.FreeOSMemory()
 }

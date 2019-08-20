@@ -296,6 +296,7 @@ func main() {
 						log.Errorf("No sample matched for '%s'", samplesStr)
 						os.Exit(1)
 					}
+					c.Clean()
 				}
 				run.Run(c)
 				return nil
