@@ -55,6 +55,7 @@ type Global struct {
 	Output               Output   `json:"output,omitempty" yaml:"output,omitempty"`
 	SamplesDir           []string `json:"samplesDir,omitempty" yaml:"samplesDir,omitempty"`
 	AddTime              bool     `json:"addTime,omitempty" yaml:"addTime,omitempty"`
+	CacheIntervals       int      `json:"cacheIntervals,omitempty" yaml:"cacheIntervals,omitempty"`
 }
 
 // Output represents configuration for outputting data

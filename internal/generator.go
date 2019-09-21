@@ -28,6 +28,8 @@ type GenQueueItem struct {
 	Now      time.Time
 	OQ       chan *OutQueueItem
 	Rand     *rand.Rand
+	UseCache bool
+	SetCache bool
 }
 
 // Generator will generate count events from earliest to latest time and put them

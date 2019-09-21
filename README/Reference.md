@@ -46,6 +46,7 @@ Global options:
 | rotInterval      | Interval in seconds to output internal statistics to stderr                                    | int         |
 | output           | Set the output plugin to use                                                                   | string      |
 | samplesDir       | Sets the directory to look for Sample YAML, CSV or .Samples files                              | string list |
+| cacheIntervals   | Sets the number of intervals to reuse generated events                                         | int         |
 
 
 ### Output

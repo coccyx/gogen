@@ -24,7 +24,7 @@ func TestTimer(t *testing.T) {
 	oq := make(chan *config.OutQueueItem)
 
 	timer := &Timer{S: s, GQ: gq, OQ: oq}
-	go timer.NewTimer()
+	go timer.NewTimer(0)
 
 	item := <-gq
 
@@ -35,7 +35,7 @@ func TestTimer(t *testing.T) {
 	// Test that we're about the same interval
 	n := time.Now()
 	timer = &Timer{S: s, GQ: gq, OQ: oq}
-	go timer.NewTimer()
+	go timer.NewTimer(0)
 	item = <-gq
 	cur := time.Now()
 
@@ -57,7 +57,7 @@ func TestBackfill(t *testing.T) {
 	gqs := make([]*config.GenQueueItem, 0, 10)
 
 	timer := &Timer{S: s, GQ: gq, OQ: oq, Done: done}
-	go timer.NewTimer()
+	go timer.NewTimer(0)
 	<-done
 Loop:
 	for {
@@ -85,7 +85,7 @@ func TestBackfillRealtime(t *testing.T) {
 	gqs := make([]*config.GenQueueItem, 0, 10)
 
 	timer := &Timer{S: s, GQ: gq, OQ: oq, Done: done}
-	go timer.NewTimer()
+	go timer.NewTimer(0)
 
 	time.Sleep(2 * time.Second)
 Loop:
@@ -115,7 +115,7 @@ func TestBackfillFutureEnd(t *testing.T) {
 	gqs := make([]*config.GenQueueItem, 0, 10)
 
 	timer := &Timer{S: s, GQ: gq, OQ: oq, Done: done}
-	go timer.NewTimer()
+	go timer.NewTimer(0)
 	<-done
 Loop:
 	for {

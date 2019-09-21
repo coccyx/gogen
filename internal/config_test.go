@@ -49,6 +49,7 @@ func TestGlobal(t *testing.T) {
 		ROTInterval:          1,
 		Output:               output,
 		SamplesDir:           []string(nil),
+		CacheIntervals:       0,
 	}
 	assert.Equal(t, global, c.Global)
 }

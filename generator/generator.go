@@ -2,16 +2,24 @@ package generator
 
 import (
 	"math/rand"
+	"sync"
 	"time"
 
 	config "github.com/coccyx/gogen/internal"
 	log "github.com/coccyx/gogen/logger"
 )
 
+var (
+	cache      map[string][]map[string]string
+	cacheMutex *sync.RWMutex
+)
+
 func Start(gq chan *config.GenQueueItem, gqs chan int) {
 	source := rand.NewSource(time.Now().UnixNano())
 	generator := rand.New(source)
 	gens := make(map[string]config.Generator)
+	cache = make(map[string][]map[string]string)
+	cacheMutex = &sync.RWMutex{}
 	// defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	// defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
 	for {
@@ -33,11 +41,32 @@ func Start(gq chan *config.GenQueueItem, gqs chan int) {
 			}
 			PrimeRater(item.S)
 		}
-		// log.Debugf("Generating item %#v", item)
-		err := gens[item.S.Name].Gen(item)
-		if err != nil {
-			log.Errorf("Error received from generator: %s", err)
+		useCache := false
+		var cachedEvents []map[string]string
+		if item.UseCache {
+			cacheMutex.RLock()
+			cachedEvents, useCache = cache[item.S.Name]
+			cacheMutex.RUnlock()
+		}
+		if useCache {
+			sendItem(item, cachedEvents)
+		} else {
+			// log.Debugf("Generating item %#v", item)
+			err := gens[item.S.Name].Gen(item)
+			if err != nil {
+				log.Errorf("Error received from generator: %s", err)
+			}
 		}
 		// log.Debugf("Finished generating item %#v", item)
 	}
+}
+
+func sendItem(item *config.GenQueueItem, events []map[string]string) {
+	outitem := &config.OutQueueItem{S: item.S, Events: events}
+	if item.SetCache {
+		cacheMutex.Lock()
+		cache[item.S.Name] = events
+		cacheMutex.Unlock()
+	}
+	item.OQ <- outitem
 }
