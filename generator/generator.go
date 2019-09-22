@@ -2,7 +2,6 @@ package generator
 
 import (
 	"math/rand"
-	"sync"
 	"time"
 
 	config "github.com/coccyx/gogen/internal"
@@ -10,8 +9,7 @@ import (
 )
 
 var (
-	cache      map[string][]map[string]string
-	cacheMutex *sync.RWMutex
+	cache map[string][]map[string]string
 )
 
 func Start(gq chan *config.GenQueueItem, gqs chan int) {
@@ -19,7 +17,6 @@ func Start(gq chan *config.GenQueueItem, gqs chan int) {
 	generator := rand.New(source)
 	gens := make(map[string]config.Generator)
 	cache = make(map[string][]map[string]string)
-	cacheMutex = &sync.RWMutex{}
 	// defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	// defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
 	for {
@@ -44,9 +41,9 @@ func Start(gq chan *config.GenQueueItem, gqs chan int) {
 		useCache := false
 		var cachedEvents []map[string]string
 		if item.Cache.UseCache {
-			cacheMutex.RLock()
+			item.Cache.RLock()
 			cachedEvents, useCache = cache[item.S.Name]
-			cacheMutex.RUnlock()
+			item.Cache.RUnlock()
 		}
 		if useCache {
 			sendItem(item, cachedEvents)

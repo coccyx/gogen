@@ -24,7 +24,8 @@ var (
 	gout          [config.MaxOutputThreads]config.Outputter
 	lasterr       [config.MaxOutputThreads]lastError
 	rotInterval   int
-	cacheBuf      *bytes.Buffer
+	cacheBufs     map[string]*bytes.Buffer
+	cacheMutex    sync.RWMutex
 )
 
 type lastError struct {
@@ -36,7 +37,7 @@ type lastError struct {
 func init() {
 	EventsWritten = make(map[string]int64)
 	BytesWritten = make(map[string]int64)
-	cacheBuf = &bytes.Buffer{}
+	cacheBufs = make(map[string]*bytes.Buffer)
 }
 
 // ROT starts the Read Out Thread which will log statistics about what's being output
@@ -117,14 +118,24 @@ func Account(eventsWritten int64, bytesWritten int64, sampleName string) {
 func write(item *config.OutQueueItem) {
 	var bytesCounter int64
 	var w io.Writer
+	cacheBuf, cacheBufOk := cacheBufs[item.S.Name]
+	useCache := item.Cache.UseCache && cacheBufOk // if we aren't in the cache yet, just output cached generated events
+	if item.Cache.UseCache && !useCache {
+		log.Infof("cache miss")
+	}
 	if item.Cache.SetCache {
+		if !cacheBufOk {
+			cacheBuf = &bytes.Buffer{}
+			log.Infof("Setting cache")
+			cacheBufs[item.S.Name] = cacheBuf
+		}
 		cacheBuf.Reset()
 		w = cacheBuf
-	} else if !item.Cache.UseCache {
+	} else if !useCache {
 		w = item.IO.W
 	}
 	defer item.IO.W.Close()
-	if !item.Cache.UseCache {
+	if !useCache {
 		item.Cache.RLock()
 		switch item.S.Output.OutputTemplate {
 		case "raw", "json", "splunktcp", "splunkhec", "rfc3164", "rfc5424", "elasticsearch":
@@ -217,8 +228,8 @@ func write(item *config.OutQueueItem) {
 		}
 		item.Cache.RUnlock()
 	}
-	if item.Cache.UseCache || item.Cache.SetCache {
-		tempBytes, err := item.IO.W.Write(cacheBuf.Bytes())
+	if useCache || item.Cache.SetCache {
+		tempBytes, err := item.IO.W.Write(cacheBufs[item.S.Name].Bytes())
 		if err != nil {
 			log.Errorf("Error reading from cache buffer: %s", err)
 		}
