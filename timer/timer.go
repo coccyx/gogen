@@ -85,10 +85,10 @@ func (t *Timer) genWork() {
 	now := s.Now()
 	var item *config.GenQueueItem
 	useCache := t.cacheCounter > 0
-	setCache := !useCache && (t.cacheIntervals-1) > 0
+	setCache := !useCache && t.cacheIntervals > 0
 	t.cacheCounter--
 	if t.cacheCounter < 0 {
-		t.cacheCounter = (t.cacheIntervals - 1)
+		t.cacheCounter = t.cacheIntervals
 	}
 	ci := &config.CacheItem{
 		UseCache: useCache,

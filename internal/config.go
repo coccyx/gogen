@@ -248,6 +248,10 @@ func BuildConfig(cc ConfigConfig) *Config {
 				"Content-Type": "application/json",
 			}
 		}
+		// CacheIntervals cannot be negative, just override to zero if someone's being silly
+		if c.Global.CacheIntervals < 0 {
+			c.Global.CacheIntervals = 0
+		}
 
 		c.Global.Output.channelIdx = 0
 		c.Global.Output.channelMap = make(map[string]int)

@@ -1,0 +1,7 @@
+name: cachetimer
+begin: -1m
+end: now
+interval: 2
+
+lines:
+  - _raw: $ts$
