@@ -11,17 +11,20 @@ import (
 // Timer will put work into the generator queue on an interval specified by the Sample.
 // One instance is created per sample.
 type Timer struct {
-	S      *config.Sample
-	cur    int
-	GQ     chan *config.GenQueueItem
-	OQ     chan *config.OutQueueItem
-	Done   chan int
-	closed bool
+	S              *config.Sample
+	cur            int
+	GQ             chan *config.GenQueueItem
+	OQ             chan *config.OutQueueItem
+	Done           chan int
+	closed         bool
+	cacheCounter   int // Number of intervals left to use cache
+	cacheIntervals int // Number of intervals to cache for
 }
 
 // NewTimer creates a new Timer for a sample which will put work into the generator queue on each interval
-func (t *Timer) NewTimer() {
+func (t *Timer) NewTimer(cacheIntervals int) {
 	s := t.S
+	t.cacheIntervals = cacheIntervals
 	// If we're not realtime, then we should be backfilling
 	if !s.Realtime {
 		// Set the end time based on configuration, either now or a specified time in the config
@@ -81,16 +84,26 @@ func (t *Timer) genWork() {
 	s := t.S
 	now := s.Now()
 	var item *config.GenQueueItem
+	useCache := t.cacheCounter > 0
+	setCache := !useCache && t.cacheIntervals > 0
+	t.cacheCounter--
+	if t.cacheCounter < 0 {
+		t.cacheCounter = t.cacheIntervals
+	}
+	ci := &config.CacheItem{
+		UseCache: useCache,
+		SetCache: setCache,
+	}
 	if s.Generator == "replay" {
 		earliest := now
 		latest := now
 		count := 1
-		item = &config.GenQueueItem{S: s, Count: count, Event: t.cur, Earliest: earliest, Latest: latest, Now: now, OQ: t.OQ}
+		item = &config.GenQueueItem{S: s, Count: count, Event: t.cur, Earliest: earliest, Latest: latest, Now: now, OQ: t.OQ, Cache: ci}
 	} else {
 		earliest := now.Add(s.EarliestParsed)
 		latest := now.Add(s.LatestParsed)
 		count := rater.EventRate(s, now, s.Count)
-		item = &config.GenQueueItem{S: s, Count: count, Event: -1, Earliest: earliest, Latest: latest, Now: now, OQ: t.OQ}
+		item = &config.GenQueueItem{S: s, Count: count, Event: -1, Earliest: earliest, Latest: latest, Now: now, OQ: t.OQ, Cache: ci}
 	}
 	// log.Debugf("Placing item in queue for sample '%s': %#v", t.S.Name, item)
 Loop1:

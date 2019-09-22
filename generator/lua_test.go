@@ -320,7 +320,7 @@ func runLuaGen(t *testing.T, s *config.Sample, gen *luagen) (chan *config.OutQue
 		return n
 	}
 
-	gqi := &config.GenQueueItem{Count: 1, Earliest: now(), Latest: now(), Now: now(), S: s, OQ: oq, Rand: randgen}
+	gqi := &config.GenQueueItem{Count: 1, Earliest: now(), Latest: now(), Now: now(), S: s, OQ: oq, Rand: randgen, Cache: &config.CacheItem{UseCache: false, SetCache: false}}
 	var err error
 	go func() {
 		err = gen.Gen(gqi)

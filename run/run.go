@@ -40,7 +40,7 @@ func Run(c *config.Config) {
 		s := c.Samples[i]
 		if !s.Disabled {
 			t := timer.Timer{S: s, GQ: gq, OQ: oq, Done: timerdone}
-			go t.NewTimer()
+			go t.NewTimer(c.Global.CacheIntervals)
 			timers = append(timers, &t)
 		}
 	}

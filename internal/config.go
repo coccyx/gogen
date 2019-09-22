@@ -55,6 +55,7 @@ type Global struct {
 	Output               Output   `json:"output,omitempty" yaml:"output,omitempty"`
 	SamplesDir           []string `json:"samplesDir,omitempty" yaml:"samplesDir,omitempty"`
 	AddTime              bool     `json:"addTime,omitempty" yaml:"addTime,omitempty"`
+	CacheIntervals       int      `json:"cacheIntervals,omitempty" yaml:"cacheIntervals,omitempty"`
 }
 
 // Output represents configuration for outputting data
@@ -246,6 +247,10 @@ func BuildConfig(cc ConfigConfig) *Config {
 			c.Global.Output.Headers = map[string]string{
 				"Content-Type": "application/json",
 			}
+		}
+		// CacheIntervals cannot be negative, just override to zero if someone's being silly
+		if c.Global.CacheIntervals < 0 {
+			c.Global.CacheIntervals = 0
 		}
 
 		c.Global.Output.channelIdx = 0

@@ -12,13 +12,14 @@ type OutQueueItem struct {
 	Rand   *rand.Rand
 	IO     *OutputIO
 	OS     chan *OutputStats
+	Cache  *CacheItem
 }
 
 // OutputStats are sent by each outputter to the ReadOutThread for accounting
 type OutputStats struct {
 	EventsWritten int64
 	BytesWritten  int64
-	SampleName string
+	SampleName    string
 }
 
 // OutputIO contains our Readers and Writers

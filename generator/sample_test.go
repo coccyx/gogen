@@ -34,14 +34,14 @@ func TestSampleGen(t *testing.T) {
 	if s == nil {
 		t.Fatalf("Sample token-static not found in file: %s", home)
 	}
-	gqi := &config.GenQueueItem{Count: 1, Earliest: now(), Latest: now(), Now: now(), S: s, OQ: oq, Rand: randgen}
+	gqi := &config.GenQueueItem{Count: 1, Earliest: now(), Latest: now(), Now: now(), S: s, OQ: oq, Rand: randgen, Cache: &config.CacheItem{UseCache: false, SetCache: false}}
 	gen := new(sample)
 	go gen.Gen(gqi)
 	oqi := <-oq
 	assert.Equal(t, "foo", oqi.Events[0]["_raw"])
 
 	s = tests.FindSampleInFile(home, "token-regex")
-	gqi = &config.GenQueueItem{Count: 1, Earliest: now(), Latest: now(), Now: now(), S: s, OQ: oq, Rand: randgen}
+	gqi = &config.GenQueueItem{Count: 1, Earliest: now(), Latest: now(), Now: now(), S: s, OQ: oq, Rand: randgen, Cache: &config.CacheItem{UseCache: false, SetCache: false}}
 	gen = new(sample)
 	go gen.Gen(gqi)
 	oqi = <-oq

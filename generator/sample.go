@@ -81,8 +81,7 @@ func genSinglePass(item *config.GenQueueItem) error {
 				}
 			}
 		}
-		outitem := &config.OutQueueItem{S: item.S, Events: events}
-		item.OQ <- outitem
+		sendItem(item, events)
 	}
 	return nil
 }
@@ -179,9 +178,7 @@ func genMultiPass(item *config.GenQueueItem) error {
 		for i := 0; i < item.Count; i++ {
 			replaceTokens(item, &events[i], nil, item.S.Tokens)
 		}
-
-		outitem := &config.OutQueueItem{S: item.S, Events: events}
-		item.OQ <- outitem
+		sendItem(item, events)
 	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package outputter
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,6 +24,8 @@ var (
 	gout          [config.MaxOutputThreads]config.Outputter
 	lasterr       [config.MaxOutputThreads]lastError
 	rotInterval   int
+	cacheBufs     map[string]*bytes.Buffer
+	cacheMutex    sync.RWMutex
 )
 
 type lastError struct {
@@ -34,6 +37,7 @@ type lastError struct {
 func init() {
 	EventsWritten = make(map[string]int64)
 	BytesWritten = make(map[string]int64)
+	cacheBufs = make(map[string]*bytes.Buffer)
 }
 
 // ROT starts the Read Out Thread which will log statistics about what's being output
@@ -112,98 +116,127 @@ func Account(eventsWritten int64, bytesWritten int64, sampleName string) {
 }
 
 func write(item *config.OutQueueItem) {
-	var bytes int64
-	defer item.IO.W.Close()
-	switch item.S.Output.OutputTemplate {
-	case "raw", "json", "splunktcp", "splunkhec", "rfc3164", "rfc5424", "elasticsearch":
-		for _, line := range item.Events {
-			var tempbytes int
-			var err error
-			if item.S.Output.Outputter != "devnull" {
-				switch item.S.Output.OutputTemplate {
-				case "raw":
-					tempbytes, err = io.WriteString(item.IO.W, line["_raw"])
-				case "json":
-					jb, err := json.Marshal(line)
-					if err != nil {
-						log.Errorf("Error marshaling json: %s", err)
-					}
-					tempbytes, err = item.IO.W.Write(jb)
-				case "splunktcp":
-					tempbytes, err = item.IO.W.Write(s2s.EncodeEvent(line))
-				case "splunkhec":
-					if _, ok := line["_raw"]; ok {
-						line["event"] = line["_raw"]
-						delete(line, "_raw")
-					}
-					if _, ok := line["_time"]; ok {
-						line["time"] = line["_time"]
-						delete(line, "_time")
-					}
-					// TODO Refactor to avoid copy pasta, being lazy for now
-					jb, err := json.Marshal(line)
-					if err != nil {
-						log.Errorf("Error marshaling json: %s", err)
-					}
-					tempbytes, err = item.IO.W.Write(jb)
-				case "rfc3164":
-					tempbytes, err = io.WriteString(item.IO.W, fmt.Sprintf("<%s>%s %s %s[%s]: %s", line["priority"], line["_time"], line["host"], line["tag"], line["pid"], line["_raw"]))
-				case "rfc5424":
-					kv := "-"
-					for k, v := range line {
-						if k != "_raw" && k != "_time" && k != "priority" && k != "host" && k != "appName" && k != "pid" && k != "tag" {
-							kv = kv + fmt.Sprintf("%s=\"%s\" ", k, v)
-						}
-					}
-					if len(kv) != 1 {
-						kv = fmt.Sprintf("[meta %s]", kv[1:len(kv)-1])
-					}
-					tempbytes, err = io.WriteString(item.IO.W, fmt.Sprintf("<%s>%d %s %s %s %s - %s %s", line["priority"], 1, line["_time"], line["host"], line["appName"], line["pid"], kv, line["_raw"]))
-				case "elasticsearch":
-					_, err := io.WriteString(item.IO.W, fmt.Sprintf("{ \"index\": { \"_index\": \"%s\", \"_type\": \"doc\" } }\n", line["index"]))
-					if err != nil {
-						break
-					}
-					if _, ok := line["_raw"]; ok {
-						line["message"] = line["_raw"]
-						delete(line, "_raw")
-					}
-					jb, err := json.Marshal(line)
-					if err != nil {
-						break
-					}
-					tempbytes, err = item.IO.W.Write(jb)
-				}
-				if err != nil {
-					log.Errorf("Error writing to IO Buffer: %s", err)
-				}
-			} else {
-				tempbytes = len(line["_raw"])
-			}
-			bytes += int64(tempbytes) + 1
-			if item.S.Output.Outputter != "devnull" && item.S.Output.Outputter != "splunktcp" && item.S.Output.Outputter != "kafka" {
-				_, err = io.WriteString(item.IO.W, "\n")
-				if err != nil {
-					log.Errorf("Error writing to IO Buffer: %s", err)
-				}
-			}
-		}
-	default:
-		if !template.Exists(item.S.Output.OutputTemplate + "_row") {
-			log.Errorf("Template %s does not exist, skipping output", item.S.Output.OutputTemplate)
-			return
-		}
-		// We'll crash on empty events, but don't do that!
-		bytes += int64(getLine("header", item.S, item.Events[0], item.IO.W))
-		// log.Debugf("Out Queue Item %#v", item)
-		var last int
-		for i, line := range item.Events {
-			bytes += int64(getLine("row", item.S, line, item.IO.W))
-			last = i
-		}
-		bytes += int64(getLine("footer", item.S, item.Events[last], item.IO.W))
+	var bytesCounter int64
+	var w io.Writer
+	cacheBuf, cacheBufOk := cacheBufs[item.S.Name]
+	useCache := item.Cache.UseCache && cacheBufOk // if we aren't in the cache yet, just output cached generated events
+	if item.Cache.UseCache && !useCache {
+		log.Infof("cache miss")
 	}
-	Account(int64(len(item.Events)), bytes, item.S.Name)
+	if item.Cache.SetCache {
+		if !cacheBufOk {
+			cacheBuf = &bytes.Buffer{}
+			log.Infof("Setting cache")
+			cacheBufs[item.S.Name] = cacheBuf
+		}
+		cacheBuf.Reset()
+		w = cacheBuf
+	} else if !useCache {
+		w = item.IO.W
+	}
+	defer item.IO.W.Close()
+	if !useCache {
+		item.Cache.RLock()
+		switch item.S.Output.OutputTemplate {
+		case "raw", "json", "splunktcp", "splunkhec", "rfc3164", "rfc5424", "elasticsearch":
+			for _, line := range item.Events {
+				var tempbytes int
+				var err error
+				if item.S.Output.Outputter != "devnull" {
+					switch item.S.Output.OutputTemplate {
+					case "raw":
+						tempbytes, err = io.WriteString(w, line["_raw"])
+					case "json":
+						jb, err := json.Marshal(line)
+						if err != nil {
+							log.Errorf("Error marshaling json: %s", err)
+						}
+						tempbytes, err = w.Write(jb)
+					case "splunktcp":
+						tempbytes, err = w.Write(s2s.EncodeEvent(line))
+					case "splunkhec":
+						if _, ok := line["_raw"]; ok {
+							line["event"] = line["_raw"]
+							delete(line, "_raw")
+						}
+						if _, ok := line["_time"]; ok {
+							line["time"] = line["_time"]
+							delete(line, "_time")
+						}
+						// TODO Refactor to avoid copy pasta, being lazy for now
+						jb, err := json.Marshal(line)
+						if err != nil {
+							log.Errorf("Error marshaling json: %s", err)
+						}
+						tempbytes, err = w.Write(jb)
+					case "rfc3164":
+						tempbytes, err = io.WriteString(w, fmt.Sprintf("<%s>%s %s %s[%s]: %s", line["priority"], line["_time"], line["host"], line["tag"], line["pid"], line["_raw"]))
+					case "rfc5424":
+						kv := "-"
+						for k, v := range line {
+							if k != "_raw" && k != "_time" && k != "priority" && k != "host" && k != "appName" && k != "pid" && k != "tag" {
+								kv = kv + fmt.Sprintf("%s=\"%s\" ", k, v)
+							}
+						}
+						if len(kv) != 1 {
+							kv = fmt.Sprintf("[meta %s]", kv[1:len(kv)-1])
+						}
+						tempbytes, err = io.WriteString(w, fmt.Sprintf("<%s>%d %s %s %s %s - %s %s", line["priority"], 1, line["_time"], line["host"], line["appName"], line["pid"], kv, line["_raw"]))
+					case "elasticsearch":
+						_, err := io.WriteString(w, fmt.Sprintf("{ \"index\": { \"_index\": \"%s\", \"_type\": \"doc\" } }\n", line["index"]))
+						if err != nil {
+							break
+						}
+						if _, ok := line["_raw"]; ok {
+							line["message"] = line["_raw"]
+							delete(line, "_raw")
+						}
+						jb, err := json.Marshal(line)
+						if err != nil {
+							break
+						}
+						tempbytes, err = w.Write(jb)
+					}
+					if err != nil {
+						log.Errorf("Error writing to IO Buffer: %s", err)
+					}
+				} else {
+					tempbytes = len(line["_raw"])
+				}
+				bytesCounter += int64(tempbytes) + 1
+				if item.S.Output.Outputter != "devnull" && item.S.Output.Outputter != "splunktcp" && item.S.Output.Outputter != "kafka" {
+					_, err = io.WriteString(w, "\n")
+					if err != nil {
+						log.Errorf("Error writing to IO Buffer: %s", err)
+					}
+				}
+			}
+		default:
+			if !template.Exists(item.S.Output.OutputTemplate + "_row") {
+				log.Errorf("Template %s does not exist, skipping output", item.S.Output.OutputTemplate)
+				return
+			}
+			// We'll crash on empty events, but don't do that!
+			bytesCounter += int64(getLine("header", item.S, item.Events[0], w))
+			// log.Debugf("Out Queue Item %#v", item)
+			var last int
+			for i, line := range item.Events {
+				bytesCounter += int64(getLine("row", item.S, line, w))
+				last = i
+			}
+			bytesCounter += int64(getLine("footer", item.S, item.Events[last], w))
+		}
+		item.Cache.RUnlock()
+	}
+	if useCache || item.Cache.SetCache {
+		tempBytes, err := item.IO.W.Write(cacheBufs[item.S.Name].Bytes())
+		if err != nil {
+			log.Errorf("Error reading from cache buffer: %s", err)
+		}
+		bytesCounter = int64(tempBytes)
+		// log.Infof("Used cache, sent %d events and %d bytes", len(item.Events), bytesCounter)
+	}
+	Account(int64(len(item.Events)), bytesCounter, item.S.Name)
 }
 
 // Start starts an output thread and runs until notified to shut down
