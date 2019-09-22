@@ -67,8 +67,7 @@ func (lg *luagen) sendEvent(L *lua.LState) int {
 func (lg *luagen) sendevents(events []map[string]string) {
 	item := lg.currentItem
 	// log.Debugf("events: %# v", pretty.Formatter(events))
-	outitem := &config.OutQueueItem{S: item.S, Events: events}
-	item.OQ <- outitem
+	sendItem(item, events)
 }
 
 func (lg *luagen) round(L *lua.LState) int {

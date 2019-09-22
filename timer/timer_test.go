@@ -24,7 +24,7 @@ func TestTimer(t *testing.T) {
 	oq := make(chan *config.OutQueueItem)
 
 	timer := &Timer{S: s, GQ: gq, OQ: oq}
-	go timer.NewTimer()
+	go timer.NewTimer(0)
 
 	item := <-gq
 
@@ -35,7 +35,7 @@ func TestTimer(t *testing.T) {
 	// Test that we're about the same interval
 	n := time.Now()
 	timer = &Timer{S: s, GQ: gq, OQ: oq}
-	go timer.NewTimer()
+	go timer.NewTimer(0)
 	item = <-gq
 	cur := time.Now()
 
@@ -57,7 +57,7 @@ func TestBackfill(t *testing.T) {
 	gqs := make([]*config.GenQueueItem, 0, 10)
 
 	timer := &Timer{S: s, GQ: gq, OQ: oq, Done: done}
-	go timer.NewTimer()
+	go timer.NewTimer(0)
 	<-done
 Loop:
 	for {
@@ -85,7 +85,7 @@ func TestBackfillRealtime(t *testing.T) {
 	gqs := make([]*config.GenQueueItem, 0, 10)
 
 	timer := &Timer{S: s, GQ: gq, OQ: oq, Done: done}
-	go timer.NewTimer()
+	go timer.NewTimer(0)
 
 	time.Sleep(2 * time.Second)
 Loop:
@@ -115,7 +115,7 @@ func TestBackfillFutureEnd(t *testing.T) {
 	gqs := make([]*config.GenQueueItem, 0, 10)
 
 	timer := &Timer{S: s, GQ: gq, OQ: oq, Done: done}
-	go timer.NewTimer()
+	go timer.NewTimer(0)
 	<-done
 Loop:
 	for {
@@ -127,4 +127,43 @@ Loop:
 		}
 	}
 	assert.Equal(t, 10, len(gqs))
+}
+
+func TestCacheIntervals(t *testing.T) {
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+	home := filepath.Join("..", "tests", "timer")
+	os.Setenv("GOGEN_SAMPLES_DIR", home)
+
+	s := tests.FindSampleInFile(home, "cachetimer")
+
+	gq := make(chan *config.GenQueueItem, 1000)
+	oq := make(chan *config.OutQueueItem)
+	done := make(chan int)
+	gqs := make([]*config.GenQueueItem, 0, 10)
+
+	timer := &Timer{S: s, GQ: gq, OQ: oq, Done: done}
+	go timer.NewTimer(2)
+	<-done
+Loop:
+	for {
+		select {
+		case i := <-gq:
+			gqs = append(gqs, i)
+		default:
+			break Loop
+		}
+	}
+	assert.Equal(t, 30, len(gqs))
+	for idx, gqitem := range gqs {
+		// fmt.Printf("idx: %d, SetCache: %t, UseCache: %t\n", idx, gqitem.Cache.SetCache, gqitem.Cache.UseCache)
+		if idx%3 == 0 {
+			assert.True(t, gqitem.Cache.SetCache)
+			assert.False(t, gqitem.Cache.UseCache)
+		}
+		if idx%3 == 1 || idx%3 == 2 {
+			assert.True(t, gqitem.Cache.UseCache)
+			assert.False(t, gqitem.Cache.SetCache)
+		}
+	}
 }

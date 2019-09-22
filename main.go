@@ -47,6 +47,7 @@ func init() {
 		"config":         "GOGEN_CONFIG",
 		"addTime":        "GOGEN_ADDTIME",
 		"bufferBytes":    "GOGEN_BUFFERBYTES",
+		"cacheIntervals": "GOGEN_CACHEINTERVALS",
 	}
 }
 
@@ -110,6 +111,14 @@ func Setup(clic *cli.Context) {
 	if clic.Bool("addTime") {
 		log.Infof("Adding _time to all Samples")
 		c.Global.AddTime = true
+	}
+	if clic.Int("cacheIntervals") > 0 {
+		log.Infof("Setting cacheIntervals to %d", clic.Int("cacheIntervals"))
+		c.Global.CacheIntervals = clic.Int("cacheIntervals")
+	}
+	if clic.Bool("fullRetard") {
+		log.Infof("(⊙_ ☉) Going Full Retard (⊙_ ☉)")
+		c.Global.CacheIntervals = 2147483647
 	}
 
 	for i := 0; i < len(c.Samples); i++ {
@@ -599,6 +608,16 @@ func main() {
 			Name:   "logJson, lj",
 			Usage:  "Output internal logs as JSON instead of human readable",
 			EnvVar: "GOGEN_LOGJSON",
+		},
+		cli.IntFlag{
+			Name:   "cacheIntervals, ci",
+			Usage:  "Number of intervals to cache generation",
+			EnvVar: "GOGEN_CACHEINTERVALS",
+		},
+		cli.BoolFlag{
+			Name:   "fullRetard, fr",
+			Usage:  "Go Full Retard",
+			Hidden: true,
 		},
 	}
 	app.Run(os.Args)
