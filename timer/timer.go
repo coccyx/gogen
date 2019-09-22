@@ -85,21 +85,25 @@ func (t *Timer) genWork() {
 	now := s.Now()
 	var item *config.GenQueueItem
 	useCache := t.cacheCounter > 0
-	setCache := !useCache && t.cacheIntervals > 0
+	setCache := !useCache && (t.cacheIntervals-1) > 0
 	t.cacheCounter--
 	if t.cacheCounter < 0 {
-		t.cacheCounter = t.cacheIntervals
+		t.cacheCounter = (t.cacheIntervals - 1)
+	}
+	ci := &config.CacheItem{
+		UseCache: useCache,
+		SetCache: setCache,
 	}
 	if s.Generator == "replay" {
 		earliest := now
 		latest := now
 		count := 1
-		item = &config.GenQueueItem{S: s, Count: count, Event: t.cur, Earliest: earliest, Latest: latest, Now: now, OQ: t.OQ, UseCache: useCache, SetCache: setCache}
+		item = &config.GenQueueItem{S: s, Count: count, Event: t.cur, Earliest: earliest, Latest: latest, Now: now, OQ: t.OQ, Cache: ci}
 	} else {
 		earliest := now.Add(s.EarliestParsed)
 		latest := now.Add(s.LatestParsed)
 		count := rater.EventRate(s, now, s.Count)
-		item = &config.GenQueueItem{S: s, Count: count, Event: -1, Earliest: earliest, Latest: latest, Now: now, OQ: t.OQ, UseCache: useCache, SetCache: setCache}
+		item = &config.GenQueueItem{S: s, Count: count, Event: -1, Earliest: earliest, Latest: latest, Now: now, OQ: t.OQ, Cache: ci}
 	}
 	// log.Debugf("Placing item in queue for sample '%s': %#v", t.S.Name, item)
 Loop1:

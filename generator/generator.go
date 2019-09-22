@@ -43,7 +43,7 @@ func Start(gq chan *config.GenQueueItem, gqs chan int) {
 		}
 		useCache := false
 		var cachedEvents []map[string]string
-		if item.UseCache {
+		if item.Cache.UseCache {
 			cacheMutex.RLock()
 			cachedEvents, useCache = cache[item.S.Name]
 			cacheMutex.RUnlock()
@@ -62,11 +62,11 @@ func Start(gq chan *config.GenQueueItem, gqs chan int) {
 }
 
 func sendItem(item *config.GenQueueItem, events []map[string]string) {
-	outitem := &config.OutQueueItem{S: item.S, Events: events}
-	if item.SetCache {
-		cacheMutex.Lock()
+	outitem := &config.OutQueueItem{S: item.S, Events: events, Cache: item.Cache}
+	if item.Cache.SetCache {
+		item.Cache.Lock()
 		cache[item.S.Name] = events
-		cacheMutex.Unlock()
+		item.Cache.Unlock()
 	}
 	item.OQ <- outitem
 }
