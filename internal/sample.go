@@ -55,6 +55,7 @@ type Sample struct {
 	EndParsed       time.Time                    `json:"-" yaml:"-"`
 	Current         time.Time                    `json:"-" yaml:"-"` // If we are backfilling or generating for a specified time window, what time is it?
 	Realtime        bool                         `json:"-" yaml:"-"` // Are we done doing batch backfill or specified time window?
+	Wait            bool                         `json:"-" yaml:"-"`
 	BrokenLines     []map[string][]StringOrToken `json:"-" yaml:"-"`
 	ReplayOffsets   []time.Duration              `json:"-" yaml:"-"`
 	CustomGenerator *GeneratorConfig             `json:"-" yaml:"-"`

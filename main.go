@@ -238,6 +238,10 @@ func main() {
 					Name:  "realtime, r",
 					Usage: "Set to real time, don't stop until killed",
 				},
+				cli.BoolFlag{
+					Name:  "wait, w",
+					Usage: "Wait between intervals when backfilling",
+				},
 			},
 			Action: func(clic *cli.Context) error {
 				if len(c.Samples) == 0 {
@@ -283,6 +287,9 @@ func main() {
 						if len(clic.String("begin")) == 0 {
 							c.Samples[i].Realtime = true
 						}
+					}
+					if clic.Bool("wait") {
+						c.Samples[i].Wait = true
 					}
 				}
 				samplesSlice := clic.StringSlice("sample")

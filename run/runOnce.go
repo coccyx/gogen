@@ -39,7 +39,10 @@ func (r Runner) Once(name string) {
 	go generator.Start(gq, gqs)
 	go outputter.Start(oq, oqs, 1)
 
-	gqi := &config.GenQueueItem{Count: 1, Earliest: time.Now(), Latest: time.Now(), S: s, OQ: oq, Rand: randgen, Event: -1}
+	gqi := &config.GenQueueItem{Count: 1, Earliest: time.Now(), Latest: time.Now(), S: s, OQ: oq, Rand: randgen, Event: -1, Cache: &config.CacheItem{
+		UseCache: false,
+		SetCache: false,
+	}}
 	gq <- gqi
 
 	time.Sleep(time.Second)
