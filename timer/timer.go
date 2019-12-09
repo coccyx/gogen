@@ -131,6 +131,10 @@ func (t *Timer) inc() {
 	} else {
 		s.Current = s.Current.Add(time.Duration(s.Interval) * time.Second)
 	}
+	if s.Wait {
+		timer := time.NewTimer(time.Duration(s.Interval) * time.Second)
+		<-timer.C
+	}
 }
 
 // Close shuts down a timer
