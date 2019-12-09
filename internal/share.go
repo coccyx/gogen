@@ -29,6 +29,10 @@ func Push(name string, run Run) (string, string) {
 	c := NewConfig()
 	ec := BuildConfig(ConfigConfig{
 		FullConfig: c.cc.FullConfig,
+		ConfigDir:  c.cc.ConfigDir,
+		Home:       c.cc.Home,
+		SamplesDir: c.cc.SamplesDir,
+		GlobalFile: c.cc.GlobalFile,
 		Export:     true,
 	})
 	if len(c.Samples) > 0 {
