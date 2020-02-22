@@ -886,18 +886,20 @@ func (c *Config) validate(s *Sample) {
 							s.Disabled = true
 							break outer2
 						}
-						if i == 0 {
-							s.ReplayOffsets[0] = time.Duration(0)
-						} else {
-							s.ReplayOffsets[i] = lastts.Sub(ts) * -1
-							avgOffset = (avgOffset + s.ReplayOffsets[i]) / 2
+						if i > 0 {
+							s.ReplayOffsets[i-1] = lastts.Sub(ts) * -1
+							avgOffset = (avgOffset + s.ReplayOffsets[i-1]) / 2
 						}
 						lastts = ts
 						break inner2
 					}
 				}
-				s.ReplayOffsets[0] = avgOffset
+				s.ReplayOffsets[len(s.ReplayOffsets)-1] = avgOffset
 			}
+			log.WithFields(log.Fields{
+				"sample": s.Name,
+				"ReplayOffsets": s.ReplayOffsets,
+			}).Debugf("ReplayOffsets values")
 		} else if s.Generator != "sample" {
 			for _, g := range c.Generators {
 				// TODO If not single threaded, we won't establish state in the sample object

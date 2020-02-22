@@ -188,7 +188,7 @@ func TestReplay(t *testing.T) {
 	}
 
 	s := FindSampleInFile(home, "replay5")
-	assert.Equal(t, []time.Duration{13187500000, (1 * time.Second), (5 * time.Second), (10 * time.Second), (20 * time.Second)}, s.ReplayOffsets)
+	assert.Equal(t, []time.Duration{(1 * time.Second), (5 * time.Second), (10 * time.Second), (20 * time.Second), 13187500000}, s.ReplayOffsets)
 }
 
 func FindSampleInFile(home string, name string) *Sample {
