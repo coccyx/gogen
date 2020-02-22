@@ -51,8 +51,8 @@ func (t *Timer) NewTimer(cacheIntervals int) {
 	if s.Realtime {
 		for {
 			if s.Generator == "replay" {
-				time.Sleep(s.ReplayOffsets[t.cur])
 				t.genWork()
+				time.Sleep(s.ReplayOffsets[t.cur])
 				t.cur++
 				if t.cur >= len(s.ReplayOffsets) {
 					t.cur = 0
