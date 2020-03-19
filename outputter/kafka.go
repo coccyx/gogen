@@ -44,7 +44,6 @@ func (k *kafkaout) Close() error {
 	k.closed = true
 	if k.conn != nil {
 		k.conn.Close()
-		k.cancel()
 	}
 	return nil
 }
