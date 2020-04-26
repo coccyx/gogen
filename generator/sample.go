@@ -184,7 +184,6 @@ func genMultiPass(item *config.GenQueueItem) error {
 }
 
 func replaceTokens(item *config.GenQueueItem, event *map[string]string, outsidechoices *map[int]int, tokens []config.Token) {
-	s := item.S
 	var choices map[int]int
 	if outsidechoices == nil {
 		choices = make(map[int]int)
@@ -194,25 +193,28 @@ func replaceTokens(item *config.GenQueueItem, event *map[string]string, outsidec
 	e := *event
 	for _, token := range tokens {
 		if !token.Disabled {
-			if fieldval, ok := e[token.Field]; ok {
-				var choice int
-				var err error
-				if _, ok := choices[token.Group]; ok {
-					choice = choices[token.Group]
-				} else {
-					choice = -1
+			var fieldval string
+			var ok bool
+			if fieldval, ok = e[token.Field]; !ok {
+				if token.Format == "template" {
+					fieldval = token.Token
 				}
-				// log.Debugf("Replacing token '%s':'%s' with choice %d in fieldval: %s", token.Name, token.Token, *choice, fieldval)
-				if choice, err = token.Replace(&fieldval, choice, item.Earliest, item.Latest, item.Now, item.Rand, e); err == nil {
-					e[token.Field] = fieldval
-				} else {
-					log.Error(err)
-				}
-				if token.Group > 0 {
-					choices[token.Group] = choice
-				}
+			}
+			var choice int
+			var err error
+			if _, ok := choices[token.Group]; ok {
+				choice = choices[token.Group]
 			} else {
-				log.Errorf("Field %s not found in event for sample %s", token.Field, s.Name)
+				choice = -1
+			}
+			// log.Debugf("Replacing token '%s':'%s' with choice %d in fieldval: %s", token.Name, token.Token, choice, fieldval)
+			if choice, err = token.Replace(&fieldval, choice, item.Earliest, item.Latest, item.Now, item.Rand, e); err == nil {
+				e[token.Field] = fieldval
+			} else {
+				log.Error(err)
+			}
+			if token.Group > 0 {
+				choices[token.Group] = choice
 			}
 		}
 	}
