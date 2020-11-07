@@ -29,7 +29,7 @@ func (k *kafkaout) Send(item *config.OutQueueItem) error {
 		d := &kafka.Dialer{}
 		timeout, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		log.Infof("Connecting to Kafka broker: %s, topic: %s", endpoint, item.S.Output.Topic)
+		log.Debugf("Connecting to Kafka broker: %s, topic: %s", endpoint, item.S.Output.Topic)
 		k.conn, err = d.DialLeader(timeout, "tcp", endpoint, item.S.Output.Topic, 0)
 		if err != nil {
 			return err
