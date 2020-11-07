@@ -15,7 +15,7 @@ before_script:
 script:
 - make GOBIN=$HOME/gopath/bin test
 - make GOBIN=$HOME/gopath/bin build
-- docker build -t coccyx/gogen .
+- docker build -t clintsharp/gogen .
 deploy:
   - provider: s3
     region: us-west-1
