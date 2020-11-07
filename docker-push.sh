@@ -1,3 +1,3 @@
 #!/bin/bash
 echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-docker push coccyx/gogen
+docker push clintsharp/gogen:latest
