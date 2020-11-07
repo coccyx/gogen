@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/Sirupsen/logrus v0.0.0-20160829202321-3ec0642a7fb6 // indirect
+	github.com/ahmetb/govvv v0.3.0 // indirect
 	github.com/cactus/gostrftime v0.0.0-20160820080632-908b7e9ab9b8
 	github.com/coccyx/go-s2s v0.0.0-20190615184235-2f7a532dc47c
 	github.com/coccyx/timeparser v0.0.0-20160911001308-9d8b37af28f5
