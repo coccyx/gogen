@@ -3,6 +3,8 @@ sudo: false
 # os:
 # - linux
 # - osx
+services:
+- docker
 env:
 - GO111MODULE=on
 go:
@@ -13,15 +15,19 @@ before_script:
 script:
 - make GOBIN=$HOME/gopath/bin test
 - make GOBIN=$HOME/gopath/bin build
+- docker build -t coccyx/gogen .
 deploy:
-  provider: s3
-  region: us-west-1
-  skip_cleanup: true
-  local_dir: build
-  access_key_id: AKIAIY55APUOQ5GBDPNA
-  secret_access_key:
-    secure: d39ztGaH4CwKQA2KVoIkeVlBu1SNjN6adL0M3AWfSraZJ3CfiixVZ1JFK046GdjUsvk0u+hjWj5NdywSkWJjCzbNK8hA7KBI5aBkFgKRuY3F6Ww7khBgJ3LZW9bVb05xD9JUvIcN1b/VqYth3uZuA1bde8VOUTzavbKLjDfbO+t8S9OlNZ2av7ZekAgx2pgZ9h1FLtellefmP0ro8QhBFTZJuJU++fc7ITIhRyjQMPmzce68ipd0I1cguOkPHk6uVFkTjSFfslQujNgEdfHnBbMAt+1MDk1WCkMcGyJc06zjnQthZhpgQGIJDma9t3elrKHzQo/zt16B/KJKHCtiY6VPB1D/MgxPCaf+ubW++6iTOmY+1TpOCT4E+AfvREx2SNbHnFf2yYsopW+R5IsES9rBH0vyLidJT4JItb5F+xWqeS1KZHH7SjBH7V86zyJTlCt4mljp/znTzGaJUdOH3ouXkRo32aSkNCCpST2gFSY3lzLlkG76gUsDUZh12MyAnOlNn8o+wXXi/9bcit8eyJQGnpERDQvwnOir49KOpAEYhWvuh8TFclcSNqSQeTHXNXLVlNXSMbH7vgsSlIpYsr5IJ2qdazVFYT6uLM/oJhLelLmTrcJ3iY8mZacSIYVQqQYQHWB0ZuvrceEcyvoY6LAb5asI3z2db4PkWLD/iZg=
-  bucket: gogen-artifacts
-  on:
-    repo: coccyx/gogen
+  - provider: s3
+    region: us-west-1
+    skip_cleanup: true
+    local_dir: build
+    access_key_id: AKIAIY55APUOQ5GBDPNA
+    secret_access_key:
+      secure: d39ztGaH4CwKQA2KVoIkeVlBu1SNjN6adL0M3AWfSraZJ3CfiixVZ1JFK046GdjUsvk0u+hjWj5NdywSkWJjCzbNK8hA7KBI5aBkFgKRuY3F6Ww7khBgJ3LZW9bVb05xD9JUvIcN1b/VqYth3uZuA1bde8VOUTzavbKLjDfbO+t8S9OlNZ2av7ZekAgx2pgZ9h1FLtellefmP0ro8QhBFTZJuJU++fc7ITIhRyjQMPmzce68ipd0I1cguOkPHk6uVFkTjSFfslQujNgEdfHnBbMAt+1MDk1WCkMcGyJc06zjnQthZhpgQGIJDma9t3elrKHzQo/zt16B/KJKHCtiY6VPB1D/MgxPCaf+ubW++6iTOmY+1TpOCT4E+AfvREx2SNbHnFf2yYsopW+R5IsES9rBH0vyLidJT4JItb5F+xWqeS1KZHH7SjBH7V86zyJTlCt4mljp/znTzGaJUdOH3ouXkRo32aSkNCCpST2gFSY3lzLlkG76gUsDUZh12MyAnOlNn8o+wXXi/9bcit8eyJQGnpERDQvwnOir49KOpAEYhWvuh8TFclcSNqSQeTHXNXLVlNXSMbH7vgsSlIpYsr5IJ2qdazVFYT6uLM/oJhLelLmTrcJ3iY8mZacSIYVQqQYQHWB0ZuvrceEcyvoY6LAb5asI3z2db4PkWLD/iZg=
+    bucket: gogen-artifacts
+    on:
+      repo: coccyx/gogen
+  - provider: script
+    script: bash docker-push.sh
+
 
