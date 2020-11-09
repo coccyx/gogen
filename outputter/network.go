@@ -11,7 +11,6 @@ import (
 type network struct {
 	conn        net.Conn
 	initialized bool
-	closed      bool
 }
 
 func (n *network) Send(item *config.OutQueueItem) error {
@@ -29,9 +28,10 @@ func (n *network) Send(item *config.OutQueueItem) error {
 }
 
 func (n *network) Close() error {
-	n.closed = true
 	if n.conn != nil {
-		return n.conn.Close()
+		n.conn.Close()
+		n.conn = nil
 	}
+	n.initialized = false
 	return nil
 }

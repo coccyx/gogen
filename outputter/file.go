@@ -15,7 +15,6 @@ type file struct {
 	file        *os.File
 	fileSize    int64
 	mutex       *sync.Mutex
-	closed      bool
 }
 
 func (f *file) Send(item *config.OutQueueItem) error {
@@ -55,9 +54,12 @@ func (f *file) Send(item *config.OutQueueItem) error {
 }
 
 func (f *file) Close() error {
-	if !f.closed {
-		f.closed = true
-		return f.file.Close()
+	if f.initialized {
+		if f.file != nil {
+			f.file.Close()
+			f.file = nil
+		}
+		f.initialized = false
 	}
 	return nil
 }

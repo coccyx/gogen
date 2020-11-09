@@ -12,7 +12,6 @@ import (
 
 type splunktcpuf struct {
 	initialized bool
-	closed      bool
 	done        chan int
 	s2s         *s2s.S2S
 	bufs        map[string]*ufbuf
@@ -102,7 +101,7 @@ func (st *splunktcpuf) Flush(buf *ufbuf) error {
 }
 
 func (st *splunktcpuf) Close() error {
-	if !st.closed && st.initialized {
+	if st.initialized {
 		time.Sleep(500 * time.Millisecond) // Hack for Cribl flush bug
 		for _, buf := range st.bufs {
 			err := st.Flush(buf)
@@ -110,11 +109,11 @@ func (st *splunktcpuf) Close() error {
 				return err
 			}
 		}
-		err := st.s2s.Close()
-		if err != nil {
-			return err
+		if st.s2s != nil {
+			st.s2s.Close()
+			st.s2s = nil
 		}
-		st.closed = true
+		st.initialized = false
 	}
 	return nil
 }
