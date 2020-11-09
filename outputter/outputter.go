@@ -281,7 +281,11 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 					lasterr[num].count++
 				}
 				if logErr {
-					log.Errorf("Error with Send(): %s. %d errors in the last %d second.", err, lasterr[num].count, rotInterval)
+					log.Errorf("Error with Send(): %s. %d errors in the last %d second. Closing Output.", err, lasterr[num].count, rotInterval)
+					err = out.Close()
+					if err != nil {
+						log.Errorf("Error closing output: %s", err)
+					}
 					lasterr[num].count = 0
 				}
 			}

@@ -15,7 +15,6 @@ import (
 type kafkaout struct {
 	conn        *kafka.Conn
 	initialized bool
-	closed      bool
 	cancel      context.CancelFunc
 }
 
@@ -41,9 +40,10 @@ func (k *kafkaout) Send(item *config.OutQueueItem) error {
 }
 
 func (k *kafkaout) Close() error {
-	k.closed = true
 	if k.conn != nil {
 		k.conn.Close()
+		k.conn = nil
 	}
+	k.initialized = false
 	return nil
 }

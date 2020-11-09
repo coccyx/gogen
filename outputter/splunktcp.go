@@ -9,7 +9,6 @@ import (
 
 type splunktcp struct {
 	initialized bool
-	closed      bool
 	done        chan int
 	s2s         *s2s.S2S
 }
@@ -31,13 +30,13 @@ func (st *splunktcp) Send(item *config.OutQueueItem) error {
 }
 
 func (st *splunktcp) Close() error {
-	if !st.closed && st.initialized {
+	if st.initialized {
 		time.Sleep(500 * time.Millisecond) // Hack for Cribl flush bug
-		err := st.s2s.Close()
-		if err != nil {
-			return err
+		if st.s2s != nil {
+			st.s2s.Close()
+			st.s2s = nil
 		}
-		st.closed = true
+		st.initialized = false
 	}
 	return nil
 }
