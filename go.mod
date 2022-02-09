@@ -3,8 +3,6 @@ module github.com/coccyx/gogen
 go 1.12
 
 require (
-	github.com/Sirupsen/logrus v0.0.0-20160829202321-3ec0642a7fb6 // indirect
-	github.com/ahmetb/govvv v0.3.0 // indirect
 	github.com/cactus/gostrftime v0.0.0-20160820080632-908b7e9ab9b8
 	github.com/coccyx/go-s2s v0.0.0-20190615184235-2f7a532dc47c
 	github.com/coccyx/timeparser v0.0.0-20160911001308-9d8b37af28f5
@@ -18,11 +16,8 @@ require (
 	github.com/kr/text v0.0.0-20160504234017-7cafcd837844 // indirect
 	github.com/layeh/gopher-luar v0.0.0-20160805223923-921d03e21a78
 	github.com/mattn/go-runewidth v0.0.1 // indirect
-	github.com/mgutz/ansi v0.0.0-20150914162238-c286dcecd19f // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/olekukonko/tablewriter v0.0.0-20160923125401-bdcc175572fd
-	github.com/onsi/ginkgo v1.8.0 // indirect
-	github.com/onsi/gomega v1.5.0 // indirect
 	github.com/pbnjay/strptime v0.0.0-20140226051138-5c05b0d668c9
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pkg/profile v0.0.0-20160923224949-030571e6da0f
@@ -31,7 +26,6 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/skratchdot/open-golang v0.0.0-20160302144031-75fb7ed4208c
 	github.com/stretchr/testify v1.3.0
-	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect
 	github.com/xdg/stringprep v1.0.0 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20160919070314-dd0fd531098d
@@ -41,5 +35,5 @@ require (
 	google.golang.org/appengine v1.5.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/urfave/cli.v1 v1.18.1
-	gopkg.in/yaml.v2 v2.2.1
+	gopkg.in/yaml.v2 v2.2.8
 )

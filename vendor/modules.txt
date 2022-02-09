@@ -28,8 +28,6 @@ github.com/kr/text
 github.com/layeh/gopher-luar
 # github.com/mattn/go-runewidth v0.0.1
 github.com/mattn/go-runewidth
-# github.com/mgutz/ansi v0.0.0-20150914162238-c286dcecd19f
-github.com/mgutz/ansi
 # github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 github.com/mohae/deepcopy
 # github.com/olekukonko/tablewriter v0.0.0-20160923125401-bdcc175572fd
@@ -51,15 +49,11 @@ github.com/sirupsen/logrus
 github.com/skratchdot/open-golang/open
 # github.com/stretchr/testify v1.3.0
 github.com/stretchr/testify/assert
-# github.com/x-cray/logrus-prefixed-formatter v0.5.2
-github.com/x-cray/logrus-prefixed-formatter
 # github.com/yuin/gopher-lua v0.0.0-20160919070314-dd0fd531098d
 github.com/yuin/gopher-lua
 github.com/yuin/gopher-lua/ast
 github.com/yuin/gopher-lua/parse
 github.com/yuin/gopher-lua/pm
-# golang.org/x/crypto v0.0.0-20190617133340-57b3e21c3d56
-golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3
 golang.org/x/net/context
 # golang.org/x/oauth2 v0.0.0-20160902055913-3c3a985cb79f
@@ -68,16 +62,15 @@ golang.org/x/oauth2/github
 golang.org/x/oauth2/internal
 # golang.org/x/sys v0.0.0-20190422165155-953cdadca894
 golang.org/x/sys/unix
-golang.org/x/sys/windows
 # google.golang.org/appengine v1.5.0
-google.golang.org/appengine/urlfetch
 google.golang.org/appengine/internal
-google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/internal/base
 google.golang.org/appengine/internal/datastore
 google.golang.org/appengine/internal/log
 google.golang.org/appengine/internal/remote_api
+google.golang.org/appengine/internal/urlfetch
+google.golang.org/appengine/urlfetch
 # gopkg.in/urfave/cli.v1 v1.18.1
 gopkg.in/urfave/cli.v1
-# gopkg.in/yaml.v2 v2.2.1
+# gopkg.in/yaml.v2 v2.2.8
 gopkg.in/yaml.v2
