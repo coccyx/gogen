@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"sync"
 	"time"
@@ -28,6 +29,15 @@ type Batch struct {
 	offset        int64
 	highWaterMark int64
 	err           error
+	// The last offset in the batch.
+	//
+	// We use lastOffset to skip offsets that have been compacted away.
+	//
+	// We store lastOffset because we get lastOffset when we read a new message
+	// but only try to handle compaction when we receive an EOF. However, when
+	// we get an EOF we do not get the lastOffset. So there is a mismatch
+	// between when we receive it and need to use it.
+	lastOffset int64
 }
 
 // Throttle gives the throttling duration applied by the kafka server on the
@@ -39,6 +49,11 @@ func (batch *Batch) Throttle() time.Duration {
 // Watermark returns the current highest watermark in a partition.
 func (batch *Batch) HighWaterMark() int64 {
 	return batch.highWaterMark
+}
+
+// Partition returns the batch partition.
+func (batch *Batch) Partition() int {
+	return batch.partition
 }
 
 // Offset returns the offset of the next message in the batch.
@@ -64,11 +79,17 @@ func (batch *Batch) close() (err error) {
 
 	batch.conn = nil
 	batch.lock = nil
+
 	if batch.msgs != nil {
 		batch.msgs.discard()
 	}
 
-	if err = batch.err; err == io.EOF {
+	if batch.msgs != nil && batch.msgs.decompressed != nil {
+		releaseBuffer(batch.msgs.decompressed)
+		batch.msgs.decompressed = nil
+	}
+
+	if err = batch.err; errors.Is(batch.err, io.EOF) {
 		err = nil
 	}
 
@@ -79,7 +100,8 @@ func (batch *Batch) close() (err error) {
 		conn.mutex.Unlock()
 
 		if err != nil {
-			if _, ok := err.(Error); !ok && err != io.ErrShortBuffer {
+			var kafkaError Error
+			if !errors.As(err, &kafkaError) && !errors.Is(err, io.ErrShortBuffer) {
 				conn.Close()
 			}
 		}
@@ -91,6 +113,19 @@ func (batch *Batch) close() (err error) {
 
 	return
 }
+
+// Err returns a non-nil error if the batch is broken. This is the same error
+// that would be returned by Read, ReadMessage or Close (except in the case of
+// io.EOF which is never returned by Close).
+//
+// This method is useful when building retry mechanisms for (*Conn).ReadBatch,
+// the program can check whether the batch carried a error before attempting to
+// read the first message.
+//
+// Note that checking errors on a batch is optional, calling Read or ReadMessage
+// is always valid and can be used to either read a message or an error in cases
+// where that's convenient.
+func (batch *Batch) Err() error { return batch.err }
 
 // Read reads the value of the next message from the batch into b, returning the
 // number of bytes read, or an error if the next message couldn't be read.
@@ -118,6 +153,11 @@ func (batch *Batch) Read(b []byte) (int, error) {
 		func(r *bufio.Reader, size int, nbytes int) (int, error) {
 			if nbytes < 0 {
 				return size, nil
+			}
+			// make sure there are enough bytes for the message value.  return
+			// errShortRead if the message is truncated.
+			if nbytes > size {
+				return size, errShortRead
 			}
 			n = nbytes // return value
 			if nbytes > cap(b) {
@@ -167,6 +207,8 @@ func (batch *Batch) ReadMessage() (Message, error) {
 			return
 		},
 	)
+	// A batch may start before the requested offset so skip messages
+	// until the requested offset is reached.
 	for batch.conn != nil && offset < batch.conn.offset {
 		if err != nil {
 			break
@@ -187,7 +229,8 @@ func (batch *Batch) ReadMessage() (Message, error) {
 	msg.Topic = batch.topic
 	msg.Partition = batch.partition
 	msg.Offset = offset
-	msg.Time = timestampToTime(timestamp)
+	msg.HighWaterMark = batch.highWaterMark
+	msg.Time = makeTime(timestamp)
 	msg.Headers = headers
 
 	return msg, err
@@ -201,18 +244,25 @@ func (batch *Batch) readMessage(
 		return
 	}
 
-	offset, timestamp, headers, err = batch.msgs.readMessage(batch.offset, key, val)
-	switch err {
-	case nil:
+	var lastOffset int64
+	offset, lastOffset, timestamp, headers, err = batch.msgs.readMessage(batch.offset, key, val)
+	switch {
+	case err == nil:
 		batch.offset = offset + 1
-	case errShortRead:
+		batch.lastOffset = lastOffset
+	case errors.Is(err, errShortRead):
 		// As an "optimization" kafka truncates the returned response after
 		// producing MaxBytes, which could then cause the code to return
 		// errShortRead.
 		err = batch.msgs.discard()
 		switch {
 		case err != nil:
-			batch.err = err
+			// Since io.EOF is used by the batch to indicate that there is are
+			// no more messages to consume, it is crucial that any io.EOF errors
+			// on the underlying connection are repackaged.  Otherwise, the
+			// caller can't tell the difference between a batch that was fully
+			// consumed or a batch whose connection is in an error state.
+			batch.err = dontExpectEOF(err)
 		case batch.msgs.remaining() == 0:
 			// Because we use the adjusted deadline we could end up returning
 			// before the actual deadline occurred. This is necessary otherwise
@@ -223,9 +273,31 @@ func (batch *Batch) readMessage(
 			// read deadline management.
 			err = checkTimeoutErr(batch.deadline)
 			batch.err = err
+
+			// Checks the following:
+			// - `batch.err` for a "success" from the previous timeout check
+			// - `batch.msgs.lengthRemain` to ensure that this EOF is not due
+			//   to MaxBytes truncation
+			// - `batch.lastOffset` to ensure that the message format contains
+			//   `lastOffset`
+			if errors.Is(batch.err, io.EOF) && batch.msgs.lengthRemain == 0 && batch.lastOffset != -1 {
+				// Log compaction can create batches that end with compacted
+				// records so the normal strategy that increments the "next"
+				// offset as records are read doesn't work as the compacted
+				// records are "missing" and never get "read".
+				//
+				// In order to reliably reach the next non-compacted offset we
+				// jump past the saved lastOffset.
+				batch.offset = batch.lastOffset + 1
+			}
 		}
 	default:
-		batch.err = err
+		// Since io.EOF is used by the batch to indicate that there is are
+		// no more messages to consume, it is crucial that any io.EOF errors
+		// on the underlying connection are repackaged.  Otherwise, the
+		// caller can't tell the difference between a batch that was fully
+		// consumed or a batch whose connection is in an error state.
+		batch.err = dontExpectEOF(err)
 	}
 
 	return

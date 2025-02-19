@@ -1,23 +1,24 @@
-# github.com/cactus/gostrftime v0.0.0-20160820080632-908b7e9ab9b8
-## explicit
+# github.com/cactus/gostrftime v1.0.2
+## explicit; go 1.12
 github.com/cactus/gostrftime
-# github.com/coccyx/timeparser v0.0.0-20160911001308-9d8b37af28f5
+# github.com/coccyx/timeparser v0.0.0-20161029180942-5644122b3667
 ## explicit
 github.com/coccyx/timeparser
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/golang/protobuf v1.2.0
-## explicit
-github.com/golang/protobuf/proto
-# github.com/golang/snappy v0.0.1
-## explicit
-# github.com/google/go-github v0.0.0-20160930184301-3e246d29992b
+# github.com/felixge/fgprof v0.9.5
+## explicit; go 1.14
+github.com/felixge/fgprof
+# github.com/google/go-github v17.0.0+incompatible
 ## explicit
 github.com/google/go-github/github
-# github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5
-## explicit
+# github.com/google/go-querystring v1.1.0
+## explicit; go 1.10
 github.com/google/go-querystring/query
+# github.com/google/pprof v0.0.0-20250208200701-d0013a598941
+## explicit; go 1.22
+github.com/google/pprof/profile
 # github.com/hhkbp2/go-strftime v0.0.0-20150709091403-d82166ec6782
 ## explicit
 github.com/hhkbp2/go-strftime
@@ -27,91 +28,150 @@ github.com/jehiah/go-strftime
 # github.com/joyt/godate v0.0.0-20150226210126-7151572574a7
 ## explicit
 github.com/joyt/godate
-# github.com/konsorten/go-windows-terminal-sequences v1.0.1
-## explicit
-github.com/konsorten/go-windows-terminal-sequences
-# github.com/kr/pretty v0.0.0-20160823170715-cfb55aafdaf3
-## explicit
+# github.com/klauspost/compress v1.17.11
+## explicit; go 1.21
+github.com/klauspost/compress
+github.com/klauspost/compress/flate
+github.com/klauspost/compress/fse
+github.com/klauspost/compress/gzip
+github.com/klauspost/compress/huff0
+github.com/klauspost/compress/internal/cpuinfo
+github.com/klauspost/compress/internal/race
+github.com/klauspost/compress/internal/snapref
+github.com/klauspost/compress/s2
+github.com/klauspost/compress/snappy
+github.com/klauspost/compress/zstd
+github.com/klauspost/compress/zstd/internal/xxhash
+# github.com/kr/pretty v0.3.1
+## explicit; go 1.12
 github.com/kr/pretty
-# github.com/kr/text v0.0.0-20160504234017-7cafcd837844
+# github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/layeh/gopher-luar v0.0.0-20160805223923-921d03e21a78
-## explicit
-github.com/layeh/gopher-luar
-# github.com/mattn/go-runewidth v0.0.1
-## explicit
+# github.com/mattn/go-runewidth v0.0.16
+## explicit; go 1.9
 github.com/mattn/go-runewidth
 # github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 ## explicit
 github.com/mohae/deepcopy
-# github.com/olekukonko/tablewriter v0.0.0-20160923125401-bdcc175572fd
-## explicit
+# github.com/olekukonko/tablewriter v0.0.5
+## explicit; go 1.12
 github.com/olekukonko/tablewriter
 # github.com/pbnjay/strptime v0.0.0-20140226051138-5c05b0d668c9
 ## explicit
 github.com/pbnjay/strptime
-# github.com/pierrec/lz4 v2.0.5+incompatible
-## explicit
-# github.com/pkg/profile v0.0.0-20160923224949-030571e6da0f
-## explicit
+# github.com/pierrec/lz4/v4 v4.1.22
+## explicit; go 1.14
+github.com/pierrec/lz4/v4
+github.com/pierrec/lz4/v4/internal/lz4block
+github.com/pierrec/lz4/v4/internal/lz4errors
+github.com/pierrec/lz4/v4/internal/lz4stream
+github.com/pierrec/lz4/v4/internal/xxh32
+# github.com/pkg/profile v1.7.0
+## explicit; go 1.13
 github.com/pkg/profile
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
-# github.com/satori/go.uuid v0.0.0-20160713180306-0aa62d5ddceb
+# github.com/rivo/uniseg v0.4.7
+## explicit; go 1.18
+github.com/rivo/uniseg
+# github.com/rogpeppe/go-internal v1.13.1
+## explicit; go 1.22
+github.com/rogpeppe/go-internal/fmtsort
+# github.com/satori/go.uuid v1.2.0
 ## explicit
 github.com/satori/go.uuid
-# github.com/segmentio/kafka-go v0.0.0-20190407014825-afec9cd1014e
-## explicit
+# github.com/segmentio/kafka-go v0.4.47
+## explicit; go 1.15
 github.com/segmentio/kafka-go
+github.com/segmentio/kafka-go/compress
+github.com/segmentio/kafka-go/compress/gzip
+github.com/segmentio/kafka-go/compress/lz4
+github.com/segmentio/kafka-go/compress/snappy
+github.com/segmentio/kafka-go/compress/zstd
+github.com/segmentio/kafka-go/protocol
+github.com/segmentio/kafka-go/protocol/addoffsetstotxn
+github.com/segmentio/kafka-go/protocol/addpartitionstotxn
+github.com/segmentio/kafka-go/protocol/alterclientquotas
+github.com/segmentio/kafka-go/protocol/alterconfigs
+github.com/segmentio/kafka-go/protocol/alterpartitionreassignments
+github.com/segmentio/kafka-go/protocol/alteruserscramcredentials
+github.com/segmentio/kafka-go/protocol/apiversions
+github.com/segmentio/kafka-go/protocol/consumer
+github.com/segmentio/kafka-go/protocol/createacls
+github.com/segmentio/kafka-go/protocol/createpartitions
+github.com/segmentio/kafka-go/protocol/createtopics
+github.com/segmentio/kafka-go/protocol/deleteacls
+github.com/segmentio/kafka-go/protocol/deletegroups
+github.com/segmentio/kafka-go/protocol/deletetopics
+github.com/segmentio/kafka-go/protocol/describeacls
+github.com/segmentio/kafka-go/protocol/describeclientquotas
+github.com/segmentio/kafka-go/protocol/describeconfigs
+github.com/segmentio/kafka-go/protocol/describegroups
+github.com/segmentio/kafka-go/protocol/describeuserscramcredentials
+github.com/segmentio/kafka-go/protocol/electleaders
+github.com/segmentio/kafka-go/protocol/endtxn
+github.com/segmentio/kafka-go/protocol/fetch
+github.com/segmentio/kafka-go/protocol/findcoordinator
+github.com/segmentio/kafka-go/protocol/heartbeat
+github.com/segmentio/kafka-go/protocol/incrementalalterconfigs
+github.com/segmentio/kafka-go/protocol/initproducerid
+github.com/segmentio/kafka-go/protocol/joingroup
+github.com/segmentio/kafka-go/protocol/leavegroup
+github.com/segmentio/kafka-go/protocol/listgroups
+github.com/segmentio/kafka-go/protocol/listoffsets
+github.com/segmentio/kafka-go/protocol/listpartitionreassignments
+github.com/segmentio/kafka-go/protocol/metadata
+github.com/segmentio/kafka-go/protocol/offsetcommit
+github.com/segmentio/kafka-go/protocol/offsetdelete
+github.com/segmentio/kafka-go/protocol/offsetfetch
+github.com/segmentio/kafka-go/protocol/produce
+github.com/segmentio/kafka-go/protocol/rawproduce
+github.com/segmentio/kafka-go/protocol/saslauthenticate
+github.com/segmentio/kafka-go/protocol/saslhandshake
+github.com/segmentio/kafka-go/protocol/syncgroup
+github.com/segmentio/kafka-go/protocol/txnoffsetcommit
 github.com/segmentio/kafka-go/sasl
-# github.com/sirupsen/logrus v1.4.2
-## explicit
+# github.com/sirupsen/logrus v1.9.3
+## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/skratchdot/open-golang v0.0.0-20160302144031-75fb7ed4208c
+# github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 ## explicit
 github.com/skratchdot/open-golang/open
-# github.com/stretchr/testify v1.3.0
-## explicit
+# github.com/stretchr/testify v1.10.0
+## explicit; go 1.17
 github.com/stretchr/testify/assert
-# github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c
-## explicit
-# github.com/xdg/stringprep v1.0.0
-## explicit
-# github.com/yuin/gopher-lua v0.0.0-20160919070314-dd0fd531098d
-## explicit
+github.com/stretchr/testify/assert/yaml
+# github.com/yuin/gopher-lua v1.1.1
+## explicit; go 1.17
 github.com/yuin/gopher-lua
 github.com/yuin/gopher-lua/ast
 github.com/yuin/gopher-lua/parse
 github.com/yuin/gopher-lua/pm
 # golang.org/x/net v0.35.0
 ## explicit; go 1.18
-golang.org/x/net/context
-# golang.org/x/oauth2 v0.0.0-20160902055913-3c3a985cb79f
-## explicit
+# golang.org/x/oauth2 v0.26.0
+## explicit; go 1.18
 golang.org/x/oauth2
+golang.org/x/oauth2/endpoints
 golang.org/x/oauth2/github
 golang.org/x/oauth2/internal
-# golang.org/x/sync v0.11.0
-## explicit; go 1.18
 # golang.org/x/sys v0.30.0
 ## explicit; go 1.18
 golang.org/x/sys/unix
-# google.golang.org/appengine v1.5.0
-## explicit
-google.golang.org/appengine/internal
-google.golang.org/appengine/internal/base
-google.golang.org/appengine/internal/datastore
-google.golang.org/appengine/internal/log
-google.golang.org/appengine/internal/remote_api
-google.golang.org/appengine/internal/urlfetch
-google.golang.org/appengine/urlfetch
-# gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
-## explicit
-# gopkg.in/urfave/cli.v1 v1.18.1
+golang.org/x/sys/windows
+# gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
+## explicit; go 1.11
+# gopkg.in/urfave/cli.v1 v1.20.0
 ## explicit
 gopkg.in/urfave/cli.v1
-# gopkg.in/yaml.v2 v2.2.1
-## explicit
+# gopkg.in/yaml.v2 v2.4.0
+## explicit; go 1.15
 gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.1
+## explicit
+gopkg.in/yaml.v3
+# layeh.com/gopher-luar v1.0.11
+## explicit; go 1.12
+layeh.com/gopher-luar

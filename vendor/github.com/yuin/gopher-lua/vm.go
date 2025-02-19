@@ -34,6 +34,43 @@ func mainLoop(L *LState, baseframe *callFrame) {
 	}
 }
 
+func mainLoopWithContext(L *LState, baseframe *callFrame) {
+	var inst uint32
+	var cf *callFrame
+
+	if L.stack.IsEmpty() {
+		return
+	}
+
+	L.currentFrame = L.stack.Last()
+	if L.currentFrame.Fn.IsG {
+		callGFunction(L, false)
+		return
+	}
+
+	for {
+		cf = L.currentFrame
+		inst = cf.Fn.Proto.Code[cf.Pc]
+		cf.Pc++
+		select {
+		case <-L.ctx.Done():
+			L.RaiseError(L.ctx.Err().Error())
+			return
+		default:
+			if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
+				return
+			}
+		}
+	}
+}
+
+// regv is the first target register to copy the return values to.
+// It can be reg.top, indicating that the copied values are going into new registers, or it can be below reg.top
+// Indicating that the values should be within the existing registers.
+// b is the available number of return values + 1.
+// n is the desired number of return values.
+// If n more than the available return values then the extra values are set to nil.
+// When this function returns the top of the registry will be set to regv+n.
 func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 	if b == 1 {
 		// this section is inlined by go-inline
@@ -41,10 +78,28 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 		{
 			rg := L.reg
 			regm := regv
+			newSize := regm + n
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+			{
+				requiredSize := newSize
+				if requiredSize > cap(rg.array) {
+					rg.resize(requiredSize)
+				}
+			}
 			for i := 0; i < n; i++ {
 				rg.array[regm+i] = LNil
 			}
+			// values beyond top don't need to be valid LValues, so setting them to nil is fine
+			// setting them to nil rather than LNil lets us invoke the golang memclr opto
+			oldtop := rg.top
 			rg.top = regm + n
+			if rg.top < oldtop {
+				nilRange := rg.array[rg.top:oldtop]
+				for i := range nilRange {
+					nilRange[i] = nil
+				}
+			}
 		}
 	} else {
 		// this section is inlined by go-inline
@@ -52,14 +107,68 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 		{
 			rg := L.reg
 			limit := -1
-			for i := 0; i < n; i++ {
-				if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
-					rg.array[regv+i] = LNil
-				} else {
-					rg.array[regv+i] = rg.array[tidx]
+			newSize := regv + n
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+			{
+				requiredSize := newSize
+				if requiredSize > cap(rg.array) {
+					rg.resize(requiredSize)
 				}
 			}
+			if limit == -1 || limit > rg.top {
+				limit = rg.top
+			}
+			for i := 0; i < n; i++ {
+				srcIdx := start + i
+				if srcIdx >= limit || srcIdx < 0 {
+					rg.array[regv+i] = LNil
+				} else {
+					rg.array[regv+i] = rg.array[srcIdx]
+				}
+			}
+
+			// values beyond top don't need to be valid LValues, so setting them to nil is fine
+			// setting them to nil rather than LNil lets us invoke the golang memclr opto
+			oldtop := rg.top
 			rg.top = regv + n
+			if rg.top < oldtop {
+				nilRange := rg.array[rg.top:oldtop]
+				for i := range nilRange {
+					nilRange[i] = nil
+				}
+			}
+		}
+		if b > 1 && n > (b-1) {
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) FillNil(regm, n int) ' in '_state.go'
+			{
+				rg := L.reg
+				regm := regv + b - 1
+				n := n - (b - 1)
+				newSize := regm + n
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				for i := 0; i < n; i++ {
+					rg.array[regm+i] = LNil
+				}
+				// values beyond top don't need to be valid LValues, so setting them to nil is fine
+				// setting them to nil rather than LNil lets us invoke the golang memclr opto
+				oldtop := rg.top
+				rg.top = regm + n
+				if rg.top < oldtop {
+					nilRange := rg.array[rg.top:oldtop]
+					for i := range nilRange {
+						nilRange[i] = nil
+					}
+				}
+			}
 		}
 	}
 } // +inline-end
@@ -92,8 +201,7 @@ func callGFunction(L *LState, tailcall bool) bool {
 	frame := L.currentFrame
 	gfnret := frame.Fn.GFunction(L)
 	if tailcall {
-		L.stack.Remove(L.stack.Sp() - 2) // remove caller lua function frame
-		L.currentFrame = L.stack.Last()
+		L.currentFrame = L.RemoveCallerFrame()
 	}
 
 	if gfnret < 0 {
@@ -119,14 +227,37 @@ func callGFunction(L *LState, tailcall bool) bool {
 		start := L.reg.Top() - gfnret
 		limit := -1
 		n := wantret
-		for i := 0; i < n; i++ {
-			if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
-				rg.array[regv+i] = LNil
-			} else {
-				rg.array[regv+i] = rg.array[tidx]
+		newSize := regv + n
+		// this section is inlined by go-inline
+		// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+		{
+			requiredSize := newSize
+			if requiredSize > cap(rg.array) {
+				rg.resize(requiredSize)
 			}
 		}
+		if limit == -1 || limit > rg.top {
+			limit = rg.top
+		}
+		for i := 0; i < n; i++ {
+			srcIdx := start + i
+			if srcIdx >= limit || srcIdx < 0 {
+				rg.array[regv+i] = LNil
+			} else {
+				rg.array[regv+i] = rg.array[srcIdx]
+			}
+		}
+
+		// values beyond top don't need to be valid LValues, so setting them to nil is fine
+		// setting them to nil rather than LNil lets us invoke the golang memclr opto
+		oldtop := rg.top
 		rg.top = regv + n
+		if rg.top < oldtop {
+			nilRange := rg.array[rg.top:oldtop]
+			for i := range nilRange {
+				nilRange[i] = nil
+			}
+		}
 	}
 	L.stack.Pop()
 	L.currentFrame = L.stack.Last()
@@ -160,7 +291,7 @@ func threadRun(L *LState) {
 			}
 		}
 	}()
-	mainLoop(L, nil)
+	L.mainLoop(L, nil)
 }
 
 type instFunc func(*LState, uint32, *callFrame) int
@@ -176,7 +307,27 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
-			reg.Set(RA, reg.Get(lbase+B))
+			v := reg.Get(lbase + B)
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA
+				vali := v
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_MOVEN
@@ -186,7 +337,27 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			reg.Set(lbase+A, reg.Get(lbase+B))
+			v := reg.Get(lbase + B)
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := lbase + A
+				vali := v
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			code := cf.Fn.Proto.Code
 			pc := cf.Pc
 			for i := 0; i < C; i++ {
@@ -194,7 +365,27 @@ func init() {
 				pc++
 				A = int(inst>>18) & 0xff //GETA
 				B = int(inst & 0x1ff)    //GETB
-				reg.Set(lbase+A, reg.Get(lbase+B))
+				v := reg.Get(lbase + B)
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+				{
+					rg := reg
+					regi := lbase + A
+					vali := v
+					newSize := regi + 1
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
+					rg.array[regi] = vali
+					if regi >= rg.top {
+						rg.top = regi + 1
+					}
+				}
 			}
 			cf.Pc = pc
 			return 0
@@ -206,7 +397,27 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			Bx := int(inst & 0x3ffff) //GETBX
-			reg.Set(RA, cf.Fn.Proto.Constants[Bx])
+			v := cf.Fn.Proto.Constants[Bx]
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA
+				vali := v
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_LOADBOOL
@@ -218,9 +429,47 @@ func init() {
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
 			if B != 0 {
-				reg.Set(RA, LTrue)
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+				{
+					rg := reg
+					regi := RA
+					vali := LTrue
+					newSize := regi + 1
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
+					rg.array[regi] = vali
+					if regi >= rg.top {
+						rg.top = regi + 1
+					}
+				}
 			} else {
-				reg.Set(RA, LFalse)
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+				{
+					rg := reg
+					regi := RA
+					vali := LFalse
+					newSize := regi + 1
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
+					rg.array[regi] = vali
+					if regi >= rg.top {
+						rg.top = regi + 1
+					}
+				}
 			}
 			if C != 0 {
 				cf.Pc++
@@ -235,7 +484,26 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
 			for i := RA; i <= lbase+B; i++ {
-				reg.Set(i, LNil)
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+				{
+					rg := reg
+					regi := i
+					vali := LNil
+					newSize := regi + 1
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
+					rg.array[regi] = vali
+					if regi >= rg.top {
+						rg.top = regi + 1
+					}
+				}
 			}
 			return 0
 		},
@@ -246,7 +514,27 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
-			reg.Set(RA, cf.Fn.Upvalues[B].Value())
+			v := cf.Fn.Upvalues[B].Value()
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA
+				vali := v
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_GETGLOBAL
@@ -257,7 +545,27 @@ func init() {
 			RA := lbase + A
 			Bx := int(inst & 0x3ffff) //GETBX
 			//reg.Set(RA, L.getField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx]))
-			reg.Set(RA, L.getFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx]))
+			v := L.getFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx])
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA
+				vali := v
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_GETTABLE
@@ -268,7 +576,27 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			reg.Set(RA, L.getField(reg.Get(lbase+B), L.rkValue(C)))
+			v := L.getField(reg.Get(lbase+B), L.rkValue(C))
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA
+				vali := v
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_GETTABLEKS
@@ -279,7 +607,27 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			reg.Set(RA, L.getFieldString(reg.Get(lbase+B), L.rkString(C)))
+			v := L.getFieldString(reg.Get(lbase+B), L.rkString(C))
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA
+				vali := v
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SETGLOBAL
@@ -333,7 +681,27 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			reg.Set(RA, newLTable(B, C))
+			v := newLTable(B, C)
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA
+				vali := v
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SELF
@@ -345,8 +713,47 @@ func init() {
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
 			selfobj := reg.Get(lbase + B)
-			reg.Set(RA, L.getFieldString(selfobj, L.rkString(C)))
-			reg.Set(RA+1, selfobj)
+			v := L.getFieldString(selfobj, L.rkString(C))
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA
+				vali := v
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA + 1
+				vali := selfobj
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			return 0
 		},
 		opArith, // OP_ADD
@@ -364,17 +771,74 @@ func init() {
 			B := int(inst & 0x1ff) //GETB
 			unaryv := L.rkValue(B)
 			if nm, ok := unaryv.(LNumber); ok {
-				reg.SetNumber(RA, -nm)
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+				{
+					rg := reg
+					regi := RA
+					vali := -nm
+					newSize := regi + 1
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
+					rg.array[regi] = vali
+					if regi >= rg.top {
+						rg.top = regi + 1
+					}
+				}
 			} else {
 				op := L.metaOp1(unaryv, "__unm")
 				if op.Type() == LTFunction {
 					reg.Push(op)
 					reg.Push(unaryv)
 					L.Call(1, 1)
-					reg.Set(RA, reg.Pop())
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+					{
+						rg := reg
+						regi := RA
+						vali := reg.Pop()
+						newSize := regi + 1
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+						{
+							requiredSize := newSize
+							if requiredSize > cap(rg.array) {
+								rg.resize(requiredSize)
+							}
+						}
+						rg.array[regi] = vali
+						if regi >= rg.top {
+							rg.top = regi + 1
+						}
+					}
 				} else if str, ok1 := unaryv.(LString); ok1 {
 					if num, err := parseNumber(string(str)); err == nil {
-						reg.Set(RA, -num)
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+						{
+							rg := reg
+							regi := RA
+							vali := -num
+							newSize := regi + 1
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
+							rg.array[regi] = vali
+							if regi >= rg.top {
+								rg.top = regi + 1
+							}
+						}
 					} else {
 						L.RaiseError("__unm undefined")
 					}
@@ -392,9 +856,47 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
 			if LVIsFalse(reg.Get(lbase + B)) {
-				reg.Set(RA, LTrue)
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+				{
+					rg := reg
+					regi := RA
+					vali := LTrue
+					newSize := regi + 1
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
+					rg.array[regi] = vali
+					if regi >= rg.top {
+						rg.top = regi + 1
+					}
+				}
 			} else {
-				reg.Set(RA, LFalse)
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+				{
+					rg := reg
+					regi := RA
+					vali := LFalse
+					newSize := regi + 1
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
+					rg.array[regi] = vali
+					if regi >= rg.top {
+						rg.top = regi + 1
+					}
+				}
 			}
 			return 0
 		},
@@ -407,16 +909,98 @@ func init() {
 			B := int(inst & 0x1ff) //GETB
 			switch lv := L.rkValue(B).(type) {
 			case LString:
-				reg.SetNumber(RA, LNumber(len(lv)))
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
+				{
+					rg := reg
+					regi := RA
+					vali := LNumber(len(lv))
+					newSize := regi + 1
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
+					rg.array[regi] = rg.alloc.LNumber2I(vali)
+					if regi >= rg.top {
+						rg.top = regi + 1
+					}
+				}
 			default:
 				op := L.metaOp1(lv, "__len")
 				if op.Type() == LTFunction {
 					reg.Push(op)
 					reg.Push(lv)
 					L.Call(1, 1)
-					reg.Set(RA, reg.Pop())
+					ret := reg.Pop()
+					if ret.Type() == LTNumber {
+						v, _ := ret.(LNumber)
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
+						{
+							rg := reg
+							regi := RA
+							vali := v
+							newSize := regi + 1
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
+							rg.array[regi] = rg.alloc.LNumber2I(vali)
+							if regi >= rg.top {
+								rg.top = regi + 1
+							}
+						}
+					} else {
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+						{
+							rg := reg
+							regi := RA
+							vali := ret
+							newSize := regi + 1
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
+							rg.array[regi] = vali
+							if regi >= rg.top {
+								rg.top = regi + 1
+							}
+						}
+					}
 				} else if lv.Type() == LTTable {
-					reg.SetNumber(RA, LNumber(lv.(*LTable).Len()))
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
+					{
+						rg := reg
+						regi := RA
+						vali := LNumber(lv.(*LTable).Len())
+						newSize := regi + 1
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+						{
+							requiredSize := newSize
+							if requiredSize > cap(rg.array) {
+								rg.resize(requiredSize)
+							}
+						}
+						rg.array[regi] = rg.alloc.LNumber2I(vali)
+						if regi >= rg.top {
+							rg.top = regi + 1
+						}
+					}
 				} else {
 					L.RaiseError("__len undefined")
 				}
@@ -433,7 +1017,27 @@ func init() {
 			C := int(inst>>9) & 0x1ff //GETC
 			RC := lbase + C
 			RB := lbase + B
-			reg.Set(RA, stringConcat(L, RC-RB+1, RC))
+			v := stringConcat(L, RC-RB+1, RC)
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA
+				vali := v
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_JMP
@@ -481,8 +1085,8 @@ func init() {
 			rhs := L.rkValue(C)
 			ret := false
 
-			if v1, ok1 := lhs.assertFloat64(); ok1 {
-				if v2, ok2 := rhs.assertFloat64(); ok2 {
+			if v1, ok1 := lhs.(LNumber); ok1 {
+				if v2, ok2 := rhs.(LNumber); ok2 {
 					ret = v1 <= v2
 				} else {
 					L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
@@ -536,7 +1140,26 @@ func init() {
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
 			if value := reg.Get(lbase + B); LVAsBool(value) != (C == 0) {
-				reg.Set(RA, value)
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+				{
+					rg := reg
+					regi := RA
+					vali := value
+					newSize := regi + 1
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
+					rg.array[regi] = vali
+					if regi >= rg.top {
+						rg.top = regi + 1
+					}
+				}
 			} else {
 				cf.Pc++
 			}
@@ -558,7 +1181,7 @@ func init() {
 			nret := C - 1
 			var callable *LFunction
 			var meta bool
-			if fn, ok := lv.assertFunction(); ok {
+			if fn, ok := lv.(*LFunction); ok {
 				callable = fn
 				meta = false
 			} else {
@@ -577,18 +1200,10 @@ func init() {
 				if cf.Fn == nil {
 					ls.RaiseError("attempt to call a non-function object")
 				}
-				if ls.stack.sp == ls.Options.CallStackSize {
+				if ls.stack.IsFull() {
 					ls.RaiseError("stack overflow")
 				}
-				// this section is inlined by go-inline
-				// source function is 'func (cs *callFrameStack) Push(v callFrame) ' in '_state.go'
-				{
-					cs := ls.stack
-					v := cf
-					cs.array[cs.sp] = v
-					cs.array[cs.sp].Idx = cs.sp
-					cs.sp++
-				}
+				ls.stack.Push(cf)
 				newcf := ls.stack.Last()
 				// this section is inlined by go-inline
 				// source function is 'func (ls *LState) initCallFrame(cf *callFrame) ' in '_state.go'
@@ -600,14 +1215,38 @@ func init() {
 						proto := cf.Fn.Proto
 						nargs := cf.NArgs
 						np := int(proto.NumParameters)
-						for i := nargs; i < np; i++ {
-							ls.reg.array[cf.LocalBase+i] = LNil
+						if nargs < np {
+							// default any missing arguments to nil
+							newSize := cf.LocalBase + np
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								rg := ls.reg
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
+							for i := nargs; i < np; i++ {
+								ls.reg.array[cf.LocalBase+i] = LNil
+							}
 							nargs = np
+							ls.reg.top = newSize
 						}
 
 						if (proto.IsVarArg & VarArgIsVarArg) == 0 {
 							if nargs < int(proto.NumUsedRegisters) {
 								nargs = int(proto.NumUsedRegisters)
+							}
+							newSize := cf.LocalBase + nargs
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								rg := ls.reg
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
 							}
 							for i := np; i < nargs; i++ {
 								ls.reg.array[cf.LocalBase+i] = LNil
@@ -685,11 +1324,14 @@ func init() {
 			lv := reg.Get(RA)
 			var callable *LFunction
 			var meta bool
-			if fn, ok := lv.assertFunction(); ok {
+			if fn, ok := lv.(*LFunction); ok {
 				callable = fn
 				meta = false
 			} else {
 				callable, meta = L.metaCall(lv)
+			}
+			if callable == nil {
+				L.RaiseError("attempt to call a non-function object")
 			}
 			// this section is inlined by go-inline
 			// source function is 'func (ls *LState) closeUpvalues(idx int) ' in '_state.go'
@@ -755,14 +1397,38 @@ func init() {
 						proto := cf.Fn.Proto
 						nargs := cf.NArgs
 						np := int(proto.NumParameters)
-						for i := nargs; i < np; i++ {
-							ls.reg.array[cf.LocalBase+i] = LNil
+						if nargs < np {
+							// default any missing arguments to nil
+							newSize := cf.LocalBase + np
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								rg := ls.reg
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
+							for i := nargs; i < np; i++ {
+								ls.reg.array[cf.LocalBase+i] = LNil
+							}
 							nargs = np
+							ls.reg.top = newSize
 						}
 
 						if (proto.IsVarArg & VarArgIsVarArg) == 0 {
 							if nargs < int(proto.NumUsedRegisters) {
 								nargs = int(proto.NumUsedRegisters)
+							}
+							newSize := cf.LocalBase + nargs
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								rg := ls.reg
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
 							}
 							for i := np; i < nargs; i++ {
 								ls.reg.array[cf.LocalBase+i] = LNil
@@ -827,14 +1493,37 @@ func init() {
 					start := RA
 					limit := -1
 					n := reg.Top() - RA - 1
-					for i := 0; i < n; i++ {
-						if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
-							rg.array[regv+i] = LNil
-						} else {
-							rg.array[regv+i] = rg.array[tidx]
+					newSize := regv + n
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
 						}
 					}
+					if limit == -1 || limit > rg.top {
+						limit = rg.top
+					}
+					for i := 0; i < n; i++ {
+						srcIdx := start + i
+						if srcIdx >= limit || srcIdx < 0 {
+							rg.array[regv+i] = LNil
+						} else {
+							rg.array[regv+i] = rg.array[srcIdx]
+						}
+					}
+
+					// values beyond top don't need to be valid LValues, so setting them to nil is fine
+					// setting them to nil rather than LNil lets us invoke the golang memclr opto
+					oldtop := rg.top
 					rg.top = regv + n
+					if rg.top < oldtop {
+						nilRange := rg.array[rg.top:oldtop]
+						for i := range nilRange {
+							nilRange[i] = nil
+						}
+					}
 				}
 				cf.Base = base
 				cf.LocalBase = base + (cf.LocalBase - lbase + 1)
@@ -890,10 +1579,28 @@ func init() {
 						{
 							rg := L.reg
 							regm := regv
+							newSize := regm + n
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
 							for i := 0; i < n; i++ {
 								rg.array[regm+i] = LNil
 							}
+							// values beyond top don't need to be valid LValues, so setting them to nil is fine
+							// setting them to nil rather than LNil lets us invoke the golang memclr opto
+							oldtop := rg.top
 							rg.top = regm + n
+							if rg.top < oldtop {
+								nilRange := rg.array[rg.top:oldtop]
+								for i := range nilRange {
+									nilRange[i] = nil
+								}
+							}
 						}
 					} else {
 						// this section is inlined by go-inline
@@ -901,14 +1608,68 @@ func init() {
 						{
 							rg := L.reg
 							limit := -1
-							for i := 0; i < n; i++ {
-								if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
-									rg.array[regv+i] = LNil
-								} else {
-									rg.array[regv+i] = rg.array[tidx]
+							newSize := regv + n
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
 								}
 							}
+							if limit == -1 || limit > rg.top {
+								limit = rg.top
+							}
+							for i := 0; i < n; i++ {
+								srcIdx := start + i
+								if srcIdx >= limit || srcIdx < 0 {
+									rg.array[regv+i] = LNil
+								} else {
+									rg.array[regv+i] = rg.array[srcIdx]
+								}
+							}
+
+							// values beyond top don't need to be valid LValues, so setting them to nil is fine
+							// setting them to nil rather than LNil lets us invoke the golang memclr opto
+							oldtop := rg.top
 							rg.top = regv + n
+							if rg.top < oldtop {
+								nilRange := rg.array[rg.top:oldtop]
+								for i := range nilRange {
+									nilRange[i] = nil
+								}
+							}
+						}
+						if b > 1 && n > (b-1) {
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) FillNil(regm, n int) ' in '_state.go'
+							{
+								rg := L.reg
+								regm := regv + b - 1
+								n := n - (b - 1)
+								newSize := regm + n
+								// this section is inlined by go-inline
+								// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+								{
+									requiredSize := newSize
+									if requiredSize > cap(rg.array) {
+										rg.resize(requiredSize)
+									}
+								}
+								for i := 0; i < n; i++ {
+									rg.array[regm+i] = LNil
+								}
+								// values beyond top don't need to be valid LValues, so setting them to nil is fine
+								// setting them to nil rather than LNil lets us invoke the golang memclr opto
+								oldtop := rg.top
+								rg.top = regm + n
+								if rg.top < oldtop {
+									nilRange := rg.array[rg.top:oldtop]
+									for i := range nilRange {
+										nilRange[i] = nil
+									}
+								}
+							}
 						}
 					}
 				}
@@ -928,10 +1689,28 @@ func init() {
 					{
 						rg := L.reg
 						regm := regv
+						newSize := regm + n
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+						{
+							requiredSize := newSize
+							if requiredSize > cap(rg.array) {
+								rg.resize(requiredSize)
+							}
+						}
 						for i := 0; i < n; i++ {
 							rg.array[regm+i] = LNil
 						}
+						// values beyond top don't need to be valid LValues, so setting them to nil is fine
+						// setting them to nil rather than LNil lets us invoke the golang memclr opto
+						oldtop := rg.top
 						rg.top = regm + n
+						if rg.top < oldtop {
+							nilRange := rg.array[rg.top:oldtop]
+							for i := range nilRange {
+								nilRange[i] = nil
+							}
+						}
 					}
 				} else {
 					// this section is inlined by go-inline
@@ -939,14 +1718,68 @@ func init() {
 					{
 						rg := L.reg
 						limit := -1
-						for i := 0; i < n; i++ {
-							if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
-								rg.array[regv+i] = LNil
-							} else {
-								rg.array[regv+i] = rg.array[tidx]
+						newSize := regv + n
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+						{
+							requiredSize := newSize
+							if requiredSize > cap(rg.array) {
+								rg.resize(requiredSize)
 							}
 						}
+						if limit == -1 || limit > rg.top {
+							limit = rg.top
+						}
+						for i := 0; i < n; i++ {
+							srcIdx := start + i
+							if srcIdx >= limit || srcIdx < 0 {
+								rg.array[regv+i] = LNil
+							} else {
+								rg.array[regv+i] = rg.array[srcIdx]
+							}
+						}
+
+						// values beyond top don't need to be valid LValues, so setting them to nil is fine
+						// setting them to nil rather than LNil lets us invoke the golang memclr opto
+						oldtop := rg.top
 						rg.top = regv + n
+						if rg.top < oldtop {
+							nilRange := rg.array[rg.top:oldtop]
+							for i := range nilRange {
+								nilRange[i] = nil
+							}
+						}
+					}
+					if b > 1 && n > (b-1) {
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) FillNil(regm, n int) ' in '_state.go'
+						{
+							rg := L.reg
+							regm := regv + b - 1
+							n := n - (b - 1)
+							newSize := regm + n
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
+							for i := 0; i < n; i++ {
+								rg.array[regm+i] = LNil
+							}
+							// values beyond top don't need to be valid LValues, so setting them to nil is fine
+							// setting them to nil rather than LNil lets us invoke the golang memclr opto
+							oldtop := rg.top
+							rg.top = regm + n
+							if rg.top < oldtop {
+								nilRange := rg.array[rg.top:oldtop]
+								for i := range nilRange {
+									nilRange[i] = nil
+								}
+							}
+						}
 					}
 				}
 			}
@@ -962,17 +1795,85 @@ func init() {
 			lbase := cf.LocalBase
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
-			if init, ok1 := reg.Get(RA).assertFloat64(); ok1 {
-				if limit, ok2 := reg.Get(RA + 1).assertFloat64(); ok2 {
-					if step, ok3 := reg.Get(RA + 2).assertFloat64(); ok3 {
+			if init, ok1 := reg.Get(RA).(LNumber); ok1 {
+				if limit, ok2 := reg.Get(RA + 1).(LNumber); ok2 {
+					if step, ok3 := reg.Get(RA + 2).(LNumber); ok3 {
 						init += step
-						reg.SetNumber(RA, LNumber(init))
+						v := LNumber(init)
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
+						{
+							rg := reg
+							regi := RA
+							vali := v
+							newSize := regi + 1
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+							{
+								requiredSize := newSize
+								if requiredSize > cap(rg.array) {
+									rg.resize(requiredSize)
+								}
+							}
+							rg.array[regi] = rg.alloc.LNumber2I(vali)
+							if regi >= rg.top {
+								rg.top = regi + 1
+							}
+						}
 						if (step > 0 && init <= limit) || (step <= 0 && init >= limit) {
 							Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
 							cf.Pc += Sbx
-							reg.SetNumber(RA+3, LNumber(init))
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
+							{
+								rg := reg
+								regi := RA + 3
+								vali := v
+								newSize := regi + 1
+								// this section is inlined by go-inline
+								// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+								{
+									requiredSize := newSize
+									if requiredSize > cap(rg.array) {
+										rg.resize(requiredSize)
+									}
+								}
+								rg.array[regi] = rg.alloc.LNumber2I(vali)
+								if regi >= rg.top {
+									rg.top = regi + 1
+								}
+							}
 						} else {
-							reg.SetTop(RA + 1)
+							// this section is inlined by go-inline
+							// source function is 'func (rg *registry) SetTop(topi int) ' in '_state.go'
+							{
+								rg := reg
+								topi := RA + 1
+								// this section is inlined by go-inline
+								// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+								{
+									requiredSize := topi
+									if requiredSize > cap(rg.array) {
+										rg.resize(requiredSize)
+									}
+								}
+								oldtopi := rg.top
+								rg.top = topi
+								for i := oldtopi; i < rg.top; i++ {
+									rg.array[i] = LNil
+								}
+								// values beyond top don't need to be valid LValues, so setting them to nil is fine
+								// setting them to nil rather than LNil lets us invoke the golang memclr opto
+								if rg.top < oldtopi {
+									nilRange := rg.array[rg.top:oldtopi]
+									for i := range nilRange {
+										nilRange[i] = nil
+									}
+								}
+								//for i := rg.top; i < oldtop; i++ {
+								//	rg.array[i] = LNil
+								//}
+							}
 						}
 					} else {
 						L.RaiseError("for statement step must be a number")
@@ -992,9 +1893,28 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
-			if init, ok1 := reg.Get(RA).assertFloat64(); ok1 {
-				if step, ok2 := reg.Get(RA + 2).assertFloat64(); ok2 {
-					reg.SetNumber(RA, LNumber(init-step))
+			if init, ok1 := reg.Get(RA).(LNumber); ok1 {
+				if step, ok2 := reg.Get(RA + 2).(LNumber); ok2 {
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
+					{
+						rg := reg
+						regi := RA
+						vali := LNumber(init - step)
+						newSize := regi + 1
+						// this section is inlined by go-inline
+						// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+						{
+							requiredSize := newSize
+							if requiredSize > cap(rg.array) {
+								rg.resize(requiredSize)
+							}
+						}
+						rg.array[regi] = rg.alloc.LNumber2I(vali)
+						if regi >= rg.top {
+							rg.top = regi + 1
+						}
+					}
 				} else {
 					L.RaiseError("for statement step must be a number")
 				}
@@ -1012,13 +1932,118 @@ func init() {
 			RA := lbase + A
 			C := int(inst>>9) & 0x1ff //GETC
 			nret := C
-			reg.SetTop(RA + 3 + 2)
-			reg.Set(RA+3+2, reg.Get(RA+2))
-			reg.Set(RA+3+1, reg.Get(RA+1))
-			reg.Set(RA+3, reg.Get(RA))
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) SetTop(topi int) ' in '_state.go'
+			{
+				rg := reg
+				topi := RA + 3 + 2
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := topi
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				oldtopi := rg.top
+				rg.top = topi
+				for i := oldtopi; i < rg.top; i++ {
+					rg.array[i] = LNil
+				}
+				// values beyond top don't need to be valid LValues, so setting them to nil is fine
+				// setting them to nil rather than LNil lets us invoke the golang memclr opto
+				if rg.top < oldtopi {
+					nilRange := rg.array[rg.top:oldtopi]
+					for i := range nilRange {
+						nilRange[i] = nil
+					}
+				}
+				//for i := rg.top; i < oldtop; i++ {
+				//	rg.array[i] = LNil
+				//}
+			}
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA + 3 + 2
+				vali := reg.Get(RA + 2)
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA + 3 + 1
+				vali := reg.Get(RA + 1)
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA + 3
+				vali := reg.Get(RA)
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			L.callR(2, nret, RA+3)
 			if value := reg.Get(RA + 3); value != LNil {
-				reg.Set(RA+2, value)
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+				{
+					rg := reg
+					regi := RA + 2
+					vali := value
+					newSize := regi + 1
+					// this section is inlined by go-inline
+					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+					{
+						requiredSize := newSize
+						if requiredSize > cap(rg.array) {
+							rg.resize(requiredSize)
+						}
+					}
+					rg.array[regi] = vali
+					if regi >= rg.top {
+						rg.top = regi + 1
+					}
+				}
 				pc := cf.Fn.Proto.Code[cf.Pc]
 				cf.Pc += int(pc&0x3ffff) - opMaxArgSbx
 			}
@@ -1084,7 +2109,26 @@ func init() {
 			Bx := int(inst & 0x3ffff) //GETBX
 			proto := cf.Fn.Proto.FunctionPrototypes[Bx]
 			closure := newLFunctionL(proto, cf.Fn.Env, int(proto.NumUpvalues))
-			reg.Set(RA, closure)
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			{
+				rg := reg
+				regi := RA
+				vali := closure
+				newSize := regi + 1
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
+					}
+				}
+				rg.array[regi] = vali
+				if regi >= rg.top {
+					rg.top = regi + 1
+				}
+			}
 			for i := 0; i < int(proto.NumUpvalues); i++ {
 				inst = cf.Fn.Proto.Code[cf.Pc]
 				cf.Pc++
@@ -1122,14 +2166,37 @@ func init() {
 				start := cf.Base + nparams + 1
 				limit := cf.LocalBase
 				n := nwant
-				for i := 0; i < n; i++ {
-					if tidx := start + i; tidx >= rg.top || limit > -1 && tidx >= limit || tidx < 0 {
-						rg.array[regv+i] = LNil
-					} else {
-						rg.array[regv+i] = rg.array[tidx]
+				newSize := regv + n
+				// this section is inlined by go-inline
+				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+				{
+					requiredSize := newSize
+					if requiredSize > cap(rg.array) {
+						rg.resize(requiredSize)
 					}
 				}
+				if limit == -1 || limit > rg.top {
+					limit = rg.top
+				}
+				for i := 0; i < n; i++ {
+					srcIdx := start + i
+					if srcIdx >= limit || srcIdx < 0 {
+						rg.array[regv+i] = LNil
+					} else {
+						rg.array[regv+i] = rg.array[srcIdx]
+					}
+				}
+
+				// values beyond top don't need to be valid LValues, so setting them to nil is fine
+				// setting them to nil rather than LNil lets us invoke the golang memclr opto
+				oldtop := rg.top
 				rg.top = regv + n
+				if rg.top < oldtop {
+					nilRange := rg.array[rg.top:oldtop]
+					for i := range nilRange {
+						nilRange[i] = nil
+					}
+				}
 			}
 			return 0
 		},
@@ -1150,12 +2217,52 @@ func opArith(L *LState, inst uint32, baseframe *callFrame) int { //OP_ADD, OP_SU
 	C := int(inst>>9) & 0x1ff //GETC
 	lhs := L.rkValue(B)
 	rhs := L.rkValue(C)
-	v1, ok1 := lhs.assertFloat64()
-	v2, ok2 := rhs.assertFloat64()
+	v1, ok1 := lhs.(LNumber)
+	v2, ok2 := rhs.(LNumber)
 	if ok1 && ok2 {
-		reg.SetNumber(RA, numberArith(L, opcode, LNumber(v1), LNumber(v2)))
+		v := numberArith(L, opcode, LNumber(v1), LNumber(v2))
+		// this section is inlined by go-inline
+		// source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
+		{
+			rg := reg
+			regi := RA
+			vali := v
+			newSize := regi + 1
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+			{
+				requiredSize := newSize
+				if requiredSize > cap(rg.array) {
+					rg.resize(requiredSize)
+				}
+			}
+			rg.array[regi] = rg.alloc.LNumber2I(vali)
+			if regi >= rg.top {
+				rg.top = regi + 1
+			}
+		}
 	} else {
-		reg.Set(RA, objectArith(L, opcode, lhs, rhs))
+		v := objectArith(L, opcode, lhs, rhs)
+		// this section is inlined by go-inline
+		// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+		{
+			rg := reg
+			regi := RA
+			vali := v
+			newSize := regi + 1
+			// this section is inlined by go-inline
+			// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+			{
+				requiredSize := newSize
+				if requiredSize > cap(rg.array) {
+					rg.resize(requiredSize)
+				}
+			}
+			rg.array[regi] = vali
+			if regi >= rg.top {
+				rg.top = regi + 1
+			}
+		}
 	}
 	return 0
 }
@@ -1164,7 +2271,7 @@ func luaModulo(lhs, rhs LNumber) LNumber {
 	flhs := float64(lhs)
 	frhs := float64(rhs)
 	v := math.Mod(flhs, frhs)
-	if flhs < 0 || frhs < 0 && !(flhs < 0 && frhs < 0) {
+	if frhs > 0 && v < 0 || frhs < 0 && v > 0 {
 		v += frhs
 	}
 	return LNumber(v)
@@ -1208,7 +2315,7 @@ func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
 		event = "__pow"
 	}
 	op := L.metaOp2(lhs, rhs, event)
-	if op.Type() == LTFunction {
+	if _, ok := op.(*LFunction); ok {
 		L.reg.Push(op)
 		L.reg.Push(lhs)
 		L.reg.Push(rhs)
@@ -1225,8 +2332,8 @@ func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
 			rhs = rnum
 		}
 	}
-	if v1, ok1 := lhs.assertFloat64(); ok1 {
-		if v2, ok2 := rhs.assertFloat64(); ok2 {
+	if v1, ok1 := lhs.(LNumber); ok1 {
+		if v2, ok2 := rhs.(LNumber); ok2 {
 			return numberArith(L, opcode, LNumber(v1), LNumber(v2))
 		}
 	}
@@ -1275,8 +2382,8 @@ func stringConcat(L *LState, total, last int) LValue {
 
 func lessThan(L *LState, lhs, rhs LValue) bool {
 	// optimization for numbers
-	if v1, ok1 := lhs.assertFloat64(); ok1 {
-		if v2, ok2 := rhs.assertFloat64(); ok2 {
+	if v1, ok1 := lhs.(LNumber); ok1 {
+		if v2, ok2 := rhs.(LNumber); ok2 {
 			return v1 < v2
 		}
 		L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
@@ -1296,17 +2403,18 @@ func lessThan(L *LState, lhs, rhs LValue) bool {
 }
 
 func equals(L *LState, lhs, rhs LValue, raw bool) bool {
-	if lhs.Type() != rhs.Type() {
+	lt := lhs.Type()
+	if lt != rhs.Type() {
 		return false
 	}
 
 	ret := false
-	switch lhs.Type() {
+	switch lt {
 	case LTNil:
 		ret = true
 	case LTNumber:
-		v1, _ := lhs.assertFloat64()
-		v2, _ := rhs.assertFloat64()
+		v1, _ := lhs.(LNumber)
+		v2, _ := rhs.(LNumber)
 		ret = v1 == v2
 	case LTBool:
 		ret = bool(lhs.(LBool)) == bool(rhs.(LBool))

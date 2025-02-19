@@ -30,11 +30,51 @@ func mainLoop(L *LState, baseframe *callFrame) {
 	}
 }
 
+func mainLoopWithContext(L *LState, baseframe *callFrame) {
+	var inst uint32
+	var cf *callFrame
+
+	if L.stack.IsEmpty() {
+		return
+	}
+
+	L.currentFrame = L.stack.Last()
+	if L.currentFrame.Fn.IsG {
+		callGFunction(L, false)
+		return
+	}
+
+	for {
+		cf = L.currentFrame
+		inst = cf.Fn.Proto.Code[cf.Pc]
+		cf.Pc++
+		select {
+		case <-L.ctx.Done():
+			L.RaiseError(L.ctx.Err().Error())
+			return
+		default:
+			if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
+				return
+			}
+		}
+	}
+}
+
+// regv is the first target register to copy the return values to.
+// It can be reg.top, indicating that the copied values are going into new registers, or it can be below reg.top
+// Indicating that the values should be within the existing registers.
+// b is the available number of return values + 1.
+// n is the desired number of return values.
+// If n more than the available return values then the extra values are set to nil.
+// When this function returns the top of the registry will be set to regv+n.
 func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 	if b == 1 {
 		// +inline-call L.reg.FillNil  regv n
 	} else {
 		// +inline-call L.reg.CopyRange regv start -1 n
+		if b > 1 && n > (b-1) {
+			// +inline-call L.reg.FillNil  regv+b-1 n-(b-1)
+		}
 	}
 } // +inline-end
 
@@ -66,8 +106,7 @@ func callGFunction(L *LState, tailcall bool) bool {
 	frame := L.currentFrame
 	gfnret := frame.Fn.GFunction(L)
 	if tailcall {
-		L.stack.Remove(L.stack.Sp() - 2) // remove caller lua function frame
-		L.currentFrame = L.stack.Last()
+		L.currentFrame = L.RemoveCallerFrame()
 	}
 
 	if gfnret < 0 {
@@ -118,7 +157,7 @@ func threadRun(L *LState) {
 			}
 		}
 	}()
-	mainLoop(L, nil)
+	L.mainLoop(L, nil)
 }
 
 type instFunc func(*LState, uint32, *callFrame) int
@@ -134,7 +173,8 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
-			reg.Set(RA, reg.Get(lbase+B))
+			v := reg.Get(lbase + B)
+			// +inline-call reg.Set RA v
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_MOVEN
@@ -144,7 +184,8 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			reg.Set(lbase+A, reg.Get(lbase+B))
+			v := reg.Get(lbase + B)
+			// +inline-call reg.Set lbase+A v
 			code := cf.Fn.Proto.Code
 			pc := cf.Pc
 			for i := 0; i < C; i++ {
@@ -152,7 +193,8 @@ func init() {
 				pc++
 				A = int(inst>>18) & 0xff //GETA
 				B = int(inst & 0x1ff)    //GETB
-				reg.Set(lbase+A, reg.Get(lbase+B))
+				v := reg.Get(lbase + B)
+				// +inline-call reg.Set lbase+A v
 			}
 			cf.Pc = pc
 			return 0
@@ -164,7 +206,8 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			Bx := int(inst & 0x3ffff) //GETBX
-			reg.Set(RA, cf.Fn.Proto.Constants[Bx])
+			v := cf.Fn.Proto.Constants[Bx]
+			// +inline-call reg.Set RA v
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_LOADBOOL
@@ -176,9 +219,9 @@ func init() {
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
 			if B != 0 {
-				reg.Set(RA, LTrue)
+				// +inline-call reg.Set RA LTrue
 			} else {
-				reg.Set(RA, LFalse)
+				// +inline-call reg.Set RA LFalse
 			}
 			if C != 0 {
 				cf.Pc++
@@ -193,7 +236,7 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
 			for i := RA; i <= lbase+B; i++ {
-				reg.Set(i, LNil)
+				// +inline-call reg.Set i LNil
 			}
 			return 0
 		},
@@ -204,7 +247,8 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
-			reg.Set(RA, cf.Fn.Upvalues[B].Value())
+			v := cf.Fn.Upvalues[B].Value()
+			// +inline-call reg.Set RA v
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_GETGLOBAL
@@ -215,7 +259,8 @@ func init() {
 			RA := lbase + A
 			Bx := int(inst & 0x3ffff) //GETBX
 			//reg.Set(RA, L.getField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx]))
-			reg.Set(RA, L.getFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx]))
+			v := L.getFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx])
+			// +inline-call reg.Set RA v
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_GETTABLE
@@ -226,7 +271,8 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			reg.Set(RA, L.getField(reg.Get(lbase+B), L.rkValue(C)))
+			v := L.getField(reg.Get(lbase+B), L.rkValue(C))
+			// +inline-call reg.Set RA v
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_GETTABLEKS
@@ -237,7 +283,8 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			reg.Set(RA, L.getFieldString(reg.Get(lbase+B), L.rkString(C)))
+			v := L.getFieldString(reg.Get(lbase+B), L.rkString(C))
+			// +inline-call reg.Set RA v
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SETGLOBAL
@@ -291,7 +338,8 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			reg.Set(RA, newLTable(B, C))
+			v := newLTable(B, C)
+			// +inline-call reg.Set RA v
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SELF
@@ -303,8 +351,9 @@ func init() {
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
 			selfobj := reg.Get(lbase + B)
-			reg.Set(RA, L.getFieldString(selfobj, L.rkString(C)))
-			reg.Set(RA+1, selfobj)
+			v := L.getFieldString(selfobj, L.rkString(C))
+			// +inline-call reg.Set RA v
+			// +inline-call reg.Set RA+1 selfobj
 			return 0
 		},
 		opArith, // OP_ADD
@@ -322,17 +371,17 @@ func init() {
 			B := int(inst & 0x1ff) //GETB
 			unaryv := L.rkValue(B)
 			if nm, ok := unaryv.(LNumber); ok {
-				reg.SetNumber(RA, -nm)
+				// +inline-call reg.Set RA -nm
 			} else {
 				op := L.metaOp1(unaryv, "__unm")
 				if op.Type() == LTFunction {
 					reg.Push(op)
 					reg.Push(unaryv)
 					L.Call(1, 1)
-					reg.Set(RA, reg.Pop())
+					// +inline-call reg.Set RA reg.Pop()
 				} else if str, ok1 := unaryv.(LString); ok1 {
 					if num, err := parseNumber(string(str)); err == nil {
-						reg.Set(RA, -num)
+						// +inline-call reg.Set RA -num
 					} else {
 						L.RaiseError("__unm undefined")
 					}
@@ -350,9 +399,9 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
 			if LVIsFalse(reg.Get(lbase + B)) {
-				reg.Set(RA, LTrue)
+				// +inline-call reg.Set RA LTrue
 			} else {
-				reg.Set(RA, LFalse)
+				// +inline-call reg.Set RA LFalse
 			}
 			return 0
 		},
@@ -365,16 +414,22 @@ func init() {
 			B := int(inst & 0x1ff) //GETB
 			switch lv := L.rkValue(B).(type) {
 			case LString:
-				reg.SetNumber(RA, LNumber(len(lv)))
+				// +inline-call reg.SetNumber RA LNumber(len(lv))
 			default:
 				op := L.metaOp1(lv, "__len")
 				if op.Type() == LTFunction {
 					reg.Push(op)
 					reg.Push(lv)
 					L.Call(1, 1)
-					reg.Set(RA, reg.Pop())
+					ret := reg.Pop()
+					if ret.Type() == LTNumber {
+						v, _ := ret.(LNumber)
+						// +inline-call reg.SetNumber RA v
+					} else {
+						// +inline-call reg.Set RA ret
+					}
 				} else if lv.Type() == LTTable {
-					reg.SetNumber(RA, LNumber(lv.(*LTable).Len()))
+					// +inline-call reg.SetNumber RA LNumber(lv.(*LTable).Len())
 				} else {
 					L.RaiseError("__len undefined")
 				}
@@ -391,7 +446,8 @@ func init() {
 			C := int(inst>>9) & 0x1ff //GETC
 			RC := lbase + C
 			RB := lbase + B
-			reg.Set(RA, stringConcat(L, RC-RB+1, RC))
+			v := stringConcat(L, RC-RB+1, RC)
+			// +inline-call reg.Set RA v
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_JMP
@@ -439,8 +495,8 @@ func init() {
 			rhs := L.rkValue(C)
 			ret := false
 
-			if v1, ok1 := lhs.assertFloat64(); ok1 {
-				if v2, ok2 := rhs.assertFloat64(); ok2 {
+			if v1, ok1 := lhs.(LNumber); ok1 {
+				if v2, ok2 := rhs.(LNumber); ok2 {
 					ret = v1 <= v2
 				} else {
 					L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
@@ -494,7 +550,7 @@ func init() {
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
 			if value := reg.Get(lbase + B); LVAsBool(value) != (C == 0) {
-				reg.Set(RA, value)
+				// +inline-call reg.Set RA value
 			} else {
 				cf.Pc++
 			}
@@ -516,7 +572,7 @@ func init() {
 			nret := C - 1
 			var callable *LFunction
 			var meta bool
-			if fn, ok := lv.assertFunction(); ok {
+			if fn, ok := lv.(*LFunction); ok {
 				callable = fn
 				meta = false
 			} else {
@@ -542,11 +598,14 @@ func init() {
 			lv := reg.Get(RA)
 			var callable *LFunction
 			var meta bool
-			if fn, ok := lv.assertFunction(); ok {
+			if fn, ok := lv.(*LFunction); ok {
 				callable = fn
 				meta = false
 			} else {
 				callable, meta = L.metaCall(lv)
+			}
+			if callable == nil {
+				L.RaiseError("attempt to call a non-function object")
 			}
 			// +inline-call L.closeUpvalues lbase
 			if callable.IsG {
@@ -626,17 +685,18 @@ func init() {
 			lbase := cf.LocalBase
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
-			if init, ok1 := reg.Get(RA).assertFloat64(); ok1 {
-				if limit, ok2 := reg.Get(RA + 1).assertFloat64(); ok2 {
-					if step, ok3 := reg.Get(RA + 2).assertFloat64(); ok3 {
+			if init, ok1 := reg.Get(RA).(LNumber); ok1 {
+				if limit, ok2 := reg.Get(RA + 1).(LNumber); ok2 {
+					if step, ok3 := reg.Get(RA + 2).(LNumber); ok3 {
 						init += step
-						reg.SetNumber(RA, LNumber(init))
+						v := LNumber(init)
+						// +inline-call reg.SetNumber RA v
 						if (step > 0 && init <= limit) || (step <= 0 && init >= limit) {
 							Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
 							cf.Pc += Sbx
-							reg.SetNumber(RA+3, LNumber(init))
+							// +inline-call reg.SetNumber RA+3 v
 						} else {
-							reg.SetTop(RA + 1)
+							// +inline-call reg.SetTop RA+1
 						}
 					} else {
 						L.RaiseError("for statement step must be a number")
@@ -656,9 +716,9 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
-			if init, ok1 := reg.Get(RA).assertFloat64(); ok1 {
-				if step, ok2 := reg.Get(RA + 2).assertFloat64(); ok2 {
-					reg.SetNumber(RA, LNumber(init-step))
+			if init, ok1 := reg.Get(RA).(LNumber); ok1 {
+				if step, ok2 := reg.Get(RA + 2).(LNumber); ok2 {
+					// +inline-call reg.SetNumber RA LNumber(init-step)
 				} else {
 					L.RaiseError("for statement step must be a number")
 				}
@@ -676,13 +736,13 @@ func init() {
 			RA := lbase + A
 			C := int(inst>>9) & 0x1ff //GETC
 			nret := C
-			reg.SetTop(RA + 3 + 2)
-			reg.Set(RA+3+2, reg.Get(RA+2))
-			reg.Set(RA+3+1, reg.Get(RA+1))
-			reg.Set(RA+3, reg.Get(RA))
+			// +inline-call reg.SetTop RA+3+2
+			// +inline-call reg.Set RA+3+2 reg.Get(RA+2)
+			// +inline-call reg.Set RA+3+1 reg.Get(RA+1)
+			// +inline-call reg.Set RA+3 reg.Get(RA)
 			L.callR(2, nret, RA+3)
 			if value := reg.Get(RA + 3); value != LNil {
-				reg.Set(RA+2, value)
+				// +inline-call reg.Set RA+2 value
 				pc := cf.Fn.Proto.Code[cf.Pc]
 				cf.Pc += int(pc&0x3ffff) - opMaxArgSbx
 			}
@@ -729,7 +789,7 @@ func init() {
 			Bx := int(inst & 0x3ffff) //GETBX
 			proto := cf.Fn.Proto.FunctionPrototypes[Bx]
 			closure := newLFunctionL(proto, cf.Fn.Env, int(proto.NumUpvalues))
-			reg.Set(RA, closure)
+			// +inline-call reg.Set RA closure
 			for i := 0; i < int(proto.NumUpvalues); i++ {
 				inst = cf.Fn.Proto.Code[cf.Pc]
 				cf.Pc++
@@ -779,12 +839,14 @@ func opArith(L *LState, inst uint32, baseframe *callFrame) int { //OP_ADD, OP_SU
 	C := int(inst>>9) & 0x1ff //GETC
 	lhs := L.rkValue(B)
 	rhs := L.rkValue(C)
-	v1, ok1 := lhs.assertFloat64()
-	v2, ok2 := rhs.assertFloat64()
+	v1, ok1 := lhs.(LNumber)
+	v2, ok2 := rhs.(LNumber)
 	if ok1 && ok2 {
-		reg.SetNumber(RA, numberArith(L, opcode, LNumber(v1), LNumber(v2)))
+		v := numberArith(L, opcode, LNumber(v1), LNumber(v2))
+		// +inline-call reg.SetNumber RA v
 	} else {
-		reg.Set(RA, objectArith(L, opcode, lhs, rhs))
+		v := objectArith(L, opcode, lhs, rhs)
+		// +inline-call reg.Set RA v
 	}
 	return 0
 }
@@ -793,7 +855,7 @@ func luaModulo(lhs, rhs LNumber) LNumber {
 	flhs := float64(lhs)
 	frhs := float64(rhs)
 	v := math.Mod(flhs, frhs)
-	if flhs < 0 || frhs < 0 && !(flhs < 0 && frhs < 0) {
+	if frhs > 0 && v < 0 || frhs < 0 && v > 0 {
 		v += frhs
 	}
 	return LNumber(v)
@@ -837,7 +899,7 @@ func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
 		event = "__pow"
 	}
 	op := L.metaOp2(lhs, rhs, event)
-	if op.Type() == LTFunction {
+	if _, ok := op.(*LFunction); ok {
 		L.reg.Push(op)
 		L.reg.Push(lhs)
 		L.reg.Push(rhs)
@@ -854,8 +916,8 @@ func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
 			rhs = rnum
 		}
 	}
-	if v1, ok1 := lhs.assertFloat64(); ok1 {
-		if v2, ok2 := rhs.assertFloat64(); ok2 {
+	if v1, ok1 := lhs.(LNumber); ok1 {
+		if v2, ok2 := rhs.(LNumber); ok2 {
 			return numberArith(L, opcode, LNumber(v1), LNumber(v2))
 		}
 	}
@@ -904,8 +966,8 @@ func stringConcat(L *LState, total, last int) LValue {
 
 func lessThan(L *LState, lhs, rhs LValue) bool {
 	// optimization for numbers
-	if v1, ok1 := lhs.assertFloat64(); ok1 {
-		if v2, ok2 := rhs.assertFloat64(); ok2 {
+	if v1, ok1 := lhs.(LNumber); ok1 {
+		if v2, ok2 := rhs.(LNumber); ok2 {
 			return v1 < v2
 		}
 		L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
@@ -925,17 +987,18 @@ func lessThan(L *LState, lhs, rhs LValue) bool {
 }
 
 func equals(L *LState, lhs, rhs LValue, raw bool) bool {
-	if lhs.Type() != rhs.Type() {
+	lt := lhs.Type()
+	if lt != rhs.Type() {
 		return false
 	}
 
 	ret := false
-	switch lhs.Type() {
+	switch lt {
 	case LTNil:
 		ret = true
 	case LTNumber:
-		v1, _ := lhs.assertFloat64()
-		v2, _ := rhs.assertFloat64()
+		v1, _ := lhs.(LNumber)
+		v2, _ := rhs.(LNumber)
 		ret = v1 == v2
 	case LTBool:
 		ret = bool(lhs.(LBool)) == bool(rhs.(LBool))

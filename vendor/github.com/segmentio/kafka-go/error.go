@@ -1,11 +1,14 @@
 package kafka
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"syscall"
 )
 
 // Error represents the different error codes that may be returned by kafka.
+// https://kafka.apache.org/protocol#protocol_error_codes
 type Error int
 
 const (
@@ -22,6 +25,7 @@ const (
 	MessageSizeTooLarge                Error = 10
 	StaleControllerEpoch               Error = 11
 	OffsetMetadataTooLarge             Error = 12
+	NetworkException                   Error = 13
 	GroupLoadInProgress                Error = 14
 	GroupCoordinatorNotAvailable       Error = 15
 	NotCoordinatorForGroup             Error = 16
@@ -85,6 +89,36 @@ const (
 	FencedLeaderEpoch                  Error = 74
 	UnknownLeaderEpoch                 Error = 75
 	UnsupportedCompressionType         Error = 76
+	StaleBrokerEpoch                   Error = 77
+	OffsetNotAvailable                 Error = 78
+	MemberIDRequired                   Error = 79
+	PreferredLeaderNotAvailable        Error = 80
+	GroupMaxSizeReached                Error = 81
+	FencedInstanceID                   Error = 82
+	EligibleLeadersNotAvailable        Error = 83
+	ElectionNotNeeded                  Error = 84
+	NoReassignmentInProgress           Error = 85
+	GroupSubscribedToTopic             Error = 86
+	InvalidRecord                      Error = 87
+	UnstableOffsetCommit               Error = 88
+	ThrottlingQuotaExceeded            Error = 89
+	ProducerFenced                     Error = 90
+	ResourceNotFound                   Error = 91
+	DuplicateResource                  Error = 92
+	UnacceptableCredential             Error = 93
+	InconsistentVoterSet               Error = 94
+	InvalidUpdateVersion               Error = 95
+	FeatureUpdateFailed                Error = 96
+	PrincipalDeserializationFailure    Error = 97
+	SnapshotNotFound                   Error = 98
+	PositionOutOfRange                 Error = 99
+	UnknownTopicID                     Error = 100
+	DuplicateBrokerRegistration        Error = 101
+	BrokerIDNotRegistered              Error = 102
+	InconsistentTopicID                Error = 103
+	InconsistentClusterID              Error = 104
+	TransactionalIDNotFound            Error = 105
+	FetchSessionTopicIDError           Error = 106
 )
 
 // Error satisfies the error interface.
@@ -99,14 +133,43 @@ func (e Error) Timeout() bool {
 
 // Temporary returns true if the operation that generated the error may succeed
 // if retried at a later time.
+// Kafka error documentation specifies these as "retriable"
+// https://kafka.apache.org/protocol#protocol_error_codes
 func (e Error) Temporary() bool {
-	return e == LeaderNotAvailable ||
-		e == BrokerNotAvailable ||
-		e == ReplicaNotAvailable ||
-		e == GroupLoadInProgress ||
-		e == GroupCoordinatorNotAvailable ||
-		e == RebalanceInProgress ||
-		e.Timeout()
+	switch e {
+	case InvalidMessage,
+		UnknownTopicOrPartition,
+		LeaderNotAvailable,
+		NotLeaderForPartition,
+		RequestTimedOut,
+		NetworkException,
+		GroupLoadInProgress,
+		GroupCoordinatorNotAvailable,
+		NotCoordinatorForGroup,
+		NotEnoughReplicas,
+		NotEnoughReplicasAfterAppend,
+		NotController,
+		KafkaStorageError,
+		FetchSessionIDNotFound,
+		InvalidFetchSessionEpoch,
+		ListenerNotFound,
+		FencedLeaderEpoch,
+		UnknownLeaderEpoch,
+		OffsetNotAvailable,
+		PreferredLeaderNotAvailable,
+		EligibleLeadersNotAvailable,
+		ElectionNotNeeded,
+		NoReassignmentInProgress,
+		GroupSubscribedToTopic,
+		UnstableOffsetCommit,
+		ThrottlingQuotaExceeded,
+		UnknownTopicID,
+		InconsistentTopicID,
+		FetchSessionTopicIDError:
+		return true
+	default:
+		return false
+	}
 }
 
 // Title returns a human readable title for the error.
@@ -264,6 +327,56 @@ func (e Error) Title() string {
 		return "Unknown Leader Epoch"
 	case UnsupportedCompressionType:
 		return "Unsupported Compression Type"
+	case MemberIDRequired:
+		return "Member ID Required"
+	case EligibleLeadersNotAvailable:
+		return "Eligible Leader Not Available"
+	case ElectionNotNeeded:
+		return "Election Not Needed"
+	case NoReassignmentInProgress:
+		return "No Reassignment In Progress"
+	case GroupSubscribedToTopic:
+		return "Group Subscribed To Topic"
+	case InvalidRecord:
+		return "Invalid Record"
+	case UnstableOffsetCommit:
+		return "Unstable Offset Commit"
+	case ThrottlingQuotaExceeded:
+		return "Throttling Quota Exceeded"
+	case ProducerFenced:
+		return "Producer Fenced"
+	case ResourceNotFound:
+		return "Resource Not Found"
+	case DuplicateResource:
+		return "Duplicate Resource"
+	case UnacceptableCredential:
+		return "Unacceptable Credential"
+	case InconsistentVoterSet:
+		return "Inconsistent Voter Set"
+	case InvalidUpdateVersion:
+		return "Invalid Update Version"
+	case FeatureUpdateFailed:
+		return "Feature Update Failed"
+	case PrincipalDeserializationFailure:
+		return "Principal Deserialization Failure"
+	case SnapshotNotFound:
+		return "Snapshot Not Found"
+	case PositionOutOfRange:
+		return "Position Out Of Range"
+	case UnknownTopicID:
+		return "Unknown Topic ID"
+	case DuplicateBrokerRegistration:
+		return "Duplicate Broker Registration"
+	case BrokerIDNotRegistered:
+		return "Broker ID Not Registered"
+	case InconsistentTopicID:
+		return "Inconsistent Topic ID"
+	case InconsistentClusterID:
+		return "Inconsistent Cluster ID"
+	case TransactionalIDNotFound:
+		return "Transactional ID Not Found"
+	case FetchSessionTopicIDError:
+		return "Fetch Session Topic ID Error"
 	}
 	return ""
 }
@@ -423,34 +536,93 @@ func (e Error) Description() string {
 		return "the leader epoch in the request is newer than the epoch on the broker"
 	case UnsupportedCompressionType:
 		return "the requesting client does not support the compression type of given partition"
+	case MemberIDRequired:
+		return "the group member needs to have a valid member id before actually entering a consumer group"
+	case EligibleLeadersNotAvailable:
+		return "eligible topic partition leaders are not available"
+	case ElectionNotNeeded:
+		return "leader election not needed for topic partition"
+	case NoReassignmentInProgress:
+		return "no partition reassignment is in progress"
+	case GroupSubscribedToTopic:
+		return "deleting offsets of a topic is forbidden while the consumer group is actively subscribed to it"
+	case InvalidRecord:
+		return "this record has failed the validation on broker and hence be rejected"
+	case UnstableOffsetCommit:
+		return "there are unstable offsets that need to be cleared"
+	case ThrottlingQuotaExceeded:
+		return "The throttling quota has been exceeded"
+	case ProducerFenced:
+		return "There is a newer producer with the same transactionalId which fences the current one"
+	case ResourceNotFound:
+		return "A request illegally referred to a resource that does not exist"
+	case DuplicateResource:
+		return "A request illegally referred to the same resource twice"
+	case UnacceptableCredential:
+		return "Requested credential would not meet criteria for acceptability"
+	case InconsistentVoterSet:
+		return "Indicates that the either the sender or recipient of a voter-only request is not one of the expected voters"
+	case InvalidUpdateVersion:
+		return "The given update version was invalid"
+	case FeatureUpdateFailed:
+		return "Unable to update finalized features due to an unexpected server error"
+	case PrincipalDeserializationFailure:
+		return "Request principal deserialization failed during forwarding. This indicates an internal error on the broker cluster security setup"
+	case SnapshotNotFound:
+		return "Requested snapshot was not found"
+	case PositionOutOfRange:
+		return "Requested position is not greater than or equal to zero, and less than the size of the snapshot"
+	case UnknownTopicID:
+		return "This server does not host this topic ID"
+	case DuplicateBrokerRegistration:
+		return "This broker ID is already in use"
+	case BrokerIDNotRegistered:
+		return "The given broker ID was not registered"
+	case InconsistentTopicID:
+		return "The log's topic ID did not match the topic ID in the request"
+	case InconsistentClusterID:
+		return "The clusterId in the request does not match that found on the server"
+	case TransactionalIDNotFound:
+		return "The transactionalId could not be found"
+	case FetchSessionTopicIDError:
+		return "The fetch session encountered inconsistent topic ID usage"
 	}
 	return ""
 }
 
 func isTimeout(err error) bool {
-	e, ok := err.(interface {
-		Timeout() bool
-	})
-	return ok && e.Timeout()
+	var timeoutError interface{ Timeout() bool }
+	if errors.As(err, &timeoutError) {
+		return timeoutError.Timeout()
+	}
+	return false
 }
 
 func isTemporary(err error) bool {
-	e, ok := err.(interface {
-		Temporary() bool
-	})
-	return ok && e.Temporary()
+	var tempError interface{ Temporary() bool }
+	if errors.As(err, &tempError) {
+		return tempError.Temporary()
+	}
+	return false
+}
+
+func isTransientNetworkError(err error) bool {
+	return errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, syscall.ECONNREFUSED) ||
+		errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.EPIPE)
 }
 
 func silentEOF(err error) error {
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		err = nil
 	}
 	return err
 }
 
 func dontExpectEOF(err error) error {
-	if err == io.EOF {
-		err = io.ErrUnexpectedEOF
+	if errors.Is(err, io.EOF) {
+		return io.ErrUnexpectedEOF
 	}
 	return err
 }
@@ -462,4 +634,79 @@ func coalesceErrors(errs ...error) error {
 		}
 	}
 	return nil
+}
+
+type MessageTooLargeError struct {
+	Message   Message
+	Remaining []Message
+}
+
+func messageTooLarge(msgs []Message, i int) MessageTooLargeError {
+	remain := make([]Message, 0, len(msgs)-1)
+	remain = append(remain, msgs[:i]...)
+	remain = append(remain, msgs[i+1:]...)
+	return MessageTooLargeError{
+		Message:   msgs[i],
+		Remaining: remain,
+	}
+}
+
+func (e MessageTooLargeError) Error() string {
+	return MessageSizeTooLarge.Error()
+}
+
+func makeError(code int16, message string) error {
+	if code == 0 {
+		return nil
+	}
+	if message == "" {
+		return Error(code)
+	}
+	return fmt.Errorf("%w: %s", Error(code), message)
+}
+
+// WriteError is returned by kafka.(*Writer).WriteMessages when the writer is
+// not configured to write messages asynchronously. WriteError values contain
+// a list of errors where each entry matches the position of a message in the
+// WriteMessages call. The program can determine the status of each message by
+// looping over the error:
+//
+//	switch err := w.WriteMessages(ctx, msgs...).(type) {
+//	case nil:
+//	case kafka.WriteErrors:
+//		for i := range msgs {
+//			if err[i] != nil {
+//				// handle the error writing msgs[i]
+//				...
+//			}
+//		}
+//	default:
+//		// handle other errors
+//		...
+//	}
+type WriteErrors []error
+
+// Count counts the number of non-nil errors in err.
+func (err WriteErrors) Count() int {
+	n := 0
+
+	for _, e := range err {
+		if e != nil {
+			n++
+		}
+	}
+
+	return n
+}
+
+func (err WriteErrors) Error() string {
+	errCount := err.Count()
+	errors := make([]string, 0, errCount)
+	for _, writeError := range err {
+		if writeError == nil {
+			continue
+		}
+		errors = append(errors, writeError.Error())
+	}
+	return fmt.Sprintf("Kafka write errors (%d/%d), errors: %v", errCount, len(err), errors)
 }
