@@ -5,7 +5,7 @@ import (
 )
 
 // saslHandshakeRequestV0 implements the format for V0 and V1 SASL
-// requests (they are identical)
+// requests (they are identical).
 type saslHandshakeRequestV0 struct {
 	// Mechanism holds the SASL Mechanism chosen by the client.
 	Mechanism string
@@ -19,12 +19,12 @@ func (t *saslHandshakeRequestV0) readFrom(r *bufio.Reader, sz int) (remain int, 
 	return readString(r, sz, &t.Mechanism)
 }
 
-func (t saslHandshakeRequestV0) writeTo(w *bufio.Writer) {
-	writeString(w, t.Mechanism)
+func (t saslHandshakeRequestV0) writeTo(wb *writeBuffer) {
+	wb.writeString(t.Mechanism)
 }
 
 // saslHandshakeResponseV0 implements the format for V0 and V1 SASL
-// responses (they are identical)
+// responses (they are identical).
 type saslHandshakeResponseV0 struct {
 	// ErrorCode holds response error code
 	ErrorCode int16
@@ -37,9 +37,9 @@ func (t saslHandshakeResponseV0) size() int32 {
 	return sizeofInt16(t.ErrorCode) + sizeofStringArray(t.EnabledMechanisms)
 }
 
-func (t saslHandshakeResponseV0) writeTo(w *bufio.Writer) {
-	writeInt16(w, t.ErrorCode)
-	writeStringArray(w, t.EnabledMechanisms)
+func (t saslHandshakeResponseV0) writeTo(wb *writeBuffer) {
+	wb.writeInt16(t.ErrorCode)
+	wb.writeStringArray(t.EnabledMechanisms)
 }
 
 func (t *saslHandshakeResponseV0) readFrom(r *bufio.Reader, sz int) (remain int, err error) {

@@ -5,8 +5,8 @@ import (
 
 	config "github.com/coccyx/gogen/internal"
 	log "github.com/coccyx/gogen/logger"
-	luar "github.com/layeh/gopher-luar"
 	lua "github.com/yuin/gopher-lua"
+	luar "layeh.com/gopher-luar"
 )
 
 // ScriptRater executes a Lua Script to rate events

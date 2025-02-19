@@ -2,8 +2,69 @@ package kafka
 
 import (
 	"bufio"
+	"context"
+	"fmt"
+	"net"
 	"time"
+
+	"github.com/segmentio/kafka-go/protocol/deletetopics"
 )
+
+// DeleteTopicsRequest represents a request sent to a kafka broker to delete
+// topics.
+type DeleteTopicsRequest struct {
+	// Address of the kafka broker to send the request to.
+	Addr net.Addr
+
+	// Names of topics to delete.
+	Topics []string
+}
+
+// DeleteTopicsResponse represents a response from a kafka broker to a topic
+// deletion request.
+type DeleteTopicsResponse struct {
+	// The amount of time that the broker throttled the request.
+	//
+	// This field will be zero if the kafka broker did not support the
+	// DeleteTopics API in version 1 or above.
+	Throttle time.Duration
+
+	// Mapping of topic names to errors that occurred while attempting to delete
+	// the topics.
+	//
+	// The errors contain the kafka error code. Programs may use the standard
+	// errors.Is function to test the error against kafka error codes.
+	Errors map[string]error
+}
+
+// DeleteTopics sends a topic deletion request to a kafka broker and returns the
+// response.
+func (c *Client) DeleteTopics(ctx context.Context, req *DeleteTopicsRequest) (*DeleteTopicsResponse, error) {
+	m, err := c.roundTrip(ctx, req.Addr, &deletetopics.Request{
+		TopicNames: req.Topics,
+		TimeoutMs:  c.timeoutMs(ctx, defaultDeleteTopicsTimeout),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("kafka.(*Client).DeleteTopics: %w", err)
+	}
+
+	res := m.(*deletetopics.Response)
+	ret := &DeleteTopicsResponse{
+		Throttle: makeDuration(res.ThrottleTimeMs),
+		Errors:   make(map[string]error, len(res.Responses)),
+	}
+
+	for _, t := range res.Responses {
+		if t.ErrorCode == 0 {
+			ret.Errors[t.Name] = nil
+		} else {
+			ret.Errors[t.Name] = Error(t.ErrorCode)
+		}
+	}
+
+	return ret, nil
+}
 
 // See http://kafka.apache.org/protocol.html#The_Messages_DeleteTopics
 type deleteTopicsRequestV0 struct {
@@ -21,9 +82,9 @@ func (t deleteTopicsRequestV0) size() int32 {
 		sizeofInt32(t.Timeout)
 }
 
-func (t deleteTopicsRequestV0) writeTo(w *bufio.Writer) {
-	writeStringArray(w, t.Topics)
-	writeInt32(w, t.Timeout)
+func (t deleteTopicsRequestV0) writeTo(wb *writeBuffer) {
+	wb.writeStringArray(t.Topics)
+	wb.writeInt32(t.Timeout)
 }
 
 type deleteTopicsResponseV0 struct {
@@ -50,8 +111,8 @@ func (t *deleteTopicsResponseV0) readFrom(r *bufio.Reader, size int) (remain int
 	return
 }
 
-func (t deleteTopicsResponseV0) writeTo(w *bufio.Writer) {
-	writeArray(w, len(t.TopicErrorCodes), func(i int) { t.TopicErrorCodes[i].writeTo(w) })
+func (t deleteTopicsResponseV0) writeTo(wb *writeBuffer) {
+	wb.writeArray(len(t.TopicErrorCodes), func(i int) { t.TopicErrorCodes[i].writeTo(wb) })
 }
 
 type deleteTopicsResponseV0TopicErrorCode struct {
@@ -77,9 +138,9 @@ func (t *deleteTopicsResponseV0TopicErrorCode) readFrom(r *bufio.Reader, size in
 	return
 }
 
-func (t deleteTopicsResponseV0TopicErrorCode) writeTo(w *bufio.Writer) {
-	writeString(w, t.Topic)
-	writeInt16(w, t.ErrorCode)
+func (t deleteTopicsResponseV0TopicErrorCode) writeTo(wb *writeBuffer) {
+	wb.writeString(t.Topic)
+	wb.writeInt16(t.ErrorCode)
 }
 
 // deleteTopics deletes the specified topics.
@@ -94,7 +155,7 @@ func (c *Conn) deleteTopics(request deleteTopicsRequestV0) (deleteTopicsResponse
 				deadline = adjustDeadlineForRTT(deadline, now, defaultRTT)
 				request.Timeout = milliseconds(deadlineToTimeout(deadline, now))
 			}
-			return c.writeRequest(deleteTopicsRequest, v0, id, request)
+			return c.writeRequest(deleteTopics, v0, id, request)
 		},
 		func(deadline time.Time, size int) error {
 			return expectZeroSize(func() (remain int, err error) {

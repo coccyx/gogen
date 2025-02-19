@@ -2,6 +2,7 @@ package internal
 
 import (
 	"bytes"
+	"context"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -58,13 +59,13 @@ func Push(name string, run Run) (string, string) {
 func push(name string, genc *Config, pushc *Config, run Run) (string, string) {
 	log.Debugf("Pushing config as '%s'", name)
 	gh := NewGitHub(true)
-	gu, _, err := gh.client.Users.Get("")
+	user, _, err := gh.client.Users.Get(context.Background(), "")
 	if err != nil {
 		log.Fatalf("Error getting user in push: %s", err)
 	}
 	if len(genc.Samples) > 0 {
 		sample := genc.Samples[0]
-		gogen := *gu.Login + "/" + name
+		gogen := *user.Login + "/" + name
 
 		run.Once(sample.Name)
 		log.Debugf("Buf: %s", genc.Buf.String())
@@ -88,14 +89,14 @@ func push(name string, genc *Config, pushc *Config, run Run) (string, string) {
 			Name:        name,
 			Description: sample.Description,
 			Notes:       sample.Notes,
-			Owner:       *gu.Login,
+			Owner:       *user.Login,
 			SampleEvent: genc.Buf.String(),
 			GistID:      *gi.ID,
 			Version:     version,
 		}
 		Upsert(g)
 
-		return *gu.Login, *gi.ID
+		return *user.Login, *gi.ID
 	}
 	return "", ""
 }
@@ -344,7 +345,7 @@ func PullFile(gogen string, filename string) {
 
 func getGist(g GogenInfo) (gist *github.Gist) {
 	gh := NewGitHub(false)
-	gist, _, err := gh.client.Gists.Get(g.GistID)
+	gist, _, err := gh.client.Gists.Get(context.Background(), g.GistID)
 	if err != nil {
 		log.Fatalf("Couldn't get gist: %s", err)
 	}

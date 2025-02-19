@@ -1,9 +1,11 @@
 GITHUB_OAUTH_CLIENT_ID = 39c483e563cd5cedf7c1
 GITHUB_OAUTH_CLIENT_SECRET = 024b16270452504c35f541aca4bf78781cd06db9
 APP_NAME = $(shell basename $(GOGEN_EMBED))
-GOVVV = $(shell govvv -flags)
-FLAGS = -ldflags "-X github.com/coccyx/gogen/internal.gitHubClientID=$(GITHUB_OAUTH_CLIENT_ID) -X github.com/coccyx/gogen/internal.gitHubClientSecret=$(GITHUB_OAUTH_CLIENT_SECRET) $(GOVVV)"
+FLAGS = -ldflags "-X github.com/coccyx/gogen/internal.gitHubClientID=$(GITHUB_OAUTH_CLIENT_ID) -X github.com/coccyx/gogen/internal.gitHubClientSecret=$(GITHUB_OAUTH_CLIENT_SECRET) -X main.Version=$(VERSION) -X main.GitSummary=$(SUMMARY) -X main.BuildDate=$(DATE)"
 GOBIN ?= $(HOME)/go/bin
+VERSION = $(shell cat $(CURDIR)/VERSION)
+SUMMARY = $(shell git describe --tags --always --dirty)
+DATE = $(shell date --rfc-3339=date)
 
 
 .PHONY: all build deps install test docker splunkapp embed
@@ -28,10 +30,9 @@ build:
 deps:
 	go get -u github.com/mattn/goveralls
 	go get -u github.com/LawrenceWoodman/roveralls
-	go get github.com/ahmetb/govvv
 
 install:
-	go install -ldflags "-X github.com/coccyx/gogen/internal.gitHubClientID=$(GITHUB_OAUTH_CLIENT_ID) -X github.com/coccyx/gogen/internal.gitHubClientSecret=$(GITHUB_OAUTH_CLIENT_SECRET) $(GOVVV)"
+	go install $(FLAGS)
 
 test:
 	go test -v ./...

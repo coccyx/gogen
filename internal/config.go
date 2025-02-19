@@ -897,7 +897,7 @@ func (c *Config) validate(s *Sample) {
 				s.ReplayOffsets[len(s.ReplayOffsets)-1] = avgOffset
 			}
 			log.WithFields(log.Fields{
-				"sample": s.Name,
+				"sample":        s.Name,
 				"ReplayOffsets": s.ReplayOffsets,
 			}).Debugf("ReplayOffsets values")
 		} else if s.Generator != "sample" {
@@ -1094,7 +1094,6 @@ func (c *Config) SetupSystemTokens() {
 	syslogOutput := c.Global.Output.OutputTemplate == "rfc3164" || c.Global.Output.OutputTemplate == "rfc5424"
 	addTime := c.Global.Output.OutputTemplate == "splunkhec" ||
 		c.Global.Output.OutputTemplate == "modinput" ||
-		strings.Contains(c.Global.Output.OutputTemplate, "splunktcp") ||
 		c.Global.Output.OutputTemplate == "elasticsearch" ||
 		c.Global.AddTime ||
 		syslogOutput
@@ -1131,14 +1130,6 @@ func (c *Config) SetupSystemTokens() {
 				addField(s, "tag", tag)
 				addField(s, "pid", fmt.Sprintf("%d", os.Getpid()))
 				addField(s, "appName", "gogen")
-			}
-			// Add fields and/or tokens for splunktcp output
-			if c.Global.Output.OutputTemplate == "splunktcp" {
-				addField(s, "_linebreaker", "_linebreaker")
-			}
-			if c.Global.Output.OutputTemplate == "splunktcpuf" {
-				addToken(s, "_channel", "_channel", "")
-				addField(s, "_channel", "$_channel$")
 			}
 			// Fixup existing timestamp tokens to all use the same static group, -1
 			for j := 0; j < len(s.Tokens); j++ {
