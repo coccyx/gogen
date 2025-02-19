@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -499,6 +501,7 @@ func main() {
 			Usage: "Outputs version info",
 			Flags: []cli.Flag{
 				cli.BoolFlag{Name: "versiononly, v"},
+				cli.BoolFlag{Name: "buildinfo, b"},
 			},
 			Action: func(clic *cli.Context) error {
 				if clic.Bool("versiononly") {
@@ -508,6 +511,15 @@ func main() {
 				fmt.Printf("Version: %s\n", Version)
 				fmt.Printf("Build Date: %s\n", BuildDate)
 				fmt.Printf("Git Summary: %s\n", GitSummary)
+				fmt.Printf("Go Version: %s\n", runtime.Version())
+				if clic.Bool("buildinfo") {
+					if buildInfo, ok := debug.ReadBuildInfo(); ok {
+						fmt.Printf("Build Settings:\n")
+						for _, setting := range buildInfo.Settings {
+							fmt.Printf("  %s: %s\n", setting.Key, setting.Value)
+						}
+					}
+				}
 				return nil
 			},
 		},
