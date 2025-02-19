@@ -27,8 +27,14 @@ _testmain.go
 # Emacs
 *~
 
+# VIM
+*.swp
+
 # Goland
 .idea
+
+#IntelliJ
+*.iml
 
 # govendor
 /vendor/*/

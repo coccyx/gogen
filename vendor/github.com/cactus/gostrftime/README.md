@@ -1,9 +1,10 @@
 gostrftime
 ==========
 
-[![Build Status](https://travis-ci.org/cactus/gostrftime.png?branch=master)][1]
+[![Build Status](https://github.com/cactus/gostrftime/workflows/unit-tests/badge.svg)][1]
 [![GoDoc](https://godoc.org/github.com/cactus/gostrftime?status.png)][2]
 [![Go Report Card](https://goreportcard.com/badge/cactus/gostrftime)](https://goreportcard.com/report/cactus/gostrftime)
+[![License](https://img.shields.io/github/license/cactus/gostrftime.svg)](https://github.com/cactus/gostrftime/blob/master/LICENSE.md)
 
 ## About
 
@@ -73,8 +74,8 @@ Basically, strftime for Go, with a couple of additions.
 
 ## License
 
-Released under an [MIT license][3]. See `LICENSE.md` file for details.
+Released under an [ISC license][3]. See `LICENSE.md` file for details.
 
-[1]: https://travis-ci.org/cactus/gostrftime
+[1]: https://github.com/cactus/gostrftime/actions
 [2]: https://godoc.org/github.com/cactus/gostrftime
-[3]: http://www.opensource.org/licenses/mit-license.php
+[3]: https://choosealicense.com/licenses/isc/

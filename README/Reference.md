@@ -59,9 +59,9 @@ Output options:
 | maxBytes         | For file output, sets the max bytes before rolling a new file                                  | int64       |
 | backupFiles      | For file output, sets the number of files to keep before discarding older files                | int         |
 | bufferBytes      | For HTTP, S2S and other outputs, sets the number of bytes to buffer before flushing            | int         |
-| outputter        | Sets the output module to use, currently supports devnull, file, http, splunktcp and stdout    | string      |
+| outputter        | Sets the output module to use, currently supports devnull, file, http and stdout               | string      |
 | outputTemplate   | Set the output template to format output, builtins include csv, json, splunkhec, modinput      | string      |
-| endpoints        | For http, splunktcp or potentially others, lists endpoints to send data to.                    | string list |
+| endpoints        | For http, or potentially others, lists endpoints to send data to.                              | string list |
 | headers          | For http, sets headers                                                                         | string obj  |
 | protocol         | For network, set to `tcp` or `udp`                                                             | string      |
 | timeout          | For network based outputs, a time in seconds, default `10s`                                    | string      |

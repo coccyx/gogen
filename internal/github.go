@@ -3,6 +3,7 @@ package internal
 // Mostly from https://jacobmartins.com/2016/02/29/getting-started-with-oauth2-in-go/
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -70,14 +71,14 @@ func (gh *GitHub) Push(name string, c *Config) *github.Gist {
 
 	if foundgist != nil {
 		log.Debugf("Found gist, updating")
-		updatedgist, _, err := gh.client.Gists.Edit(*foundgist.ID, gist)
+		updatedgist, _, err := gh.client.Gists.Edit(context.Background(), *foundgist.ID, gist)
 		if err != nil {
 			log.Fatalf("Error updating gist %# v: %s", pretty.Formatter(gist), err)
 		}
 		return updatedgist
 	}
 	log.Debugf("Gist not found, creating")
-	newgist, _, err := gh.client.Gists.Create(gist)
+	newgist, _, err := gh.client.Gists.Create(context.Background(), gist)
 	if err != nil {
 		log.Fatalf("Error creating gist %# v: %s", pretty.Formatter(gist), err)
 	}
@@ -95,7 +96,7 @@ func (gh *GitHub) Pull(name string) *github.Gist {
 }
 
 func (gh *GitHub) findgist(name string) (foundgist *github.Gist) {
-	gists, _, err := gh.client.Gists.List("", nil)
+	gists, _, err := gh.client.Gists.List(context.Background(), "", nil)
 	if err != nil {
 		log.Fatalf("Cannot pull Gists list: %s", err)
 	}
