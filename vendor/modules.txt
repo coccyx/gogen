@@ -1,9 +1,6 @@
 # github.com/cactus/gostrftime v0.0.0-20160820080632-908b7e9ab9b8
 ## explicit
 github.com/cactus/gostrftime
-# github.com/coccyx/go-s2s v0.0.0-20190615184235-2f7a532dc47c
-## explicit
-github.com/coccyx/go-s2s/s2s
 # github.com/coccyx/timeparser v0.0.0-20160911001308-9d8b37af28f5
 ## explicit
 github.com/coccyx/timeparser

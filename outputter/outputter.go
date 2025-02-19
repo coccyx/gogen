@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coccyx/go-s2s/s2s"
 	config "github.com/coccyx/gogen/internal"
 	log "github.com/coccyx/gogen/logger"
 	"github.com/coccyx/gogen/template"
@@ -138,7 +137,7 @@ func write(item *config.OutQueueItem) {
 	if !useCache {
 		item.Cache.RLock()
 		switch item.S.Output.OutputTemplate {
-		case "raw", "json", "splunktcp", "splunkhec", "rfc3164", "rfc5424", "elasticsearch":
+		case "raw", "json", "splunkhec", "rfc3164", "rfc5424", "elasticsearch":
 			for _, line := range item.Events {
 				var tempbytes int
 				var err error
@@ -152,8 +151,6 @@ func write(item *config.OutQueueItem) {
 							log.Errorf("Error marshaling json: %s", err)
 						}
 						tempbytes, err = w.Write(jb)
-					case "splunktcp":
-						tempbytes, err = w.Write(s2s.EncodeEvent(line))
 					case "splunkhec":
 						if _, ok := line["_raw"]; ok {
 							line["event"] = line["_raw"]
@@ -204,7 +201,7 @@ func write(item *config.OutQueueItem) {
 					tempbytes = len(line["_raw"])
 				}
 				bytesCounter += int64(tempbytes) + 1
-				if item.S.Output.Outputter != "devnull" && item.S.Output.Outputter != "splunktcp" && item.S.Output.Outputter != "kafka" {
+				if item.S.Output.Outputter != "devnull" && item.S.Output.Outputter != "kafka" {
 					_, err = io.WriteString(w, "\n")
 					if err != nil {
 						log.Errorf("Error writing to IO Buffer: %s", err)
@@ -262,10 +259,7 @@ func Start(oq chan *config.OutQueueItem, oqs chan int, num int) {
 		}
 		out = setup(generator, item, num)
 		if len(item.Events) > 0 {
-			// Skip writing these outputters (handled in the outputter)
-			if item.S.Output.Outputter != "splunktcpuf" {
-				go write(item)
-			}
+			go write(item)
 			err := out.Send(item)
 			if err != nil {
 				logErr := false
@@ -327,10 +321,6 @@ func setup(generator *rand.Rand, item *config.OutQueueItem, num int) config.Outp
 			gout[num] = new(httpout)
 		case "buf":
 			gout[num] = new(buf)
-		case "splunktcp":
-			gout[num] = new(splunktcp)
-		case "splunktcpuf":
-			gout[num] = new(splunktcpuf)
 		case "network":
 			gout[num] = new(network)
 		case "kafka":

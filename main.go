@@ -508,16 +508,15 @@ func main() {
 					fmt.Printf("%s", Version)
 					return nil
 				}
+				buildInfo, _ := debug.ReadBuildInfo()
 				fmt.Printf("Version: %s\n", Version)
 				fmt.Printf("Build Date: %s\n", BuildDate)
 				fmt.Printf("Git Summary: %s\n", GitSummary)
 				fmt.Printf("Go Version: %s\n", runtime.Version())
 				if clic.Bool("buildinfo") {
-					if buildInfo, ok := debug.ReadBuildInfo(); ok {
-						fmt.Printf("Build Settings:\n")
-						for _, setting := range buildInfo.Settings {
-							fmt.Printf("  %s: %s\n", setting.Key, setting.Value)
-						}
+					fmt.Printf("Build Settings:\n")
+					for _, setting := range buildInfo.Settings {
+						fmt.Printf("  %s: %s\n", setting.Key, setting.Value)
 					}
 				}
 				return nil
@@ -560,12 +559,12 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "outputTemplate, ot",
-			Usage:  "Use output template (raw|csv|json|splunkhec|splunktcp|splunktcpuf|rfc3134|rfc5424|elasticsearch) for formatting output",
+			Usage:  "Use output template (raw|csv|json|splunkhec||rfc3134|rfc5424|elasticsearch) for formatting output",
 			EnvVar: "GOGEN_OUTPUTTEMPLATE",
 		},
 		cli.StringFlag{
 			Name:   "outputter, o",
-			Usage:  "Use outputter (stdout|devnull|file|http|tcp|splunktcp|splunktcpuf) for output",
+			Usage:  "Use outputter (stdout|devnull|file|http|tcp) for output",
 			EnvVar: "GOGEN_OUT",
 		},
 		cli.StringFlag{
