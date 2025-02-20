@@ -28,8 +28,7 @@ build:
 	GOOS=js GOARCH=wasm go build $(FLAGS) -o build/wasm/gogen.wasm
 
 deps:
-	go get -u github.com/mattn/goveralls
-	go get -u github.com/LawrenceWoodman/roveralls
+	go install github.com/mattn/goveralls@latest
 
 install:
 	go install $(FLAGS)

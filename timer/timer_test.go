@@ -43,6 +43,37 @@ func TestTimer(t *testing.T) {
 	assert.Equal(t, true, gt)
 }
 
+func TestRealtimeReplay(t *testing.T) {
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+	home := filepath.Join("..", "tests", "timer")
+	os.Setenv("GOGEN_SAMPLES_DIR", home)
+
+	s := tests.FindSampleInFile(home, "realtimereplay")
+
+	gq := make(chan *config.GenQueueItem, 1000)
+	oq := make(chan *config.OutQueueItem)
+	done := make(chan int)
+	gqs := make([]*config.GenQueueItem, 0, 10)
+
+	timer := &Timer{S: s, GQ: gq, OQ: oq, Done: done}
+	go timer.NewTimer(0)
+
+	time.Sleep(4 * time.Second)
+
+Loop:
+	for {
+		select {
+		case i := <-gq:
+			gqs = append(gqs, i)
+		default:
+			break Loop
+		}
+	}
+	// Should loop back around to the first entry and play it again
+	assert.Equal(t, 4, len(gqs))
+}
+
 func TestBackfill(t *testing.T) {
 	os.Setenv("GOGEN_HOME", "..")
 	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
@@ -166,4 +197,45 @@ Loop:
 			assert.False(t, gqitem.Cache.SetCache)
 		}
 	}
+}
+
+func TestTimerClose(t *testing.T) {
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+	home := filepath.Join("..", "tests", "timer")
+	os.Setenv("GOGEN_SAMPLES_DIR", home)
+
+	s := tests.FindSampleInFile(home, "backfillrealtime")
+
+	gq := make(chan *config.GenQueueItem, 1000)
+	oq := make(chan *config.OutQueueItem)
+	done := make(chan int)
+	gqs := make([]*config.GenQueueItem, 0, 10)
+
+	timer := &Timer{S: s, GQ: gq, OQ: oq, Done: done}
+	go timer.NewTimer(2)
+
+	// Let a few events generate
+	time.Sleep(100 * time.Millisecond)
+
+	// Close the timer
+	timer.Close()
+	close(done)
+
+	// Give it a moment to shut down
+	time.Sleep(50 * time.Millisecond)
+
+Loop:
+	for {
+		select {
+		case i := <-gq:
+			gqs = append(gqs, i)
+		default:
+			break Loop
+		}
+	}
+
+	// Verify we got some events but the timer stopped
+	assert.Greater(t, len(gqs), 0)
+	assert.Less(t, len(gqs), 100) // Sanity check that timer actually stopped
 }
