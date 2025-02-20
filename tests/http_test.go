@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"testing"
@@ -112,7 +113,7 @@ samples:
 	}
 
 	// Check _time is correct epoch for 2001-10-20 00:00:00
-	expectedEpoch := "1003561200.000"
+	expectedEpoch := fmt.Sprintf("%.3f", float64(time.Date(2001, 10, 20, 0, 0, 0, 0, time.Local).Unix()))
 	if jsonData["_time"] != expectedEpoch {
 		t.Errorf("Expected _time to be %s, got %v", expectedEpoch, jsonData["_time"])
 	}
@@ -190,7 +191,7 @@ samples:
 		"index":      "main",
 		"source":     "gogen",
 		"sourcetype": "httptest",
-		// "time":       fmt.Sprintf("%.3f", float64(time.Date(2001, 10, 20, 0, 0, 0, 0, time.Local).Unix())),
+		"time":       fmt.Sprintf("%.3f", float64(time.Date(2001, 10, 20, 0, 0, 0, 0, time.Local).Unix())),
 	}
 
 	for field, expected := range expectedFields {
