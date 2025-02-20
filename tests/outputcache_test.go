@@ -1,8 +1,6 @@
 package tests
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	config "github.com/coccyx/gogen/internal"
@@ -11,12 +9,28 @@ import (
 )
 
 func TestOutputCache(t *testing.T) {
-	// Setup environment
-	config.ResetConfig()
-	os.Setenv("GOGEN_HOME", "..")
-	os.Setenv("GOGEN_ALWAYS_REFRESH", "")
-	home := ".."
-	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "outputcache", "outputcache.yml"))
+	configStr := `
+global:
+  output:
+    outputter: buf
+  cacheIntervals: 2
+samples:
+  - name: outputcache
+    begin: "2001-10-20 12:00:00"
+    end: "2001-10-20 12:00:04"
+    interval: 1
+    count: 1
+    tokens:
+    - name: ts1
+      type: timestamp
+      replacement: "%Y-%m-%dT%H:%M:%S"
+      token: $ts1$
+      format: template
+    lines:
+    - "_raw": "$ts1$"
+`
+
+	config.SetupFromString(configStr)
 
 	c := config.NewConfig()
 	run.Run(c)
@@ -26,4 +40,6 @@ func TestOutputCache(t *testing.T) {
 2001-10-20T12:00:00
 2001-10-20T12:00:03
 `, c.Buf.String())
+
+	config.CleanupConfigAndEnvironment()
 }

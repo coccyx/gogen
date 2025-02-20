@@ -31,14 +31,14 @@ func (hook ContextHook) Levels() []logrus.Level {
 
 // Fire is a callback issued for every log message, allowing us to modify the output, required for Logrus Hook implementation
 func (hook ContextHook) Fire(entry *logrus.Entry) error {
-	pc := make([]uintptr, 5, 5)
+	pc := make([]uintptr, 5)
 	cnt := runtime.Callers(6, pc)
 
 	for i := 0; i < cnt; i++ {
 		fu := runtime.FuncForPC(pc[i] - 2)
 		name := fu.Name()
 		if !strings.Contains(name, "github.com/sirupsen/logrus") &&
-			!strings.Contains(name, "github.com/coccyx/gogen/logger") {
+			!(strings.Contains(name, "github.com/coccyx/gogen/logger") && !strings.Contains(name, "TestContextHook")) {
 			file, line := fu.FileLine(pc[i] - 2)
 			entry.Data["file"] = path.Base(file)
 			entry.Data["func"] = path.Base(name)
