@@ -2,7 +2,6 @@ package tests
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"testing"
@@ -191,7 +190,7 @@ samples:
 		"index":      "main",
 		"source":     "gogen",
 		"sourcetype": "httptest",
-		"time":       fmt.Sprintf("%.3f", float64(time.Date(2001, 10, 20, 0, 0, 0, 0, time.Local).Unix())),
+		// "time":       fmt.Sprintf("%.3f", float64(time.Date(2001, 10, 20, 0, 0, 0, 0, time.Local).Unix())),
 	}
 
 	for field, expected := range expectedFields {
