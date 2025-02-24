@@ -392,15 +392,18 @@ samples:
 	offsetHours := offset / 3600
 	offsetMinutes := (offset % 3600) / 60
 	var expectedTimeStr string
-	if offsetHours >= 0 {
+	if offset == 0 {
+		// For UTC timezone
+		expectedTimeStr = expectedTime.Format("2006-01-02T15:04:05") + "Z"
+	} else if offsetHours >= 0 {
 		expectedTimeStr = fmt.Sprintf("%s+%02d:%02d", expectedTime.Format("2006-01-02T15:04:05"), offsetHours, offsetMinutes)
 	} else {
-		expectedTimeStr = fmt.Sprintf("%s-%02d:%02d", expectedTime.Format("2006-01-02T15:04:05"), -offsetHours, -offsetMinutes)
+		expectedTimeStr = fmt.Sprintf("%s-%02d:%02d", expectedTime.Format("2006-01-02T15:04:05"), -offsetHours, offsetMinutes)
 	}
 
 	// RFC5424 format: <priority>1 timestamp hostname appname pid - [meta key="value"...] message
-	// Extract timestamp with regex
-	timestampRegex := regexp.MustCompile(`^<14>1\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[-+]\d{2}:\d{2})\s+`)
+	// Extract timestamp with regex - now supporting both offset format and Z format
+	timestampRegex := regexp.MustCompile(`^<14>1\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[-+]\d{2}:\d{2}|Z))\s+`)
 	matches := timestampRegex.FindSubmatch(lastNetworkData)
 	if len(matches) != 2 {
 		t.Errorf("Failed to extract timestamp from message: %s", string(lastNetworkData))
