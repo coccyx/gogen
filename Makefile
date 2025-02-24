@@ -20,8 +20,6 @@ endif
 all: install
 
 build:
-#	$(GOBIN)/roveralls
-#	$(GOBIN)/goveralls -coverprofile=roveralls.coverprofile -service=travis-ci -repotoken $$COVERALLS_TOKEN
 	GOOS=linux CGO_ENABLED=0 GOARCH=amd64 go build -tags netgo $(FLAGS) -o build/linux/gogen
 	GOOS=darwin GOARCH=amd64 go build $(FLAGS) -o build/osx/gogen
 	GOOS=windows GOARCH=amd64 go build $(FLAGS) -o build/windows/gogen.exe

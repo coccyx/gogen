@@ -25,6 +25,13 @@ jobs:
       - name: Run Tests
         run: make GOBIN=$HOME/gopath/bin test
 
+      - name: Run Coverage Tests
+        env:
+          COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+        run: |
+          go test -v -covermode=count -coverprofile=coverage.out ./...
+          $HOME/gopath/bin/goveralls -coverprofile=coverage.out -service=github
+
       - name: Build Project
         run: make GOBIN=$HOME/gopath/bin build
 
