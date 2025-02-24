@@ -276,8 +276,12 @@ samples:
 		t.Fatalf("Failed to parse data JSON: %v", err)
 	}
 
+	// Create expected timestamp in the same timezone format that the code uses
+	testTime := time.Date(2001, 10, 20, 0, 0, 0, 0, time.Local)
+	expectedTimestamp := testTime.Format(time.RFC3339)
+
 	expectedFields := map[string]string{
-		"@timestamp": "2001-10-20T00:00:00-07:00",
+		"@timestamp": expectedTimestamp,
 		"host":       "gogen",
 		"index":      "main",
 		"message":    "20/Oct/2001 00:00:00:000",
