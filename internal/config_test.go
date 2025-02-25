@@ -70,19 +70,55 @@ func TestFileOutput(t *testing.T) {
 }
 
 func TestHTTPOutput(t *testing.T) {
-	// Setup environment
-	os.Setenv("GOGEN_HOME", "..")
-	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
-	os.Setenv("GOGEN_FULLCONFIG", filepath.Join("..", "tests", "httpoutput", "httpoutput.yml"))
-	// os.Setenv("GOGEN_SAMPLES_DIR", filepath.Join(home, "config", "tests", "fileoutput.yml"))
+	configStr := `
+global:
+  output:
+    outputter: http
+    outputTemplate: json
+    endpoints:
+      - http://localhost:8088/http
+    headers:
+      Authorization: Splunk 00112233-4455-6677-8899-AABBCCDDEEFF
+samples:
+  - name: outputhttpsample
+    begin: 2001-10-20 00:00:00
+    end: 2001-10-20 00:00:01
+    interval: 1
+    count: 1
+    tokens:
+      - name: ts-dmyhmsms-template
+        format: template
+        token: $ts$
+        type: timestamp
+        replacement: "%d/%b/%Y %H:%M:%S:%L"
+      - name: tsepoch
+        format: template
+        token: $epochts$
+        field: _time
+        type: timestamp
+        replacement: "%s.%L"
+
+    lines:
+      - sourcetype: httptest
+        source: gogen
+        host: gogen
+        index: main
+        _time: $epochts$
+        _raw: $ts$
+`
+
+	SetupFromString(configStr)
+
 	c := NewConfig()
 
 	headers := map[string]string{"Authorization": "Splunk 00112233-4455-6677-8899-AABBCCDDEEFF"}
-	endpoints := []string{"http://requestb.in/1hi5xoa1"}
+	endpoints := []string{"http://localhost:8088/http"}
 	de := reflect.DeepEqual(headers, c.Global.Output.Headers)
 	assert.True(t, de, "Headers do not match: %#v vs %#v", headers, c.Global.Output.Headers)
 	de = reflect.DeepEqual(endpoints, c.Global.Output.Endpoints)
 	assert.True(t, de, "Endpoints do not match: %#v vs %#v", endpoints, c.Global.Output.Endpoints)
+
+	CleanupConfigAndEnvironment()
 }
 
 func TestFlatten(t *testing.T) {
@@ -196,4 +232,127 @@ func FindSampleInFile(home string, name string) *Sample {
 	c := NewConfig()
 	// c.Log.Debugf("Pretty Values %# v\n", pretty.Formatter(c))
 	return c.FindSampleByName(name)
+}
+
+func TestWriteFileFromString(t *testing.T) {
+	testConfig := `name: test-config
+description: test config file
+disabled: false`
+
+	filename := WriteTempConfigFileFromString(testConfig)
+	defer os.Remove(filename) // Clean up after test
+
+	// Verify file exists
+	_, err := os.Stat(filename)
+	if err != nil {
+		t.Fatalf("Expected file %s to exist, got error: %v", filename, err)
+	}
+
+	// Read contents and verify
+	contents, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatalf("Error reading file %s: %v", filename, err)
+	}
+
+	if string(contents) != testConfig {
+		t.Errorf("File contents do not match. Expected:\n%s\nGot:\n%s", testConfig, string(contents))
+	}
+}
+func TestSetupFromString(t *testing.T) {
+	testConfig := `name: test-setup
+description: test setup config
+disabled: false`
+
+	// Run setup
+	SetupFromString(testConfig)
+	defer CleanupConfigAndEnvironment() // Clean up environment after test
+
+	// Verify environment variables were set correctly
+	if os.Getenv("GOGEN_HOME") != ".." {
+		t.Errorf("Expected GOGEN_HOME to be '..', got '%s'", os.Getenv("GOGEN_HOME"))
+	}
+
+	if os.Getenv("GOGEN_ALWAYS_REFRESH") != "1" {
+		t.Errorf("Expected GOGEN_ALWAYS_REFRESH to be '1', got '%s'", os.Getenv("GOGEN_ALWAYS_REFRESH"))
+	}
+
+	// Verify config file was created and contains correct content
+	configFile := os.Getenv("GOGEN_FULLCONFIG")
+	if configFile == "" {
+		t.Fatal("Expected GOGEN_FULLCONFIG to be set")
+	}
+
+	contents, err := os.ReadFile(configFile)
+	if err != nil {
+		t.Fatalf("Error reading config file: %v", err)
+	}
+
+	if string(contents) != testConfig {
+		t.Errorf("Config file contents do not match. Expected:\n%s\nGot:\n%s", testConfig, string(contents))
+	}
+}
+
+func TestCleanup(t *testing.T) {
+	// Set up test environment variables
+	os.Setenv("GOGEN_HOME", "test-home")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+
+	// Create a temporary config file
+	configFile := WriteTempConfigFileFromString("test config content")
+	os.Setenv("GOGEN_FULLCONFIG", configFile)
+
+	// Run cleanup
+	CleanupConfigAndEnvironment()
+
+	// Verify environment variables were unset
+	if val := os.Getenv("GOGEN_HOME"); val != "" {
+		t.Errorf("Expected GOGEN_HOME to be unset, got '%s'", val)
+	}
+
+	if val := os.Getenv("GOGEN_ALWAYS_REFRESH"); val != "" {
+		t.Errorf("Expected GOGEN_ALWAYS_REFRESH to be unset, got '%s'", val)
+	}
+
+	if val := os.Getenv("GOGEN_FULLCONFIG"); val != "" {
+		t.Errorf("Expected GOGEN_FULLCONFIG to be unset, got '%s'", val)
+	}
+
+	// Verify config file was deleted
+	if _, err := os.Stat(configFile); !os.IsNotExist(err) {
+		t.Error("Expected config file to be deleted")
+	}
+}
+
+func TestParseWebConfig(t *testing.T) {
+	// Set up test environment
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+	os.Setenv("GOGEN_FULLCONFIG", "https://gist.githubusercontent.com/coccyx/98d5b83307b0b85c1c7a54a08bfec8ed/raw/1ea26d1a16ffeeb113931e696e22b17f0eb0dc81/config.yaml")
+	defer CleanupConfigAndEnvironment()
+
+	c := NewConfig()
+	// Validate global settings
+	assert.Equal(t, false, c.Global.Debug)
+	assert.Equal(t, 1, c.Global.GeneratorWorkers)
+	assert.Equal(t, 1, c.Global.OutputWorkers)
+	assert.Equal(t, "stdout", c.Global.Output.Outputter)
+	assert.Equal(t, "raw", c.Global.Output.OutputTemplate)
+
+	// Validate sample configuration
+	assert.Equal(t, 1, len(c.Samples))
+	sample := c.Samples[0]
+	assert.Equal(t, "weblog", sample.Name)
+	assert.Equal(t, 10, sample.Count)
+	assert.Equal(t, 1, sample.Interval)
+	assert.Equal(t, "now", sample.Earliest)
+	assert.Equal(t, "now", sample.Latest)
+	assert.Equal(t, true, sample.RandomizeEvents)
+	assert.Equal(t, "sample", sample.Generator)
+
+	// Validate tokens
+	assert.Equal(t, 8, len(sample.Tokens))
+	tsToken := sample.Tokens[0]
+	assert.Equal(t, "ts-dmyhmsms-template", tsToken.Name)
+	assert.Equal(t, "timestamp", tsToken.Type)
+	assert.Equal(t, "%d/%b/%Y %H:%M:%S:%L", tsToken.Replacement)
 }
