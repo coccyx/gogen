@@ -257,7 +257,7 @@ func BuildConfig(cc ConfigConfig) *Config {
 		c.Global.Output.channelMap = make(map[string]int)
 
 		// Add default templates
-		templates := []*Template{defaultCSVTemplate, defaultJSONTemplate, defaultSplunkHECTemplate, defaultRawTemplate, defaultModinputTemplate}
+		templates := []*Template{defaultCSVTemplate, defaultJSONTemplate, defaultSplunkHECTemplate, defaultRawTemplate}
 		c.Templates = append(c.Templates, templates...)
 		for _, t := range c.Templates {
 			if len(t.Header) > 0 {
@@ -1093,7 +1093,6 @@ func (c *Config) SetupSystemTokens() {
 	}
 	syslogOutput := c.Global.Output.OutputTemplate == "rfc3164" || c.Global.Output.OutputTemplate == "rfc5424"
 	addTime := c.Global.Output.OutputTemplate == "splunkhec" ||
-		c.Global.Output.OutputTemplate == "modinput" ||
 		c.Global.Output.OutputTemplate == "elasticsearch" ||
 		c.Global.AddTime ||
 		syslogOutput

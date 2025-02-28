@@ -26,7 +26,6 @@
     * Manipulate running state through REST
 
 * Configuration UI
-* Add md5sum for gogen exe's and download new gogen from modinput if md5sum does not match
 * Add timemultiple
 * Consider finding a way to break up config package and refactor using better interface design
 * Unit test coverage 90%
