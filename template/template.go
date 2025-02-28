@@ -39,30 +39,6 @@ func New(name string, template string) error {
 				a, _ := json.Marshal(v)
 				return string(a)
 			},
-			"modinput": func(v interface{}) string {
-				ret := "<event>"
-				tv := v.(map[string]string)
-				if _, ok := tv["_raw"]; ok {
-					ret += "<data>" + tv["_raw"] + "</data>"
-				}
-				if _, ok = tv["_time"]; ok {
-					ret += "<time>" + tv["_time"] + "</time>"
-				}
-				if _, ok = tv["index"]; ok {
-					ret += "<index>" + tv["index"] + "</index>"
-				}
-				if _, ok = tv["host"]; ok {
-					ret += "<host>" + tv["host"] + "</host>"
-				}
-				if _, ok = tv["source"]; ok {
-					ret += "<source>" + tv["source"] + "</source>"
-				}
-				if _, ok = tv["sourcetype"]; ok {
-					ret += "<sourcetype>" + tv["sourcetype"] + "</sourcetype>"
-				}
-				ret += "</event>"
-				return ret
-			},
 			"keys": func(m map[string]string) []string {
 				keys := make([]string, len(m))
 				i := 0
