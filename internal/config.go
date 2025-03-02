@@ -257,7 +257,7 @@ func BuildConfig(cc ConfigConfig) *Config {
 		c.Global.Output.channelMap = make(map[string]int)
 
 		// Add default templates
-		templates := []*Template{defaultCSVTemplate, defaultJSONTemplate, defaultSplunkHECTemplate, defaultRawTemplate, defaultModinputTemplate}
+		templates := []*Template{defaultCSVTemplate, defaultJSONTemplate, defaultSplunkHECTemplate, defaultRawTemplate}
 		c.Templates = append(c.Templates, templates...)
 		for _, t := range c.Templates {
 			if len(t.Header) > 0 {
@@ -1093,7 +1093,6 @@ func (c *Config) SetupSystemTokens() {
 	}
 	syslogOutput := c.Global.Output.OutputTemplate == "rfc3164" || c.Global.Output.OutputTemplate == "rfc5424"
 	addTime := c.Global.Output.OutputTemplate == "splunkhec" ||
-		c.Global.Output.OutputTemplate == "modinput" ||
 		c.Global.Output.OutputTemplate == "elasticsearch" ||
 		c.Global.AddTime ||
 		syslogOutput
@@ -1267,4 +1266,44 @@ func (c *Config) Clean() {
 	}
 	c.Samples = samples
 	debug.FreeOSMemory()
+}
+
+// WriteFileFromString writes a configuration string to a temporary file and returns the filename
+func WriteTempConfigFileFromString(config string) string {
+	tmpfile, err := os.CreateTemp("", "gogen-test-*.yml")
+	if err != nil {
+		panic(err)
+	}
+
+	if _, err := tmpfile.Write([]byte(config)); err != nil {
+		tmpfile.Close()
+		panic(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		panic(err)
+	}
+
+	return tmpfile.Name()
+}
+
+func SetupFromFile(filename string) {
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+	os.Setenv("GOGEN_FULLCONFIG", filename)
+}
+
+func SetupFromString(configStr string) {
+	configFile := WriteTempConfigFileFromString(configStr)
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+	os.Setenv("GOGEN_FULLCONFIG", configFile)
+}
+
+func CleanupConfigAndEnvironment() {
+	os.Unsetenv("GOGEN_HOME")
+	os.Unsetenv("GOGEN_ALWAYS_REFRESH")
+	if strings.Contains(os.Getenv("GOGEN_FULLCONFIG"), "gogen-test-") {
+		os.Remove(os.Getenv("GOGEN_FULLCONFIG"))
+	}
+	os.Unsetenv("GOGEN_FULLCONFIG")
 }

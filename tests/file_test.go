@@ -12,11 +12,7 @@ import (
 )
 
 func TestFileOutput(t *testing.T) {
-	// Setup environment
-	os.Setenv("GOGEN_HOME", "..")
-	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
-	home := ".."
-	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "fileoutput", "fileoutput.yml"))
+	config.SetupFromFile(filepath.Join("..", "tests", "fileoutput", "fileoutput.yml"))
 	c := config.NewConfig()
 	// s := c.FindSampleByName("backfill")
 	run.Run(c)
@@ -24,19 +20,13 @@ func TestFileOutput(t *testing.T) {
 	info, err := os.Stat(c.Global.Output.FileName)
 	assert.NoError(t, err)
 	assert.Condition(t, func() bool {
-		if info.Size() < c.Global.Output.MaxBytes {
-			return true
-		}
-		return false
+		return info.Size() < c.Global.Output.MaxBytes
 	}, "Rotation failing, main file size of %d greater than MaxBytes %d", info.Size(), c.Global.Output.MaxBytes)
 	for i := 1; i <= c.Global.Output.BackupFiles; i++ {
 		info, err = os.Stat(c.Global.Output.FileName + "." + strconv.Itoa(i))
 		assert.NoError(t, err)
 		assert.Condition(t, func() bool {
-			if info.Size() > c.Global.Output.MaxBytes {
-				return true
-			}
-			return false
+			return info.Size() > c.Global.Output.MaxBytes
 		}, "Rotation failing, file %d less than MaxBytes", i)
 	}
 

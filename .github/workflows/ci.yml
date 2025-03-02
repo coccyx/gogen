@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.22.x'
+
+      - name: Install Dependencies
+        run: make GOBIN=$HOME/gopath/bin deps
+
+      - name: Run Tests
+        run: make GOBIN=$HOME/gopath/bin test
+
+      - name: Run Coverage Tests
+        env:
+          COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+        run: |
+          $HOME/gopath/bin/goveralls -v -service=github
+
+      - name: Build Project
+        if: github.ref == 'refs/heads/master'
+        run: make GOBIN=$HOME/gopath/bin build
+
+      - name: Build Docker Image
+        if: github.ref == 'refs/heads/master'
+        run: docker build -t clintsharp/gogen .
+
+      # Deployment: These steps run only on the main branch.
+      - name: Configure AWS Credentials
+        if: github.ref == 'refs/heads/master'
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1
+
+      - name: Deploy Build Artifacts to S3
+        if: github.ref == 'refs/heads/master'
+        run: aws s3 sync build s3://gogen-artifacts --delete
+
+      - name: Run Docker Push Script
+        if: github.ref == 'refs/heads/master'
+        run: bash docker-push.sh 

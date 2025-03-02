@@ -26,7 +26,13 @@
     * Manipulate running state through REST
 
 * Configuration UI
-* Add md5sum for gogen exe's and download new gogen from modinput if md5sum does not match
 * Add timemultiple
 * Consider finding a way to break up config package and refactor using better interface design
 * Unit test coverage 90%
+
+## New Config Generator and Sharing System
+* Update config sharing system to login via a hosted website to Github to validate username
+* Share configs via a private S3 bucket rather than GitHub gists
+* Create chat based UI for generating configs from LLM
+* Make sharing via the web as easy as clicking a button
+* Remove old GitHub code from Gogen
