@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
         if: github.ref == 'refs/heads/master'
         run: docker build -t clintsharp/gogen .
 
-      # Deployment: These steps run only on the main branch.
+      # Deployment: These steps run only on the master branch.
       - name: Configure AWS Credentials
         if: github.ref == 'refs/heads/master'
         uses: aws-actions/configure-aws-credentials@v1
