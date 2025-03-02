@@ -54,4 +54,7 @@ jobs:
 
       - name: Run Docker Push Script
         if: github.ref == 'refs/heads/master'
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: bash docker-push.sh 
