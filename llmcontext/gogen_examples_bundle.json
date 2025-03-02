@@ -1,0 +1,867 @@
+{
+  "examples": [
+    {
+      "name": "tutorial2.yml",
+      "category": "tutorial",
+      "yaml_content": "raters:\n  - name: eventrater\n    type: config\n    options:\n      MinuteOfHour:\n        0: 1.0\n        1: 0.5\n        2: 2.0\n  - name: valrater\n    type: script\n    script: >\n        return options[\"multiplier\"]\n    options:\n        multiplier: 2\n\nsamples:\n  - name: tutorial2\n    description: Tutorial 2\n    begin: 2012-02-09T08:00:00Z\n    end: 2012-02-09T08:03:00Z\n    interval: 60\n    count: 2\n    rater: eventrater\n\n    tokens:\n      - name: ts\n        format: template                                         \n        type: timestamp\n        replacement: \"%b/%d/%y %H:%M:%S\"\n      - name: linenum\n        format: template\n        type: script\n        init:\n          id: \"0\"\n        script: >\n          state[\"id\"] = state[\"id\"] + 1\n          return state[\"id\"]\n      - name: val\n        format: template\n        type: random\n        replacement: int\n        lower: 1\n        upper: 5\n      - name: rated\n        format: template\n        type: rated\n        replacement: int\n        lower: 1\n        upper: 3\n        rater: valrater\n\n    lines:\n    - _raw: $ts$ line=$linenum$ value=$val$ rated=$rated$",
+      "parsed_content": {
+        "raters": [
+          {
+            "name": "eventrater",
+            "type": "config",
+            "options": {
+              "MinuteOfHour": {
+                "0": 1.0,
+                "1": 0.5,
+                "2": 2.0
+              }
+            }
+          },
+          {
+            "name": "valrater",
+            "type": "script",
+            "script": "return options[\"multiplier\"]\n",
+            "options": {
+              "multiplier": 2
+            }
+          }
+        ],
+        "samples": [
+          {
+            "name": "tutorial2",
+            "description": "Tutorial 2",
+            "begin": "2012-02-09T08:00:00+00:00",
+            "end": "2012-02-09T08:03:00+00:00",
+            "interval": 60,
+            "count": 2,
+            "rater": "eventrater",
+            "tokens": [
+              {
+                "name": "ts",
+                "format": "template",
+                "type": "timestamp",
+                "replacement": "%b/%d/%y %H:%M:%S"
+              },
+              {
+                "name": "linenum",
+                "format": "template",
+                "type": "script",
+                "init": {
+                  "id": "0"
+                },
+                "script": "state[\"id\"] = state[\"id\"] + 1 return state[\"id\"]\n"
+              },
+              {
+                "name": "val",
+                "format": "template",
+                "type": "random",
+                "replacement": "int",
+                "lower": 1,
+                "upper": 5
+              },
+              {
+                "name": "rated",
+                "format": "template",
+                "type": "rated",
+                "replacement": "int",
+                "lower": 1,
+                "upper": 3,
+                "rater": "valrater"
+              }
+            ],
+            "lines": [
+              {
+                "_raw": "$ts$ line=$linenum$ value=$val$ rated=$rated$"
+              }
+            ]
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/tutorial/tutorial2.yml"
+    },
+    {
+      "name": "tutorial6.yml",
+      "category": "tutorial",
+      "yaml_content": "mix:\n  - sample: $GOGEN_HOME/examples/tutorial/tutorial1.yml\n    begin: now\n    realtime: true\n    count: 1\n    interval: 1\n  - sample: $GOGEN_HOME/examples/tutorial/tutorial2.yml\n    begin: now\n    realtime: true\n    count: 1\n    interval: 1\n  - sample: $GOGEN_HOME/examples/tutorial/tutorial5.yml\n    begin: now\n    realtime: true",
+      "parsed_content": {
+        "mix": [
+          {
+            "sample": "$GOGEN_HOME/examples/tutorial/tutorial1.yml",
+            "begin": "now",
+            "realtime": true,
+            "count": 1,
+            "interval": 1
+          },
+          {
+            "sample": "$GOGEN_HOME/examples/tutorial/tutorial2.yml",
+            "begin": "now",
+            "realtime": true,
+            "count": 1,
+            "interval": 1
+          },
+          {
+            "sample": "$GOGEN_HOME/examples/tutorial/tutorial5.yml",
+            "begin": "now",
+            "realtime": true
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/tutorial/tutorial6.yml"
+    },
+    {
+      "name": "tutorial1.yml",
+      "category": "tutorial",
+      "yaml_content": "samples:\n  - name: tutorial1\n    description: Tutorial 1\n    interval: 1\n    endIntervals: 5\n    count: 1\n    randomizeEvents: true\n    \n    tokens:\n      - name: ts\n        format: template                                                                                                                     \n        type: timestamp\n        replacement: \"%b/%d/%y %H:%M:%S\"\n\n    lines:\n    - _raw: $ts$ line1\n    - _raw: $ts$ line2\n    - _raw: $ts$ line3",
+      "parsed_content": {
+        "samples": [
+          {
+            "name": "tutorial1",
+            "description": "Tutorial 1",
+            "interval": 1,
+            "endIntervals": 5,
+            "count": 1,
+            "randomizeEvents": true,
+            "tokens": [
+              {
+                "name": "ts",
+                "format": "template",
+                "type": "timestamp",
+                "replacement": "%b/%d/%y %H:%M:%S"
+              }
+            ],
+            "lines": [
+              {
+                "_raw": "$ts$ line1"
+              },
+              {
+                "_raw": "$ts$ line2"
+              },
+              {
+                "_raw": "$ts$ line3"
+              }
+            ]
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/tutorial/tutorial1.yml"
+    },
+    {
+      "name": "tutorial5.yml",
+      "category": "tutorial",
+      "yaml_content": "samples:  \n- name: tutorial5\n  generator: replay\n\n  tokens:\n  - name: ts1\n    type: timestamp\n    format: regex\n    token: (\\d{2}\\/\\w{3}\\/\\d{4}:\\d{2}:\\d{2}:\\d{2})\n    replacement: '%d/%b/%Y:%H:%M:%S'\n  fromSample: results.csv",
+      "parsed_content": {
+        "samples": [
+          {
+            "name": "tutorial5",
+            "generator": "replay",
+            "tokens": [
+              {
+                "name": "ts1",
+                "type": "timestamp",
+                "format": "regex",
+                "token": "(\\d{2}\\/\\w{3}\\/\\d{4}:\\d{2}:\\d{2}:\\d{2})",
+                "replacement": "%d/%b/%Y:%H:%M:%S"
+              }
+            ],
+            "fromSample": "results.csv"
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/tutorial/tutorial5.yml"
+    },
+    {
+      "name": "tutorial4.yml",
+      "category": "tutorial",
+      "yaml_content": "global:\n  output:\n    outputTemplate: inifile\n    outputter: stdout\n\ngenerators:\n- name: indexes.conf\n  script: |\n    header = \"# Generated at $ts$\"\n\n    events = { }\n    for i=0,2 do\n      line = getLine(i)\n      line[\"header\"] = header\n      line = replaceTokens(line)\n\n      if line[\"maxHotSpanSecs\"] ~= nil then\n        frozenTimePeriodInSecs = tonumber(line[\"maxHotSpanSecs\"]) * 6\n        line[\"frozenTimePeriodInSecs\"] = tostring(frozenTimePeriodInSecs)\n      end\n\n      line[\"homePath\"] = \"$SPLUNK_DB/\"..line[\"index\"]..\"db/db\"\n      line[\"coldPath\"] = \"$SPLUNK_DB/\"..line[\"index\"]..\"db/colddb\"\n      line[\"thawedPath\"] = \"$SPLUNK_DB/\"..line[\"index\"]..\"db/thaweddb\"\n      table.insert(events, line)\n    end\n    send(events)\n\nsamples:\n- name: inifile\n\n  generator: indexes.conf\n\n  count: 1\n  endIntervals: 1\n\n  tokens:\n    - name: ts\n      field: header\n      format: template                                         \n      type: timestamp\n      replacement: \"%b/%d/%y %H:%M:%S\"\n\n  lines:\n    - index: history\n      maxDataSize: 10\n    - index: summary\n    - index: _internal\n      maxDataSize: 1000\n      maxHotSpanSecs: 432000\n\ntemplates:\n- name: inifile\n  header: '{{ .header }}'\n  row: |\n    [{{ .index }}]\n    homePath = {{ .homePath }}\n    coldPath = {{ .coldPath }} \n    thawedPath = {{ .thawedPath }}\n    {{ if .maxDataSize -}}\n    maxDataSize = {{ .maxDataSize }}\n    {{ end }}{{ if .maxHotSpanSecs -}}\n    maxHotSpanSecs = {{ .maxHotSpanSecs }}\n    {{ end }}{{ if .frozenTimePeriodInSecs -}}\n    frozenTimePeriodInSecs = {{ .frozenTimePeriodInSecs }}{{ end }}\n",
+      "parsed_content": {
+        "global": {
+          "output": {
+            "outputTemplate": "inifile",
+            "outputter": "stdout"
+          }
+        },
+        "generators": [
+          {
+            "name": "indexes.conf",
+            "script": "header = \"# Generated at $ts$\"\n\nevents = { }\nfor i=0,2 do\n  line = getLine(i)\n  line[\"header\"] = header\n  line = replaceTokens(line)\n\n  if line[\"maxHotSpanSecs\"] ~= nil then\n    frozenTimePeriodInSecs = tonumber(line[\"maxHotSpanSecs\"]) * 6\n    line[\"frozenTimePeriodInSecs\"] = tostring(frozenTimePeriodInSecs)\n  end\n\n  line[\"homePath\"] = \"$SPLUNK_DB/\"..line[\"index\"]..\"db/db\"\n  line[\"coldPath\"] = \"$SPLUNK_DB/\"..line[\"index\"]..\"db/colddb\"\n  line[\"thawedPath\"] = \"$SPLUNK_DB/\"..line[\"index\"]..\"db/thaweddb\"\n  table.insert(events, line)\nend\nsend(events)\n"
+          }
+        ],
+        "samples": [
+          {
+            "name": "inifile",
+            "generator": "indexes.conf",
+            "count": 1,
+            "endIntervals": 1,
+            "tokens": [
+              {
+                "name": "ts",
+                "field": "header",
+                "format": "template",
+                "type": "timestamp",
+                "replacement": "%b/%d/%y %H:%M:%S"
+              }
+            ],
+            "lines": [
+              {
+                "index": "history",
+                "maxDataSize": 10
+              },
+              {
+                "index": "summary"
+              },
+              {
+                "index": "_internal",
+                "maxDataSize": 1000,
+                "maxHotSpanSecs": 432000
+              }
+            ]
+          }
+        ],
+        "templates": [
+          {
+            "name": "inifile",
+            "header": "{{ .header }}",
+            "row": "[{{ .index }}]\nhomePath = {{ .homePath }}\ncoldPath = {{ .coldPath }} \nthawedPath = {{ .thawedPath }}\n{{ if .maxDataSize -}}\nmaxDataSize = {{ .maxDataSize }}\n{{ end }}{{ if .maxHotSpanSecs -}}\nmaxHotSpanSecs = {{ .maxHotSpanSecs }}\n{{ end }}{{ if .frozenTimePeriodInSecs -}}\nfrozenTimePeriodInSecs = {{ .frozenTimePeriodInSecs }}{{ end }}\n"
+          }
+        ]
+      },
+      "comments": {
+        "9": "Generated at $ts$\""
+      },
+      "file_path": "examples/tutorial/tutorial4.yml"
+    },
+    {
+      "name": "tutorial3.yml",
+      "category": "tutorial",
+      "yaml_content": "name: tutorial3\ndescription: Tutorial 3\nbegin: 2012-02-09T08:00:00Z\nend: 2012-02-09T08:03:00Z\ninterval: 60\ncount: 2\nrater: eventrater\ntokens:\n  - name: ts\n    format: regex                                 \n    token: (\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2},\\d{3})\n    type: gotimestamp\n    replacement: \"2006-01-02 15:04:05.000\"\n  - name: host\n    format: template\n    type: choice\n    field: host\n    choice:\n    - server1.gogen.io\n    - server2.gogen.io\n  - name: transtype\n    format: regex\n    token: transType=(\\w+)\n    type: weightedChoice\n    weightedChoice:\n    - weight: 3\n      choice: New\n    - weight: 5\n      choice: Change\n    - weight: 1\n      choice: Delete\n  - name: integerid\n    format: template\n    type: script\n    init:\n      id: \"0\"\n    script: >\n      state[\"id\"] = state[\"id\"] + 1\n      return state[\"id\"]\n  - name: guid\n    format: template\n    type: random\n    replacement: guid\n  - name: username\n    format: template\n    type: choice\n    sample: usernames.sample\n  - name: markets-city \n    format: template\n    token: $city$\n    type: fieldChoice\n    sample: markets.csv\n    srcField: city\n    group: 1\n  - name: markets-state \n    format: template\n    token: $state$\n    type: fieldChoice\n    sample: markets.csv\n    srcField: state\n    group: 1\n  - name: markets-zip\n    format: template\n    token: $zip$\n    type: fieldChoice\n    sample: markets.csv\n    srcField: zip\n    group: 1\n  - name: value\n    format: regex\n    token: value=(\\d+)\n    type: random\n    replacement: float\n    precision: 3\n    lower: 0\n    upper: 10\n\nlines:\n  - index: main\n    host: $host$\n    sourcetype: translog\n    source: /var/log/translog\n    _raw: 2012-09-14 16:30:20,072 transType=ReplaceMe transID=$integerid$ transGUID=$guid$ userName=$username$ city=\"$city$\" state=$state$ zip=$zip$ value=0",
+      "parsed_content": {
+        "name": "tutorial3",
+        "description": "Tutorial 3",
+        "begin": "2012-02-09T08:00:00+00:00",
+        "end": "2012-02-09T08:03:00+00:00",
+        "interval": 60,
+        "count": 2,
+        "rater": "eventrater",
+        "tokens": [
+          {
+            "name": "ts",
+            "format": "regex",
+            "token": "(\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2},\\d{3})",
+            "type": "gotimestamp",
+            "replacement": "2006-01-02 15:04:05.000"
+          },
+          {
+            "name": "host",
+            "format": "template",
+            "type": "choice",
+            "field": "host",
+            "choice": [
+              "server1.gogen.io",
+              "server2.gogen.io"
+            ]
+          },
+          {
+            "name": "transtype",
+            "format": "regex",
+            "token": "transType=(\\w+)",
+            "type": "weightedChoice",
+            "weightedChoice": [
+              {
+                "weight": 3,
+                "choice": "New"
+              },
+              {
+                "weight": 5,
+                "choice": "Change"
+              },
+              {
+                "weight": 1,
+                "choice": "Delete"
+              }
+            ]
+          },
+          {
+            "name": "integerid",
+            "format": "template",
+            "type": "script",
+            "init": {
+              "id": "0"
+            },
+            "script": "state[\"id\"] = state[\"id\"] + 1 return state[\"id\"]\n"
+          },
+          {
+            "name": "guid",
+            "format": "template",
+            "type": "random",
+            "replacement": "guid"
+          },
+          {
+            "name": "username",
+            "format": "template",
+            "type": "choice",
+            "sample": "usernames.sample"
+          },
+          {
+            "name": "markets-city",
+            "format": "template",
+            "token": "$city$",
+            "type": "fieldChoice",
+            "sample": "markets.csv",
+            "srcField": "city",
+            "group": 1
+          },
+          {
+            "name": "markets-state",
+            "format": "template",
+            "token": "$state$",
+            "type": "fieldChoice",
+            "sample": "markets.csv",
+            "srcField": "state",
+            "group": 1
+          },
+          {
+            "name": "markets-zip",
+            "format": "template",
+            "token": "$zip$",
+            "type": "fieldChoice",
+            "sample": "markets.csv",
+            "srcField": "zip",
+            "group": 1
+          },
+          {
+            "name": "value",
+            "format": "regex",
+            "token": "value=(\\d+)",
+            "type": "random",
+            "replacement": "float",
+            "precision": 3,
+            "lower": 0,
+            "upper": 10
+          }
+        ],
+        "lines": [
+          {
+            "index": "main",
+            "host": "$host$",
+            "sourcetype": "translog",
+            "source": "/var/log/translog",
+            "_raw": "2012-09-14 16:30:20,072 transType=ReplaceMe transID=$integerid$ transGUID=$guid$ userName=$username$ city=\"$city$\" state=$state$ zip=$zip$ value=0"
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/tutorial/tutorial3/samples/tutorial3.yml"
+    },
+    {
+      "name": "eventrater.yml",
+      "category": "tutorial",
+      "yaml_content": "name: eventrater\ntype: config\noptions:\n    MinuteOfHour:\n        0: 1.0\n        1: 0.5\n        2: 2.0",
+      "parsed_content": {
+        "name": "eventrater",
+        "type": "config",
+        "options": {
+          "MinuteOfHour": {
+            "0": 1.0,
+            "1": 0.5,
+            "2": 2.0
+          }
+        }
+      },
+      "comments": {},
+      "file_path": "examples/tutorial/tutorial3/raters/eventrater.yml"
+    },
+    {
+      "name": "weblog.yml",
+      "category": "weblog",
+      "yaml_content": "global:\n  samplesDir: \n  - $GOGEN_HOME/examples/common\nsamples:\n  - name: weblog\n    fromSample: weblog-common\n    interval: 1\n    endIntervals: 1\n    count: 10\n    ",
+      "parsed_content": {
+        "global": {
+          "samplesDir": [
+            "$GOGEN_HOME/examples/common"
+          ]
+        },
+        "samples": [
+          {
+            "name": "weblog",
+            "fromSample": "weblog-common",
+            "interval": 1,
+            "endIntervals": 1,
+            "count": 10
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/weblog/weblog.yml"
+    },
+    {
+      "name": "csv.yml",
+      "category": "csv",
+      "yaml_content": "global:\n  output:\n    outputTemplate: csv\nsamples:\n- name: csv\n  description: Simple CSV Example\n  notes: >\n    For CSV OutputTemplate, it's critial to note that it will only work well for one interval, due to the fact that\n    the output template will print a header for every interval.\n  endIntervals: 1\n  count: 100\n  tokens:\n    - name: transtype          # An inline token defined in this YAML\n      format: template\n      type: weightedChoice\n      field: transtype\n      weightedChoice:\n      - weight: 3\n        choice: New\n      - weight: 5\n        choice: Change\n      - weight: 1\n        choice: Delete\n    - name: usernames\n      field: username\n      format: template\n      token: $username$\n      type: choice\n      sample: usernames.sample\n    - name: markets-city \n      format: template\n      token: $city$\n      type: fieldChoice\n      sample: markets.csv\n      srcField: city\n      field: city\n      group: 1\n    - name: markets-state \n      format: template\n      token: $state$\n      type: fieldChoice\n      sample: markets.csv\n      srcField: state\n      field: state\n      group: 1\n    - name: markets-zip\n      format: template\n      token: $zip$\n      type: fieldChoice\n      sample: markets.csv\n      srcField: zip\n      field: zip\n      group: 1\n    - name: value\n      format: template\n      field: value\n      type: random\n      replacement: float\n      precision: 3\n      lower: 0\n      upper: 10\n\n  lines:\n    - username: $username$\n      transtype: $transtype$\n      city: $city$\n      state: $state$\n      zip: $zip$\n      value: $value$",
+      "parsed_content": {
+        "global": {
+          "output": {
+            "outputTemplate": "csv"
+          }
+        },
+        "samples": [
+          {
+            "name": "csv",
+            "description": "Simple CSV Example",
+            "notes": "For CSV OutputTemplate, it's critial to note that it will only work well for one interval, due to the fact that the output template will print a header for every interval.\n",
+            "endIntervals": 1,
+            "count": 100,
+            "tokens": [
+              {
+                "name": "transtype",
+                "format": "template",
+                "type": "weightedChoice",
+                "field": "transtype",
+                "weightedChoice": [
+                  {
+                    "weight": 3,
+                    "choice": "New"
+                  },
+                  {
+                    "weight": 5,
+                    "choice": "Change"
+                  },
+                  {
+                    "weight": 1,
+                    "choice": "Delete"
+                  }
+                ]
+              },
+              {
+                "name": "usernames",
+                "field": "username",
+                "format": "template",
+                "token": "$username$",
+                "type": "choice",
+                "sample": "usernames.sample"
+              },
+              {
+                "name": "markets-city",
+                "format": "template",
+                "token": "$city$",
+                "type": "fieldChoice",
+                "sample": "markets.csv",
+                "srcField": "city",
+                "field": "city",
+                "group": 1
+              },
+              {
+                "name": "markets-state",
+                "format": "template",
+                "token": "$state$",
+                "type": "fieldChoice",
+                "sample": "markets.csv",
+                "srcField": "state",
+                "field": "state",
+                "group": 1
+              },
+              {
+                "name": "markets-zip",
+                "format": "template",
+                "token": "$zip$",
+                "type": "fieldChoice",
+                "sample": "markets.csv",
+                "srcField": "zip",
+                "field": "zip",
+                "group": 1
+              },
+              {
+                "name": "value",
+                "format": "template",
+                "field": "value",
+                "type": "random",
+                "replacement": "float",
+                "precision": 3,
+                "lower": 0,
+                "upper": 10
+              }
+            ],
+            "lines": [
+              {
+                "username": "$username$",
+                "transtype": "$transtype$",
+                "city": "$city$",
+                "state": "$state$",
+                "zip": "$zip$",
+                "value": "$value$"
+              }
+            ]
+          }
+        ]
+      },
+      "comments": {
+        "13": "An inline token defined in this YAML"
+      },
+      "file_path": "examples/csv/csv.yml"
+    },
+    {
+      "name": "nix.yml",
+      "category": "nixOS",
+      "yaml_content": "global:\n  samplesDir:\n  - $GOGEN_HOME/examples/nixOS\nmix:\n  - sample: $GOGEN_HOME/examples/nixOS/cpu.yml\n  - sample: $GOGEN_HOME/examples/nixOS/df.yml\n  - sample: $GOGEN_HOME/examples/nixOS/vmstat.yml\n  - sample: $GOGEN_HOME/examples/nixOS/bandwidth.yml\n  - sample: $GOGEN_HOME/examples/nixOS/iostat.yml",
+      "parsed_content": {
+        "global": {
+          "samplesDir": [
+            "$GOGEN_HOME/examples/nixOS"
+          ]
+        },
+        "mix": [
+          {
+            "sample": "$GOGEN_HOME/examples/nixOS/cpu.yml"
+          },
+          {
+            "sample": "$GOGEN_HOME/examples/nixOS/df.yml"
+          },
+          {
+            "sample": "$GOGEN_HOME/examples/nixOS/vmstat.yml"
+          },
+          {
+            "sample": "$GOGEN_HOME/examples/nixOS/bandwidth.yml"
+          },
+          {
+            "sample": "$GOGEN_HOME/examples/nixOS/iostat.yml"
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/nixOS/nix.yml"
+    },
+    {
+      "name": "iostat.yml",
+      "category": "nixOS",
+      "yaml_content": "global:\n  samplesDir:\n  - $GOGEN_HOME/examples/nixOS\ngenerators:\n  - name: iostat\n    fileName: $GOGEN_HOME/examples/nixOS/iostat.lua\n    options:\n      highWrites: 0\n      highReads: 0\n      maxOps: 1000\n      avgKB: 0.512\n      maxTime: 100\nsamples:\n  - name: iostat\n    description: Generate Iostat Usage Metrics\n    notes: >\n      Generates iostat usage from the Splunk UNIX TA\n    generator: iostat\n    interval: 60\n    tokens:\n    - name: host\n      type: fieldChoice\n      srcField: host\n      sample: allhosts.csv\n      disabled: true\n    - name: disks\n      type: choice\n      choice:\n      - sda\n      - sdb\n      - dm-0\n      - dm-1\n      disabled: true\n    lines:\n    - index: os\n      sourcetype: iostat\n      source: iostat\n      host: $host$\n      _raw: Device  rReq_PS  wReq_PS  rKB_PS  wKB_PS  avgWaitMillis  avgSvcMillis  bandwUtilPct\n    - index: os\n      sourcetype: iostat\n      source: iostat\n      host: $host$\n      _raw: $device$  $rrps$  $wrps$  $rkbps$  $wkbps$  $avgwait$  $avgsvc$  $bwutil$",
+      "parsed_content": {
+        "global": {
+          "samplesDir": [
+            "$GOGEN_HOME/examples/nixOS"
+          ]
+        },
+        "generators": [
+          {
+            "name": "iostat",
+            "fileName": "$GOGEN_HOME/examples/nixOS/iostat.lua",
+            "options": {
+              "highWrites": 0,
+              "highReads": 0,
+              "maxOps": 1000,
+              "avgKB": 0.512,
+              "maxTime": 100
+            }
+          }
+        ],
+        "samples": [
+          {
+            "name": "iostat",
+            "description": "Generate Iostat Usage Metrics",
+            "notes": "Generates iostat usage from the Splunk UNIX TA\n",
+            "generator": "iostat",
+            "interval": 60,
+            "tokens": [
+              {
+                "name": "host",
+                "type": "fieldChoice",
+                "srcField": "host",
+                "sample": "allhosts.csv",
+                "disabled": true
+              },
+              {
+                "name": "disks",
+                "type": "choice",
+                "choice": [
+                  "sda",
+                  "sdb",
+                  "dm-0",
+                  "dm-1"
+                ],
+                "disabled": true
+              }
+            ],
+            "lines": [
+              {
+                "index": "os",
+                "sourcetype": "iostat",
+                "source": "iostat",
+                "host": "$host$",
+                "_raw": "Device  rReq_PS  wReq_PS  rKB_PS  wKB_PS  avgWaitMillis  avgSvcMillis  bandwUtilPct"
+              },
+              {
+                "index": "os",
+                "sourcetype": "iostat",
+                "source": "iostat",
+                "host": "$host$",
+                "_raw": "$device$  $rrps$  $wrps$  $rkbps$  $wkbps$  $avgwait$  $avgsvc$  $bwutil$"
+              }
+            ]
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/nixOS/iostat.yml"
+    },
+    {
+      "name": "df.yml",
+      "category": "nixOS",
+      "yaml_content": "global:\n  samplesDir:\n  - $GOGEN_HOME/examples/nixOS\ngenerators:\n  - name: df\n    fileName: $GOGEN_HOME/examples/nixOS/df.lua\n    options:\n      minDiskUsedPct: 50.0\n      maxDiskUsedPct: 69.0\n      totalGBperDisk: 931\n      numDisks: 4\nsamples:\n  - name: df\n    description: Generate Disk Usage Metrics\n    notes: >\n      Generates Disk Usage in the form of a df command from the Splunk UNIX TA\n    generator: df\n    interval: 60\n    tokens:\n    - name: disks\n      type: fieldChoice\n      srcField: disk\n      sample: disks.csv\n      disabled: true\n    - name: host\n      type: fieldChoice\n      srcField: host\n      sample: allhosts.csv\n      disabled: true\n    lines:\n    - index: os\n      sourcetype: df\n      source: df\n      host: $host$\n      _raw: Filesystem  Type  Size  Used  Avail  UsePct  MountedOn\n    - index: os\n      sourcetype: df\n      source: df\n      host: $host$\n      _raw: $fs$  ext4  $totalGB$G  $usedGB$G  $availGB$G  $usedPct$%  $mnt$",
+      "parsed_content": {
+        "global": {
+          "samplesDir": [
+            "$GOGEN_HOME/examples/nixOS"
+          ]
+        },
+        "generators": [
+          {
+            "name": "df",
+            "fileName": "$GOGEN_HOME/examples/nixOS/df.lua",
+            "options": {
+              "minDiskUsedPct": 50.0,
+              "maxDiskUsedPct": 69.0,
+              "totalGBperDisk": 931,
+              "numDisks": 4
+            }
+          }
+        ],
+        "samples": [
+          {
+            "name": "df",
+            "description": "Generate Disk Usage Metrics",
+            "notes": "Generates Disk Usage in the form of a df command from the Splunk UNIX TA\n",
+            "generator": "df",
+            "interval": 60,
+            "tokens": [
+              {
+                "name": "disks",
+                "type": "fieldChoice",
+                "srcField": "disk",
+                "sample": "disks.csv",
+                "disabled": true
+              },
+              {
+                "name": "host",
+                "type": "fieldChoice",
+                "srcField": "host",
+                "sample": "allhosts.csv",
+                "disabled": true
+              }
+            ],
+            "lines": [
+              {
+                "index": "os",
+                "sourcetype": "df",
+                "source": "df",
+                "host": "$host$",
+                "_raw": "Filesystem  Type  Size  Used  Avail  UsePct  MountedOn"
+              },
+              {
+                "index": "os",
+                "sourcetype": "df",
+                "source": "df",
+                "host": "$host$",
+                "_raw": "$fs$  ext4  $totalGB$G  $usedGB$G  $availGB$G  $usedPct$%  $mnt$"
+              }
+            ]
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/nixOS/df.yml"
+    },
+    {
+      "name": "vmstat.yml",
+      "category": "nixOS",
+      "yaml_content": "global:\n  samplesDir:\n  - $GOGEN_HOME/examples/nixOS\ngenerators:\n  - name: vmstat\n    fileName: $GOGEN_HOME/examples/nixOS/vmstat.lua\n    options:\n      minMemUsedPct: 5.0\n      maxMemUsedPct: 60.0\n      totalMB: 16000\nsamples:\n  - name: vmstat\n    description: Generate Memory Usage Metrics\n    notes: >\n      Generates memory Usage in the form of a vmstat command from the Splunk UNIX TA\n    generator: vmstat\n    interval: 60\n    tokens:\n    - name: host\n      type: fieldChoice\n      srcField: host\n      sample: allhosts.csv\n      disabled: true\n    lines:\n    - index: os\n      sourcetype: df\n      source: df\n      host: $host$\n      _raw: memTotalMB  memFreeMB  memUsedMB  memFreePct  memUsedPct  pgPageOut  swapUsedPct  pgSwapOut  cSwitches  interrupts  forks  processes  threads  loadAvg1mi  waitThreads  interrupts_PS  pgPageIn_PS  pgPageOut_PS\n    - index: os\n      sourcetype: df\n      source: df\n      host: $host$\n      _raw: $memTotalMB$  $memFreeMB$  $memUsedMB$  $memFreePct$  $memUsedPct$  $pgPageOut$  $swapUsedPct$  $pgSwapOut$  $cSwitches$  $interrupts$  $forks$  $processes$  $threads$  $loadAvg1mi$  $waitThreads$  $interruptsPS$  $pgPageInPS$  $pgPageOutPS$",
+      "parsed_content": {
+        "global": {
+          "samplesDir": [
+            "$GOGEN_HOME/examples/nixOS"
+          ]
+        },
+        "generators": [
+          {
+            "name": "vmstat",
+            "fileName": "$GOGEN_HOME/examples/nixOS/vmstat.lua",
+            "options": {
+              "minMemUsedPct": 5.0,
+              "maxMemUsedPct": 60.0,
+              "totalMB": 16000
+            }
+          }
+        ],
+        "samples": [
+          {
+            "name": "vmstat",
+            "description": "Generate Memory Usage Metrics",
+            "notes": "Generates memory Usage in the form of a vmstat command from the Splunk UNIX TA\n",
+            "generator": "vmstat",
+            "interval": 60,
+            "tokens": [
+              {
+                "name": "host",
+                "type": "fieldChoice",
+                "srcField": "host",
+                "sample": "allhosts.csv",
+                "disabled": true
+              }
+            ],
+            "lines": [
+              {
+                "index": "os",
+                "sourcetype": "df",
+                "source": "df",
+                "host": "$host$",
+                "_raw": "memTotalMB  memFreeMB  memUsedMB  memFreePct  memUsedPct  pgPageOut  swapUsedPct  pgSwapOut  cSwitches  interrupts  forks  processes  threads  loadAvg1mi  waitThreads  interrupts_PS  pgPageIn_PS  pgPageOut_PS"
+              },
+              {
+                "index": "os",
+                "sourcetype": "df",
+                "source": "df",
+                "host": "$host$",
+                "_raw": "$memTotalMB$  $memFreeMB$  $memUsedMB$  $memFreePct$  $memUsedPct$  $pgPageOut$  $swapUsedPct$  $pgSwapOut$  $cSwitches$  $interrupts$  $forks$  $processes$  $threads$  $loadAvg1mi$  $waitThreads$  $interruptsPS$  $pgPageInPS$  $pgPageOutPS$"
+              }
+            ]
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/nixOS/vmstat.yml"
+    },
+    {
+      "name": "bandwidth.yml",
+      "category": "nixOS",
+      "yaml_content": "global:\n  samplesDir:\n  - $GOGEN_HOME/examples/nixOS\ngenerators:\n  - name: bandwidth\n    fileName: $GOGEN_HOME/examples/nixOS/bandwidth.lua\n    options:\n      minKBPS: 1000\n      maxKBPS: 1500\n      numNICs: 2\nsamples:\n  - name: bandwidth\n    description: Generate Bandwidth Usage Metrics\n    notes: >\n      Generates bandwidth usage from the Splunk UNIX TA\n    generator: bandwidth\n    interval: 60\n    tokens:\n    - name: host\n      type: fieldChoice\n      srcField: host\n      sample: allhosts.csv\n      disabled: true\n    lines:\n    - index: os\n      sourcetype: bandwidth\n      source: bandwidth\n      host: $host$\n      _raw: Name  rxPackets_PS  txPackets_PS  rxKB_PS  txKB_PS\n    - index: os\n      sourcetype: df\n      source: df\n      host: $host$\n      _raw: $nic$  $rx_p$  $tx_p$  $rx_kb$  $tx_kb$",
+      "parsed_content": {
+        "global": {
+          "samplesDir": [
+            "$GOGEN_HOME/examples/nixOS"
+          ]
+        },
+        "generators": [
+          {
+            "name": "bandwidth",
+            "fileName": "$GOGEN_HOME/examples/nixOS/bandwidth.lua",
+            "options": {
+              "minKBPS": 1000,
+              "maxKBPS": 1500,
+              "numNICs": 2
+            }
+          }
+        ],
+        "samples": [
+          {
+            "name": "bandwidth",
+            "description": "Generate Bandwidth Usage Metrics",
+            "notes": "Generates bandwidth usage from the Splunk UNIX TA\n",
+            "generator": "bandwidth",
+            "interval": 60,
+            "tokens": [
+              {
+                "name": "host",
+                "type": "fieldChoice",
+                "srcField": "host",
+                "sample": "allhosts.csv",
+                "disabled": true
+              }
+            ],
+            "lines": [
+              {
+                "index": "os",
+                "sourcetype": "bandwidth",
+                "source": "bandwidth",
+                "host": "$host$",
+                "_raw": "Name  rxPackets_PS  txPackets_PS  rxKB_PS  txKB_PS"
+              },
+              {
+                "index": "os",
+                "sourcetype": "df",
+                "source": "df",
+                "host": "$host$",
+                "_raw": "$nic$  $rx_p$  $tx_p$  $rx_kb$  $tx_kb$"
+              }
+            ]
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/nixOS/bandwidth.yml"
+    },
+    {
+      "name": "cpu.yml",
+      "category": "nixOS",
+      "yaml_content": "global:\n  samplesDir:\n  - $GOGEN_HOME/examples/nixOS\ngenerators:\n  - name: cpu\n    fileName: $GOGEN_HOME/examples/nixOS/cpu.lua\n    options:\n      minCPU: 30.0\n      maxCPU: 75.0\n      numCPUs: 8\nsamples:\n  - name: cpu\n    description: Generate CPU Metrics\n    notes: >\n      Generates CPU usage in the form of Splunk's UNIX TA\n    generator: cpu\n    interval: 60\n    tokens:\n    - name: host\n      type: fieldChoice\n      srcField: host\n      sample: allhosts.csv\n      disabled: true\n    lines:\n    - index: os\n      sourcetype: cpu\n      source: cpu\n      host: $host$\n      _raw: |-\n        CPU  pctUser  pctNice  pctSystem  pctIowait  pctIdle\n        all  $pctUserAll$  0  $pctSystemAll$  $pctIowaitAll$  $pctIdleAll$\n    - index: os\n      sourcetype: cpu\n      source: cpu\n      host: $host$\n      _raw: $CPU$  $pctUser$  0  $pctSystem$  $pctIowait$  $pctIdle$",
+      "parsed_content": {
+        "global": {
+          "samplesDir": [
+            "$GOGEN_HOME/examples/nixOS"
+          ]
+        },
+        "generators": [
+          {
+            "name": "cpu",
+            "fileName": "$GOGEN_HOME/examples/nixOS/cpu.lua",
+            "options": {
+              "minCPU": 30.0,
+              "maxCPU": 75.0,
+              "numCPUs": 8
+            }
+          }
+        ],
+        "samples": [
+          {
+            "name": "cpu",
+            "description": "Generate CPU Metrics",
+            "notes": "Generates CPU usage in the form of Splunk's UNIX TA\n",
+            "generator": "cpu",
+            "interval": 60,
+            "tokens": [
+              {
+                "name": "host",
+                "type": "fieldChoice",
+                "srcField": "host",
+                "sample": "allhosts.csv",
+                "disabled": true
+              }
+            ],
+            "lines": [
+              {
+                "index": "os",
+                "sourcetype": "cpu",
+                "source": "cpu",
+                "host": "$host$",
+                "_raw": "CPU  pctUser  pctNice  pctSystem  pctIowait  pctIdle\nall  $pctUserAll$  0  $pctSystemAll$  $pctIowaitAll$  $pctIdleAll$"
+              },
+              {
+                "index": "os",
+                "sourcetype": "cpu",
+                "source": "cpu",
+                "host": "$host$",
+                "_raw": "$CPU$  $pctUser$  0  $pctSystem$  $pctIowait$  $pctIdle$"
+              }
+            ]
+          }
+        ]
+      },
+      "comments": {},
+      "file_path": "examples/nixOS/cpu.yml"
+    }
+  ],
+  "documentation": {
+    "reference": "Gogen Reference\n\n\nThis document will walk through all the objects in the configuration and Lua API and attempt to document them fully.\n\nEnvironment Variables\n\n\n| Environment Variable   | Expected Value   | Description                                                                  |\n|------------------------|------------------|------------------------------------------------------------------------------|\n| GOGEN\\_EXPORT          | 1 or unset       | Specifies whether Gogen is running to export configs.  If set to export, internal defaults aren't added and a few more miscellaneous things.\n| GOGEN\\_INFO            | 1 or unset       | Specifies whether to turn on info level logging\n| GOGEN\\_DEBUG           | 1 or unset       | Specifies whether to turn on debug level logging\n| GOGEN\\_GENERATORS      | integer          | Number of generator threads for Gogen to run\n| GOGEN\\_OUTPUTTERS      | integer          | Number of output threads for Gogen to run\n| GOGEN\\_OUTPUTTEMPLATE  | name of template | Name of an output template to use.\n| GOGEN\\_OUT             | outputter        | Name of outputter to use, stdout, file, http, etc\n| GOGEN\\_FILENAME        | filename         | When outputter is file, output to this filename\n| GOGEN\\_URL             | URL              | When outputter is http, URL to send data to\n| GOGEN\\_HEC_TOKEN       | Token            | When outputter is HTTP, use the token for authentication to Splunk's HTTP Event Collector\n| GOGEN\\_SAMPLES\\_DIR    | directory        | Directory to find sample configs\n| GOGEN\\_CONFIG          | file             | Path to a full configs\n| GOGEN\\_CONFIG\\_DIR     | directory        | Directory to use as a base config directory, contains sample, templates, generator directories.\n\nConfiguration\n\n\nThe configuration \n\n| Section    | Description                                                                                                        |\n|------------|--------------------------------------------------------------------------------------------------------------------|\n| global     | Defines global parameters, such as output                                                                          |\n| generators | Defines custom generators, written in Lua, which can greatly extend gogen's capabilities                           |\n| raters     | Defines raters, which allow you to rate the count of events or value of tokens based on time or custom Lua scripts |\n| samples    | Define sample configurations, which is the core data structure in Gogen                                            |\n| mix        | Defines mix configurations, which allow you to reuse existing sample configurations in new configurations          |\n| templates  | Defines output templates, which allow you to format the output of Gogen using Go's templating language             |\n\nGlobal\n\n\nGlobal options:\n\n| Setting          | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| debug            | Turns on debug internal logging output                                                         | bool        |\n| verbose          | Turns on verbose internal logging output                                                       | bool        |\n| generatorWorkers | Sets the number of threads generating output tasks                                             | int         |\n| outputWorkers    | Sets the number of threads outputting output tasks                                             | int         |\n| rotInterval      | Interval in seconds to output internal statistics to stderr                                    | int         |\n| output           | Set the output plugin to use                                                                   | string      |\n| samplesDir       | Sets the directory to look for Sample YAML, CSV or .Samples files                              | string list |\n| cacheIntervals   | Sets the number of intervals to reuse generated events                                         | int         |\n\n\nOutput\n\n\nOutput options:\n\n| Setting          | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| fileName         | For file output, sets the file name to output to                                               | string      |\n| maxBytes         | For file output, sets the max bytes before rolling a new file                                  | int64       |\n| backupFiles      | For file output, sets the number of files to keep before discarding older files                | int         |\n| bufferBytes      | For HTTP, S2S and other outputs, sets the number of bytes to buffer before flushing            | int         |\n| outputter        | Sets the output module to use, currently supports devnull, file, http and stdout               | string      |\n| outputTemplate   | Set the output template to format output, builtins include csv, json, splunkhec                | string      |\n| endpoints        | For http, or potentially others, lists endpoints to send data to.                              | string list |\n| headers          | For http, sets headers                                                                         | string obj  |\n| protocol         | For network, set to `tcp` or `udp`                                                             | string      |\n| timeout          | For network based outputs, a time in seconds, default `10s`                                    | string      |\n\nSample\n\n\nSamples are represented as a list of sample objects, which can consist of the following configuration options:\n\n| Setting          | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| name             | Name of the sample                                                                             | string      |\n| description      | Description of the sample                                                                      | string      |\n| notes            | Notes about the sample                                                                         | string      |\n| disabled         | Sets whether the sample should be disabled and not generate events                             | bool        |\n| generator        | Sets the sample to use a custom generator as defined in the generators stanza                  | string      |\n| rater            | Sets the sample to use a custom rater as defined in the raters stanza                          | string      |\n| interval         | Sets the interval, in seconds, between generations of this sample                              | int         |\n| delay            | Sets the delay, in seconds, before starting generation for the first time                      | int         |\n| count            | Sets the number of events to generate each sample                                              | int         |\n| earliest         | Sets the beginning of the time window to generate an event in for this interval (ex: -1m)      | string      |\n| latest           | Sets the end of the time window to generate an event in for this interval (ex: now)            | string      |\n| begin            | Sets the timestamp to begin generation at (ex: -1h)                                            | string      |\n| end              | Sets the timestamp to end generation at (ex: now). If unspecified, generates in real time      | string      |\n| endIntervals     | Sets generation to run for `endInterval` intervals                                             | int         |\n| randomizeCount   | Percentage of randomness of `count` events.  Ex: 0.2 will randomly increase count +/- 20%      | float       |\n| randomizeEvents  | Randomize the events from the sample when picking events.  By default will pick top X events   | bool        |\n| tokens           | List of tokens (see below)                                                                     | token       |\n| lines            | List of line objects.  Arbitrary key/value pairs to be used for generation.                    | list string obj\n| field            | Sets the default field to replace in (default '_raw')                                          | string      |\n| fromSample       | Bring in lines from another named sample                                                       | string      |\n| singlePass       | Allows disabling SinglePass optimization, if for example you have chained replacements         | bool        |\n\nToken\n\n\nTokens are the core unit of the replacement engine, and they contain the following configuration options:\n\n| Setting          | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| name             | Name of the token                                                                              | string      |\n| format           | Format of the replacement, either `regex` or `template`. Default `template`                    | string      |\n| token            | Replacement text to find.  Required for `regex`, for `template` defaults to `$name$`           | string      |\n| type             | Sets the type of replacement.  See token types below.                                          | string      |\n| replacement      | Value to use for the replacement.  Depends on the token type (see below)                       | string      |\n| group            | Token group. All items from the same group will pick the same index across multiple tokens     | int         |\n| sample           | For choice types, pulls the items from another sample                                          | string      |\n| field            | Field to replace into, defaults to `_raw`                                                      | string      |\n| srcField         | Field to replace from, used in `fieldChoice`                                                   | string      |\n| precision        | For `float` `random` or `rated` tokens, how many decision points to generate                   | int         |\n| lower            | Lower value for a `random` or `rated` token                                                    | int         |\n| upper            | Upper value for a `random` or `rated` token                                                    | int         |\n| length           | Length of a `random` `string` or `hex` replacement                                             | int         |\n| weightedChoice   | Used for `weightedChoice` type, a list of objects containing `choice` and `weight` (`int`)     | list of obj |\n| fieldChoice      | Used for `fieldChoice` type, a list of objects containing fields and values                    | list string obj |\n| choice           | Used for `choice` type, a list of strings to use for replacements                              | list of string |\n| script           | LUA script to use for replacement.                                                             | string      |\n| init             | Initialize keys and values in the Lua engine                                                   | object      |\n| rater            | Use the specified rater to rate this token (see below)                                         | string      |\n| disabled         | Disables this sample.                                                                          | bool        |\n\nToken types:\n\n| Type             | Description                                                                                    |\n|------------------|------------------------------------------------------------------------------------------------|\n| timestamp        | Timestamp in strftime format                                                                   |\n| gotimestamp      | Timestamp in [go timestamp format](https://golang.org/pkg/time/#pkg-constants).  This is signifcantly more performant than strftime. |\n| epochtimestamp   | Timestamp in seconds since the epoch.                                                          | \n| static           | Replaces with a static string                                                                  |\n| random           | Replaces the token with random values.  Valid replacement values: `int`, `float`, `string`, `hex`, `guid`, `ipv4`, or `ipv6` |\n| rated            | Replaces the token with a rated value. Valid replacement values: `int`, `float`                |\n| choice           | Replaces from the `choice` stanza, which is a list                                                 |\n| weightedChoice   | Replaces from the `weightedChoice` stanza, which is a list of objects containing weight (`int`) and choice |\n| fieldChoice      | Replaces from the `fieldChoice` stanza, which is an object containing values. Selects field based on `field` stanza. |\n| script           | Replaces using a lua script, which is defined inline.                                          |\n\nMix\n\n\nMixes allow grabbing other full configurations, overriding a few parameters, and creating a new config.\n\n| Setting          | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| sample           | Name of the sample.  Path to a config file or a public config (ex: coccyx/weblog)              | string      |\n| interval         | Overrides `interval` of sample.                                                                | int         |\n| count            | Overrides `count` of sample.                                                                   | int         |\n| begin            | Overrides `begin` of sample.                                                                   | string      |\n| end              | Overrides `end` of sample.                                                                     | string      |\n| endIntervals     | Overrides `endIntervals` of sample.                                                            | int         |\n| realtime         | Sets sample to realtime. This exists because if end is set, this will override to realtime.    | bool        |\n\nRaters\n\n\nRaters will dynamically determine value based on the time of day or a custom script.\n\n| Setting          | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| name             | Name of the rater                                                                              | string      |\n| type             | Type of the rater. Either `config` or `script`                                                 | string      |\n| script           | For `script` rater, specifies a Lua script to use to rate.                                     | string      |\n| options          | Options to pass to the config rater.  See [here](https://github.com/coccyx/gogen/blob/master/tests/rater/fullraterconfig.yml) for example.  | object |\n| init             | Initialize Lua variables for `script` rater.                                                   | object      |\n\nTemplate\n\n\nTemplates let the user change how data is output using Go's template language.  See [here](https://github.com/coccyx/gogen/blob/master/examples/tutorial/tutorial4.yml) for an example.\n\n| Setting          | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| name             | Name of the template                                                                           | string      |\n| header           | Header for the template                                                                        | string      |\n| row              | Row for the template                                                                           | string      |\n| footer           | Footer for the template                                                                        | string      |\n\nGenerators\n\n\nGenerators let the user define custom logic in Lua for how events should be generated. Generators contain a configuration component as well as an API the user can access to send events and access configuration data.\n\n\n| Setting          | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| name             | Name of the generator                                                                          | string      |\n| init             | Object of key value pairs to initialize in the `state` variable in in the Lua engine           | object      |\n| options          | Object of key value pairs to be placed in the `options` variable in the Lua engine.  Unlike `init`, can pass complex structures. | object |\n| script           | Script to execute.                                                                             | string      |\n| fileName         | File on disk containing the Lua script.                                                        | string      |\n| singleThreaded   | Execute SingleThreaded or not.  Scripts may be wary of stomping on state in multithreaded mode.  | bool      |\n\nGenerator API\n\n\nThe Lua environment provides a rich set of APIs to access running state inside of Gogen.  This documents the global variables as well as all the functions and their parameters.\n\nGlobals\n\n\n| Variable         | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| state            | State from the `init` setting in config                                                        | table       |\n| options          | Options passed to the generator from config, as userdata                                       | userdata    |\n| lines            | Lines configured in config, as a table of tables                                               | table       |\n| count            | Count to generate for this interval                                                            | number      |\n| earliest         | Earliest time to generate for, in epoch time                                                   | number      |\n| latest           | Latest time to generate for, in epoch time                                                     | number      |\n| now              | Current time, in epoch time                                                                    | number      |\n\n\nsleep\n\n\nsleep uses Go's time.sleep to sleep the generator thread.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| duration         | Duration to sleep in seconds                                                                   | int64       |\n\ndebug\n\n\ndebug outputs debug output to stderr.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| message          | Message to output                                                                              | string      |\n\nInfo\n\n\ninfo outputs info output to stderr.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| message          | Message to output                                                                              | string      |\n\nreplaceTokens\n\n\nreplaceTokens calls Gogen's replacement engine, and replaces all tokens in a particular line.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| event            | Takes a Lua table of key/value pairs to replace tokens in. Generally retrieved from `getLine`  | table       |\n| choices          | Dictionary of choices, passed back in as a return from a previous `replaceTokens` call         | userdata    |\n| replaceFirst     | Replace tokens set via `setTokens` first if `true`                                             | bool        |\n\n*Returns:*\n\n| Return           | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| event            | Event with all tokens replaced                                                                 | table       |\n| choices          | Dictionary of choices                                                                          | userdata    |\n\nsend\n\n\nsend sends events to the outputter.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| events           | Takes a Lua table of tables of key/value pairs to output                                       | table       |\n\nsendEvent\n\n\nsendEvent sends a single event to the outputter.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| events           | Takes a Lua table              key/value pairs to output                                       | table       |\n\nround\n\n\nround rounds a Lua Number to the specified precision.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| number           | Number to round                                                                                | number      |\n| precision        | Signifcant digits to round to                                                                  | number      |\n\n*Returns:*\n\n| Return           | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| number           | Rounded number                                                                                 | number      |\n\nsetToken\n\n\nsetToken sets a token for Gogen's replacement engine.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| name             | Token name, represented by `$name$` in the event                                               | string      |\n| value            | Token value                                                                                    | string      |\n| field            | Field to replace in, defaults to `_raw`                                                        | string      |\n\nremoveToken\n\n\nremoveToken removes a token set via `setToken`.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| name             | Token name to remove                                                                           | string      |\n\ngetLine\n\n\ngetLine returns a line from the sample config.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| line             | Line number to return                                                                          | number      |\n\n*Returns:*\n\n| Return           | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| line             | Table of key/value parameters from the sample config                                           | table       |\n\ngetLines\n\n\ngetLines returns all lines from the sample config.\n\n*Returns:*\n\n| Return           | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| lines            | Table of tables of key/value parameters from the sample config                                 | table       |\n\ngetChoice\n\n\ngetChoice returns all choices from the sample config for a given token.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| token            | Token to retrieve                                                                              | string      |\n\n*Returns:*\n\n| Return           | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| choices          | Table of choices of key/value parameters from the sample config                                | table       |\n\ngetChoiceItem\n\n\ngetChoice returns a choice item from the sample config.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| token            | Token to retrieve                                                                              | string      |\n| index            | Retrieve choice at line `index`                                                                | number      |\n\n*Returns:*\n\n| Return           | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| choice           | Choice at `index` from the sample config                                                       | string      |\n\ngetFieldChoice\n\n\ngetFieldChoice returns all fieldChoices from the sample config for a given token.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| token            | Token to retrieve                                                                              | string      |\n| field            | Field to retrieve                                                                              | string      |\n\n*Returns:*\n\n| Return           | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| choices          | Table of choices of key/value parameters from the sample config                                | table       |\n\ngetFieldChoiceItem\n\n\ngetFieldChoiceItem returns a choice from the sample config.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| token            | Token to retrieve                                                                              | string      |\n| field            | Field to retrieve                                                                              | string      |\n| index            | Retrieve choice at line `index`                                                                | number      |\n\n*Returns:*\n\n| Return           | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| choice           | Choice of `field` at `index` from the sample config                                            | string      |\n\ngetWeightedChoiceItem\n\n\ngetWeightedChoiceItem returns a choice from the sample config.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| token            | Token to retrieve                                                                              | string      |\n| index            | Retrieve choice at line `index`                                                                | number      |\n\n*Returns:*\n\n| Return           | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| choice           | Choice `index` from the sample config                                                          | string      |\n\ngetGroupIdx\n\n\ngetGroupIdx returns the index for a particular choice.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| choices          | Choices, returned from a previous `replaceTokens` call                                         | userdata    |\n| group            | Index of group to return                                                                       | number      |\n\n*Returns:*\n\n| Return           | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| choice           | Index of the row chosen for a particular group                                                 | numbe       |\n\n\nsetTime\n\n\nsetTime sets the time for a particular interval.\n\n| Parameter        | Description                                                                                    | Type        |\n|------------------|------------------------------------------------------------------------------------------------|-------------|\n| time             | Epoch Time to set time to                                                                      | number      |",
+    "tutorial": "Configuring Gogen\n\n\nGogen is the spiritual successor to my original [Eventgen](https://github.com/splunk/eventgen), and as such it shares many configuration concepts in common.  However, Gogen as the successor has been designed to work around a number of deficiencies in Eventgen's original configuration format.\n\nGogen was designed to be configured from a single file.  This makes moving configurations around very simple.  Managing the data Gogen references is painful from a single file, so it also allows for referencing other files.  For example, choice token types allow choosing items from fields in other samples, and these samples can be referenced to files on the file system.  When publishing the configurations, Gogen will take it's in-memory representation which has joined all the configuration data together, and generate a single file version of this configuration.  Later, if desired, Gogen can deconstruct this single file representation back into component files to make editing easier.\n\nConfig File Overview\n\n\nGogen is configured via a YAML or JSON based configuration.  Lets look at a very simple example configuration:\n\n    samples:\n      - name: tutorial1\n        interval: 1\n        endIntervals: 5\n        count: 1\n        randomizeEvents: true\n\n        tokens:\n        - name: ts\n          format: template\n          type: timestamp\n          replacement: \"%b/%d/%y %H:%M:%S\"\n\n        lines:\n        - _raw: $ts$ line1\n        - _raw: $ts$ line2\n        - _raw: $ts$ line3\n\nThis example is in YAML.  Gogen configurations are made up of Samples, which contain some configuration, tokens, and lines.  In this example, we will generate 1 event (`count: 1`) from a random line (`randomizeEvents: true`) every 1 second (`interval: 1`) for a total of 5 intervals (`endIntervals 5`).  When `endIntervals` is set, we will go back that number of intervals and just work as fast as we can to generate that number of events.  Gogen can also keep generating and generate in realtime, which we'll cover a bit later.\n\nYou can see we define here a top level item called samples, which is a list of objects.  There are a few top level directives which control Gogen:\n\n| Section    | Description                                                                                                        |\n|------------|--------------------------------------------------------------------------------------------------------------------|\n| global     | Defines global parameters, such as output                                                                          |\n| generators | Defines custom generators, written in Lua, which can greatly extend gogen's capabilities                           |\n| raters     | Defines raters, which allow you to rate the count of events or value of tokens based on time or custom Lua scripts |\n| samples    | Define sample configurations, which is the core data structure in Gogen                                            |\n| mix        | Defines mix configurations, which allow you to reuse existing sample configurations in new configurations          |\n| templates  | Defines output templates, which allow you to format the output of Gogen using Go's templating language             |\n\nWe will cover these in future examples.\n\nTo run this example, from the Gogen repo directory:\n\n    gogen -c examples/tutorial/tutorial2.yml gen\n\nRaters & Scripts\n\n\nTwo of the most important concepts in Gogen are the concepts of rater and scripts.  Raters allow the user to modify the count of events or the value of tokens based on the time. Scripts allow the user the extend Gogen's logic through simple [Lua](http://lua.org/) scripts. Lets see this in action.\n\n    raters:\n      - name: eventrater\n        type: config\n        options:\n        MinuteOfHour:\n            0: 1.0\n            1: 0.5\n            2: 2.0\n      - name: valrater\n        type: script\n        script: >\n            return options[\"multiplier\"]\n        options:\n            multiplier: 2\n\n    samples:\n      - name: tutorial2\n        begin: 2012-02-09T08:00:00Z\n        end: 2012-02-09T08:03:00Z\n        interval: 60\n        count: 2\n        rater: eventrater\n\n        tokens:\n          - name: ts\n            format: template\n            type: timestamp\n            replacement: \"%b/%d/%y %H:%M:%S\"\n          - name: linenum\n            format: template\n            type: script\n            init:\n              id: \"0\"\n            script: >\n              state[\"id\"] = state[\"id\"] + 1\n              return state[\"id\"]\n          - name: val\n            format: template\n            type: random\n            replacement: int\n            lower: 1\n            upper: 5\n          - name: rated\n            format: template\n            type: rated\n            replacement: int\n            lower: 1\n            upper: 3\n            rater: valrater\n\n        lines:\n        - _raw: $ts$ line=$linenum$ value=$val$ rated=$rated$\n\nGo ahead and run this.\n\n    gogen -c examples/tutorial/tutorial2.yml\n\nLet's examine this config in detail, because it introduces a number of important concepts.  First, this config, rather than running over a specified number of intervals, is setup to run over a specific time period by setting the `begin` and `end` clauses of the sample.  It is set to generate `count: 2` events, once per minute, with an `interval` of `60`.  Lastly, it sets a rater of `eventrater`, which we will explain in detail.\n\nThere are two types of raters, `config` and `script`.  The last, `default`, always returns 1.  Raters return a value to _multiply_ events by.  If an event has a count of 2, it'll be multiplied by the value returned by the `eventrater` rater.  The `config` rater will rate events by the time of the event.  In this case, the event will always be between 8 AM and 8:03 AM, so we've only set a few `MinuteOfHour` options, but canonically [it will look more like this](../tests/rater/configrater.yml).  The `config` rater has three options, `MinuteOfHour`, `HourOfDay` and `DayOfWeek`.  It will look up the current time of the event in each of these three options, and if found, multiply the `count` (set by `count` in the event) by this floating point value, and once all the multiplications are done, round to the nearest whole number.\n\nIn our example, we should see 2 events generated in the first minute, 1 event in the second minute, and 4 events in the last minute.\n\nNow, lets look at the tokens for this sample.  The second token introduces a custom script token.  This script is written in [Lua](http://lua.org/), which is very [easy to learn](https://www.lua.org/pil/1.html).  Most people who are versed in scripting or programming can pick up Lua merely by modifying the examples provided with Gogen.  The `linenum` token is very simple, as all it does is return a monotonically increasing identifier to be used as our line number.  Useful, but simple.  It's initialized with the `init` configuration directive, to create an entry in the `state` table in Lua under the `id` item, and set it to zero.  The script increments this id and returns the value on every iteration.\n\nThe next two tokens show the difference between a random token and a rated token.  Both are configured nearly identically.  `val` and `rated` both have a `replacement` of int, a `lower` and `upper` configuration directive dictating the value ranges to be generated.  The difference is `rated` is run through a rater first, the same way event counts are, by multiplying the random value from the token times the value returned by the rater.  In this case, the rater is a simple script, which looks up a value configured in `options` in the YAML and returns that value as the multiplier.\n\nThis example is much more complicated than the original, but begins to show off the true power of what Gogen can do with easy to understand and share configurations.\n\nTokens & the power of sample files\n\n\nGogen was enhanced to include the easy addition of custom scripts to enhance the base functionality, but the core ability of Gogen is still its ability to generate real-looking data by simply subtituting data randomly from lists of options.  Eventgen had this capability, and Gogen has *significantly* enhanced it by making it much easier to manage and configure.\n\nTokens have two different `format` options, `regex` and `template`.  `regex` will search a line for a regex pattern and replace any matches with the value from the token.  `template` is *far* preferred and *significantly more performant*, and it will replace, by default, a token matching `$<name>$` in the original event.  Template is intended if you're manually crafting an event, no need to waste the CPU cycles to do regex matches when a simple string match will do.  If you have a token named `foo`, it will search for the text `$foo$` in the original event and replace that.\n\nTokens also have a number of `type` settings.  See the [Reference manual](Reference.md) for a full list, but the primary categories are `timestamp`, `static`, `random`, `rated`, `choice` (with `fieldChoice` and `weightedChoice`) and `script`.  Most important are the `choice` settings, and thusly the section about sample files.  Choice settings can be determined by bringing in data from external files.  Lets examine tutorial 3 in more detail for some examples:\n\n    name: tutorial3\n    begin: 2012-02-09T08:00:00Z\n    end: 2012-02-09T08:03:00Z\n    interval: 60\n    count: 2\n    rater: eventrater\n    tokens:\n      - name: ts\n        format: regex\n        token: (\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2},\\d{3})\n        type: gotimestamp\n        replacement: \"2006-01-02 15:04:05.000\"\n      - name: host\n        format: template\n        type: choice\n        field: host\n        choice:\n        - server1.gogen.io\n        - server2.gogen.io\n      - name: transtype\n        format: regex\n        token: transType=(\\w+)\n        type: weightedChoice\n        weightedChoice:\n        - weight: 3\n          choice: New\n        - weight: 5\n          choice: Change\n        - weight: 1\n          choice: Delete\n      - name: integerid\n        format: template\n        type: script\n        init:\n          id: \"0\"\n        script: >\n          state[\"id\"] = state[\"id\"] + 1\n          return state[\"id\"]\n      - name: guid\n        format: template\n        type: random\n        replacement: guid\n      - name: username\n        format: template\n        type: choice\n        sample: usernames.sample\n      - name: markets-city\n        format: template\n        token: $city$\n        type: fieldChoice\n        sample: markets.csv\n        srcField: city\n        group: 1\n      - name: markets-state\n        format: template\n        token: $state$\n        type: fieldChoice\n        sample: markets.csv\n        srcField: state\n        group: 1\n      - name: markets-zip\n        format: template\n        token: $zip$\n        type: fieldChoice\n        sample: markets.csv\n        srcField: zip\n        group: 1\n      - name: value\n        format: regex\n        token: value=(\\d+)\n        type: random\n        replacement: float\n        precision: 3\n        lower: 0\n        upper: 10\n\n    lines:\n      - index: main\n        host: $host$\n        sourcetype: translog\n        source: /var/log/translog\n        _raw: 2012-09-14 16:30:20,072 transType=ReplaceMe transID=$integerid$ transGUID=$guid$ userName=$username$ city=\"$city$\" state=$state$ zip=$zip$ value=0\n\nTo run this tutorial run:\n\n    gogen -cd examples/tutorial/tutorial3 -ot json gen\n\nThe first thing to note about this config: no samples item.  All the items from the sample are top level directives.  This is because we're running this config as a [config directory](examples/tutorial/tutorial3) instead of a [full config](examples/tutorial/tutorial2.yml), thusly running `gogen -cd` instead of `gogen -c`.  Config directories allow for breaking out out of the items to be managed into individual files instead of being combined into one.  This allows, for example, to share raters amongst samples without copying and pasting them amongst the full config files.  In this case, we have subdirectories inside the config directory called `samples` and `raters` which contain the same items which would be list items of a full config seperated into their own files.  Gogen will walk that directory and load anything with an extension of `yml`, `json`, `csv`, or `sample`.  When we want to share this config, Gogen allows for export functions which will combine all these files into a single file config for sharing.\n\nThe next thing to note about this config is that we've added support for multiple fields in the sample's lines.  This is why we suggested the `-ot json` directive in the command line.  This sets the `outputTemplate` to `json`, which can also be specified in the `global` directive.  `json` will show you easily there is multiple fields of metadata flowing through the gogen event, but by default only `_raw` is output, matching with how Splunk treats data.\n\nNow, let's look through the tokens to better understand a more complicated token configuration.  Firstly, if we look at the timestamp token, it is using a `regex` match, which we normally don't do in this type of example except to show how it's done.  Note with the regex, we need to ensure we have a capture group in parenthesis to tell Gogen where to replace.  This timestamp uses [Go's time format syntax](https://gobyexample.com/time-formatting-parsing), which uses a reference time of `Mon Jan 2 15:04:05 MST 2006`.  When you want a timestamp to look like `%Y-%m-%d %H:%M:%S` in strftime format, you would give gotimestamp `2006-01-02 15:04:05`.  It takes a bit of getting used to, but it's significantly more performant than strftime, so it's recommended to use this format.\n\nNext is the `host` token.  This introduces two new options, the first is a type of `choice`.  `choice` tokens choose from a list of items to get the value from which to substitute.  In this case, we've articulated the values right in the configuration, but `choice`, `fieldChoice` and `weightedChoice` tokens can also get their values from external sample files in flat text file or csv format, which you can see in the `username` token further down.  Lastly, it's important to note the `field` directive, which substitutes `host` into the `host` field of the sample line.  Field can be declared on any token to tell it to replace items in any field in the event, with the default being to replace in `_raw`.\n\nThe next token we want to look at is `transtype`.  `transtype` is of type `weightedChoice`, which chooses tokens based on a weighting algorithm.  A token of weight `5` will be 5 times more likely to be chosen than a token of weight `1`.  This is very helpful when trying to model data that looks more like real world data, which isn't necessarily going to have an even distribution.\n\nNext, lets take a look at a series of tokens, the ones prefixed with markets.  These tokens introduce a new type, `fieldChoice`, and a few new directives, `srcField` and `group`.  `fieldChoice` tokens will select a replacement from a field from a tablular dataset, like a CSV or a list of YAML objects.  What makes these even more useful, is that the choice we make can be carried across multiple token substitutions.  This is what the `group` clause is for, and it can be used in any of the choice token types.  Any time a `group` clause is present, the same choice will be used across any matched group number.\n\nGenerators & Templates\n\n\nAs I was rewriting the original Eventgen concept that was to become Gogen, I really wanted to preserve Eventgen's ability to be expandable.  Eventgen allows users to ship custom generators in their Eventgens, so I wanted to replicate that in Gogen.  However, unlike python which is a dynamic, interpreted language, Gogen is written in Go which is a strongly typed, compiled & statically linked language.  In order to give that capability, we do that through custom Lua generators, which have a rich API to allow the Lua scripts to interact with Gogen.  This allows for higher performance, as most of the work is handled in Go code, and it allows for the script developer to minimize the amount of things they need to replicate in their own code.\n\nSecondly, I wanted the ability to customize how we output data.  Making that format expandable will future proof Gogen and allow field expandability to model new types of data formats.  Gogen can output raw text, JSON, CSV and other formats by default, but custom templates allow for more complicated data structures.\n\nFor the next example, we're going to show both of these features generating an ini-style configuration file just for giggles.\n\n    global:\n      output:\n        outputTemplate: inifile\n        outputter: stdout\n\n    generators:\n    - name: indexes.conf\n      script: |\n        header = \"# Generated at $ts$\"\n\n        events = { }\n        for i=0,2 do\n          line = getLine(i)\n          line[\"header\"] = header\n          line = replaceTokens(line)\n\n          if line[\"maxHotSpanSecs\"] ~= nil then\n            frozenTimePeriodInSecs = tonumber(line[\"maxHotSpanSecs\"]) * 6\n            line[\"frozenTimePeriodInSecs\"] = tostring(frozenTimePeriodInSecs)\n          end\n\n          line[\"homePath\"] = \"$SPLUNK_DB/\"..line[\"index\"]..\"db/db\"\n          line[\"coldPath\"] = \"$SPLUNK_DB/\"..line[\"index\"]..\"db/colddb\"\n          line[\"thawedPath\"] = \"$SPLUNK_DB/\"..line[\"index\"]..\"db/thaweddb\"\n          table.insert(events, line)\n        end\n        send(events)\n\n    samples:\n    - name: inifile\n\n      generator: indexes.conf\n\n      count: 1\n      endIntervals: 1\n\n      tokens:\n        - name: ts\n          field: header\n          format: template\n          type: timestamp\n          replacement: \"%b/%d/%y %H:%M:%S\"\n\n      lines:\n        - index: history\n          maxDataSize: 10\n        - index: summary\n        - index: _internal\n          maxDataSize: 1000\n          maxHotSpanSecs: 432000\n\n    templates:\n    - name: inifile\n      header: '{{ .header }}'\n      row: |\n        [{{ .index }}]\n        homePath = {{ .homePath }}\n        coldPath = {{ .coldPath }}\n        thawedPath = {{ .thawedPath }}\n        {{ if .maxDataSize -}}\n        maxDataSize = {{ .maxDataSize }}\n        {{ end }}{{ if .maxHotSpanSecs -}}\n        maxHotSpanSecs = {{ .maxHotSpanSecs }}\n        {{ end }}{{ if .frozenTimePeriodInSecs -}}\n        frozenTimePeriodInSecs = {{ .frozenTimePeriodInSecs }}{{ end }}\n\nLet's go ahead and run this to get a look at the output:\n\n    gogen -c examples/tutorial/tutorial4.yml\n\nAs you can see, it does indeed look like an ini file configuration.  It's modeled after Splunk's indexes.conf.  Once again, we're introducing several important new concepts.  The first, is our `global` section, which we described earlier but it's the first time we've seen it.  Here, global sets the outputTemplate which we're defining below.\n\nNext, let's look at the `generator` stanza.  This aligns also with the `generator` directive in the sample stanza.  We define here one generator, named indexes.conf, and we're using the `script` directive to define the script inline in the yaml, but we optionally could have pointed to a file with the `fileName` directive.  This defines a relatively simple lua script, which we'll walk through in more detail.\n\nWe define a string named `header` which has a template variable in it.  This value will be present in every row, primarily to handle a data model where all the data sent to the template engine needs to be in a map[string]string.  In the future, we might enhance templates with a concept of global variables.  We then declare a for loop to loop 3 times.  We call `getLine`, which returns back a table (map[string]string equivalent) of one of our lines defined in the sample.  Lines are numbered starting from 0.  We call `replaceTokens` which calls back into Gogen's token replacement engine and substitutes any tokens we find in that line.   Next we define a few more new entries in the line dynamically with some string concatenation and then insert it into our events table.  Lastly, after the loop, we call `send` which sends our complete table to the outputter.\n\nIf you want to see what just the data looks like, without the template, it's easy to run:\n\n    gogen -c examples/tutorial/tutorial4.yml -ot csv\n\nNow, let's look at the templates section.  We define here a new template, called `inifile`, which uses [Go's template library](https://golang.org/pkg/text/template/).  It should be pretty obvious to see what we're doing, if you've used any templating system in the past.  A given line is passed to the templating engine, and each item in the map is available as a variable in the template, as you can see from the example.\n\nReplay\n\n\nSometimes you just want to walk through a set of data as it was originally created.  Maybe you've found a log file that you just want to replay like it's happening right now, or you have some data in another system that is already structured and you want to be able to walk through it.  In this example, I've exported a search from Splunk's \\_internal logs and I'm going to replay them like it's right now.\n\n    samples:\n    - name: tutorial5\n      generator: replay\n\n      tokens:\n      - name: ts1\n        type: timestamp\n        format: regex\n        token: (\\d{2}\\/\\w{3}\\/\\d{4}:\\d{2}:\\d{2}:\\d{2})\n        replacement: '%d/%b/%Y:%H:%M:%S'\n      fromSample: results.csv\n\nLet's go ahead and run this:\n\n    gogen -c examples/tutorial/tutorial5.yml\n\nNote, it will continue to just run.  Hit `^C` to exit Gogen.  This example pulls in the lines from a file called results.csv.  It uses the `replay` generator, and it will walk through the file looking for all the timestamps it can find matching the regex token and it will attempt to parse them using the `replacement` format.  It will look through all the lines and determine how long it should wait between each event based on the timings contained in the original file.\n\nMixes\n\n\nMuch of what users of Gogen need to do is to assemble a realistic set of data to test their use case.  This is why we built the [config sharing system](Sharing.md).  What if someone has already published something and you want to combine it with your own or another configuration?  This is what we created mixes for.\n\n    mix:\n      - sample: $GOGEN_HOME/examples/tutorial/tutorial1.yml\n        begin: now\n        realtime: true\n        count: 1\n        interval: 1\n      - sample: $GOGEN_HOME/examples/tutorial/tutorial2.yml\n        begin: now\n        realtime: true\n        count: 1\n        interval: 1\n      - sample: $GOGEN_HOME/examples/tutorial/tutorial5.yml\n        begin: now\n        realtime: true\n\nThis last of our tutorial files should be pretty simple to grok.  We're referencing 3 of our other tutorial files and we're combining them into a mix.  We're overriding a few attributes of the original samples, and setting them all to generate in real time since before several of them were fixed time windows.  If you run this:\n\n    gogen -c examples/tutorial/tutorial6.yml\n\nYou'll see they generate in real time.  End generation with another `^C`.\n\nConfig Done!\n\n\nYou're now a functional expert, assuming you've read this far, in Gogen configuration.  Make sure to check out [more examples](Examples.md) where we list a number of examples developed by [myself](http://github.com/coccyx) and the community.\n\nUsing Gogen\n\n\nGogen also has a number of features to learn for using it day to day.  Gogen has a number of options which will change its behavior.  Let's look at the weblog example for some different usage patterns.\n\n    gogen -c examples/weblog/weblog.yml\n\nThis will output 10 events.  Let's output 10 events but over 10 seconds, one event per second, instead of all with the same timestamp.  Setting `--endIntervals` or `-ei` will automatically set the beginning time back the number of intervals specified.  Setting `--count` or `-c` will set the count to the specified number per interval.\n\n    gogen -c examples/weblog/weblog.yml gen -c 1 -ei 10\n\nWe might get tired of typing the same config directives over and over again.  To save Gogen settings to the environment, run:\n\n    $(gogen -c examples/weblog/weblog.yml env)\n\nMaybe we'd prefer to see all the metadata associated with those events as well (if you don't have jq installed, drop the part after the `|`). Setting `--outputTemplate` or `-ot` will change the template we use to output.  Raw, CSV and JSON come with gogen, and custom templates can be built using Go's templating language.\n\n    gogen -ot json gen -c 1 -ei 10 | jq .\n\nLet's generate data over a specified window.  Setting `--interval` or `-i` will set how many seconds will elapse between samples being generated.  Setting `--begin` or `-b` to `-10s` uses [Splunk's relative time syntax](https://docs.splunk.com/Documentation/Splunk/6.5.1/SearchReference/SearchTimeModifiers) and says to start generation 10 seconds before now.  Setting `--end` or `-e` to `now` stops generation at the current time.\n\n    gogen gen -c 1 -i 2 -b -10s -e now\n\nWe're going to use a different sample now, so we need to unset our environment variables from before.\n\n    $(gogen unsetenv)\n\nWe may want to just continue generating events when we're done.  Setting `--sample` or `-s` will restict generation to just one sample, and setting `--realtime` or `-r` will tell Gogen to keep generating events in real time.\n\n    gogen -c examples/tutorial/tutorial6.yml gen -s tutorial5 -b -5s -r\n\nWe may want to use Gogen for performance testing.  In order to do this, we're probably going to need more than one thread generating or outputting information.  For this we set `--generators` or `-g` to a number greater than one, or `--outputters` or `--out` to greater than 1.  To see what's going on in the background, we set `--verbose` or `-v`.\n\n    gogen -c examples/weblog/weblog.yml -o devnull -v -g 4 gen -c 1000 -ei 3000\n\nWe may want Gogen to generate static data, where outputting to a file would make sense.  To output a CSV file for example, use `--output` and `--outputTemplate` together.\n\n    gogen -c examples/csv/csv.yml -o file -f test.csv\n\nGogen provides a configuration sharing service which allows for easy sharing of examples.  Let's see if someone has a weblog available through the service.\n\n    gogen search weblog\n\nLet's see some more information about this weblog generator.\n\n    gogen info coccyx/weblog\n\nLet's run it to see what it looks like.\n\n    gogen -c coccyx/weblog\n\nTurns out it's the same one we've been running all along.  Let's see what the configuration looks like:\n\n    gogen pull coccyx/weblog .\n    more weblog.yml\n\nThat's pretty verbose, it'd be easier to edit if it looked more like how we recommended building them above.  Pull allows us to deconstruct the uploaded configs, run it with `--deconstruct` or `-d`.\n\n    gogen pull -d coccyx/weblog .\n\nYou can also publish your own configs.  First, we need to login to Gogen.\n\n    gogen login\n\nThis will open a local webserver and redirect your browser to http://localhost:46436/Login.  Once you authorize Gogen to talk to your Github account, you can push new gogen configs to the config sharing service under your Github login.\n\n    gogen -c <yourconfig.yml> push <configname>.\n\nWrapping up\n\n\nHope you've enjoyed our tutorial!  You're now an expert!",
+    "examples": "Examples\n\n\nIn addition to our tutorial, we've put together a number of good example configs to get you started.  \n\n| Example                                                    | Description                                             |\n|------------------------------------------------------------|---------------------------------------------------------|\n| [Weblog](../examples/weblog/weblog.yml)                       | Quientissential log.  Example used throughout the tutorial.  \n| [CSV](../examples/csv/csv.yml)                                | Generates CSV Data.  Showcases Gogen can be used for use cases aside from time series data. \n| [UNIX](https://github.com/coccyx/gogen/tree/master/examples/nixOS)                            | This example showcases custom generators.  Generates data like running `df`, `ps`, etc on a UNIX box the way Splunk's UNIX TA collects data.  Variables correlate and make heavy use of the LUA Generators feature. \n| [Users](https://github.com/coccyx/gogen/tree/master/examples/generator)                     | This example also showcases LUA Generators.  Simulates a group of users going through a set of actions.  Show cases complex interplay that's only possible by writing code.\n\nIf you have relevant examples, send a PR and we'll add them to this list!"
+  },
+  "metadata": {
+    "total_examples": 15,
+    "documentation_sections": [
+      "reference",
+      "tutorial",
+      "examples"
+    ],
+    "generated_at": "2025-03-01T14:45:34.038426"
+  }
+}
