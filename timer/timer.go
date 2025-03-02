@@ -58,9 +58,28 @@ func (t *Timer) NewTimer(cacheIntervals int) {
 					t.cur = 0
 				}
 			} else {
-				timer := time.NewTimer(time.Duration(s.Interval) * time.Second)
-				<-timer.C
-				t.genWork()
+				if s.Interval > 5 {
+					// For longer intervals, use ticker to check closed status
+					mainTimer := time.NewTimer(time.Duration(s.Interval) * time.Second)
+					checkTicker := time.NewTicker(1 * time.Second)
+					select {
+					case <-mainTimer.C:
+						checkTicker.Stop()
+						t.genWork()
+					case <-checkTicker.C:
+						if t.closed {
+							mainTimer.Stop()
+							checkTicker.Stop()
+							break
+						}
+						continue
+					}
+				} else {
+					// For short intervals, just use the timer directly
+					timer := time.NewTimer(time.Duration(s.Interval) * time.Second)
+					<-timer.C
+					t.genWork()
+				}
 			}
 			if t.closed {
 				break
@@ -113,6 +132,7 @@ Loop1:
 			break Loop1
 		case <-time.After(1 * time.Second):
 			if t.closed {
+				log.Debugf("Timer %s closed", t.S.Name)
 				break Loop1
 			}
 			continue
