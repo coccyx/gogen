@@ -32,9 +32,11 @@ jobs:
           $HOME/gopath/bin/goveralls -v -service=github
 
       - name: Build Project
+        if: github.ref == 'refs/heads/master'
         run: make GOBIN=$HOME/gopath/bin build
 
       - name: Build Docker Image
+        if: github.ref == 'refs/heads/master'
         run: docker build -t clintsharp/gogen .
 
       # Deployment: These steps run only on the main branch.
