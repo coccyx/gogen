@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  GoGenApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: dev
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+
+  GetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./api
+      Handler: get.lambda_handler
+      Runtime: python3.9
+      Events:
+        GetGogen:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GoGenApi
+            Path: /v1/get/{proxy+}
+            Method: GET
+
+  ListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./api
+      Handler: list.lambda_handler
+      Runtime: python3.9
+      Events:
+        ListGogens:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GoGenApi
+            Path: /v1/list
+            Method: GET
+
+  SearchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./api
+      Handler: search.lambda_handler
+      Runtime: python3.9
+      Events:
+        SearchGogens:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GoGenApi
+            Path: /v1/search
+            Method: GET
+
+  UpsertFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./api
+      Handler: upsert.lambda_handler
+      Runtime: python3.9
+      Events:
+        UpsertGogen:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GoGenApi
+            Path: /v1/upsert
+            Method: POST
+
+  DynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: gogen
+      AttributeDefinitions:
+        - AttributeName: gogen
+          AttributeType: S
+      KeySchema:
+        - AttributeName: gogen
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+Outputs:
+  ApiURL:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${GoGenApi}.execute-api.${AWS::Region}.amazonaws.com/dev/" 

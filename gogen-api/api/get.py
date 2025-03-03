@@ -1,10 +1,7 @@
-from __future__ import print_function
-
-import boto3
 import json
 import decimal
-
 from boto3.dynamodb.conditions import Key, Attr
+from db_utils import get_dynamodb_client
 
 print('Loading function')
 
@@ -18,7 +15,7 @@ def decimal_default(obj):
 def respond(err, res=None):
     return {
         'statusCode': '400' if err else '200',
-        'body': err.message if err else json.dumps(res, default=decimal_default),
+        'body': str(err) if err else json.dumps(res, default=decimal_default),
         'headers': {
             'Content-Type': 'application/json',
         },
@@ -26,22 +23,21 @@ def respond(err, res=None):
 
 
 def lambda_handler(event, context):
-    print("Received event: " + json.dumps(event, indent=2))
+    print(f"Received event: {json.dumps(event, indent=2)}")
     q = event['pathParameters']['proxy']
-    print("Query: ", q)
+    print(f"Query: {q}")
 
-    table = boto3.resource('dynamodb').Table('gogen')
+    table = get_dynamodb_client().Table('gogen')
     response = table.get_item(Key={"gogen": q})
 
-    # print("Response: " + json.dumps(response, indent=2))
     if 'Item' not in response:
         return {
             'statusCode': '404',
-            'body': 'Could not find Gogen: %s' % q,
+            'body': f'Could not find Gogen: {q}',
         }
     if 'gogen' not in response["Item"]:
         return {
             'statusCode': '404',
-            'body': 'Could not find Gogen: %s' % q,
+            'body': f'Could not find Gogen: {q}',
         }
     return respond(None, response)

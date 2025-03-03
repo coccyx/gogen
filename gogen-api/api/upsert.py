@@ -1,9 +1,7 @@
-from __future__ import print_function
-
-import boto3
 import json
-import httplib
+import http.client
 from boto3.dynamodb.conditions import Key, Attr
+from db_utils import get_dynamodb_client
 
 print('Loading function')
 
@@ -11,7 +9,7 @@ print('Loading function')
 def respond(err, res=None):
     return {
         'statusCode': '400' if err else '200',
-        'body': err.message if err else json.dumps(res),
+        'body': str(err) if err else json.dumps(res),
         'headers': {
             'Content-Type': 'application/json',
         },
@@ -19,7 +17,7 @@ def respond(err, res=None):
 
 
 def lambda_handler(event, context):
-    print("Received event: " + json.dumps(event, indent=2))
+    print(f"Received event: {json.dumps(event, indent=2)}")
     body = json.loads(event['body'])
     headers = { }
     if 'Authorization' not in event['headers']:
@@ -27,17 +25,18 @@ def lambda_handler(event, context):
     headers['Authorization'] = event['headers']['Authorization']
     headers['User-Agent'] = 'gogen lambda'
     headers['Content-Length'] = 0
-    conn = httplib.HTTPSConnection('api.github.com')
+    conn = http.client.HTTPSConnection('api.github.com')
     conn.request("GET", "/user", None, headers)
     response = conn.getresponse()
     if response.status != 200:
-        return respond(Exception("Unable to authenticate user to GitHub, status: %d, msg: %s, data: %s" % (response.status, response.reason, response.read())))
+        data = response.read().decode('utf-8')
+        return respond(Exception(f"Unable to authenticate user to GitHub, status: {response.status}, msg: {response.reason}, data: {data}"))
     validatedbody = { }
-    for k, v in body.iteritems():
+    for k, v in body.items():
         if v != "":
             validatedbody[k] = v
-    print("Item: ",validatedbody)
-    table = boto3.resource('dynamodb').Table('gogen')
+    print(f"Item: {validatedbody}")
+    table = get_dynamodb_client().Table('gogen')
     response = table.put_item(
         Item=validatedbody
     )
