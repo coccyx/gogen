@@ -45,7 +45,7 @@ def lambda_handler(event, context):
             if not last_evaluated_key:
                 break
         
-        return respond(None, {'items': items})
+        return respond(None, {'Items': items})
         
     except Exception as e:
         logger.error(f"Error in lambda_handler: {str(e)}", exc_info=True)

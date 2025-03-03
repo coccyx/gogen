@@ -1,6 +1,6 @@
 [
   {
-    "version": "15",
+    "version": 15,
     "gogen": "coccyx/cpu",
     "notes": "Generates CPU usage in the form of Splunk's UNIX TA\n",
     "gistID": "cad321759fd409097b1bd6250df6a541",
@@ -13,7 +13,7 @@
     "foo": "bar"
   },
   {
-    "version": "3",
+    "version": 3,
     "gogen": "coccyx/tutorial3",
     "gistID": "0e3c9fda88915239b21d8a85a837750c",
     "sampleEvent": "{\"_raw\":\"2017-01-31 14:38:00.440 transType=Change transID=1 transGUID=048a6346-6671-4703-89ec-3843afd44e85 userName=ivettaadelima city=\\\"HARTFORD\\\" state=CT zip=6101 value=1.206\",\"host\":\"server2.gogen.io\",\"index\":\"main\",\"source\":\"/var/log/translog\",\"sourcetype\":\"translog\"}\n",
@@ -22,7 +22,7 @@
     "name": "tutorial3"
   },
   {
-    "version": "5",
+    "version": 5,
     "gogen": "coccyx/vmstat",
     "notes": "Generates memory Usage in the form of a vmstat command from the Splunk UNIX TA\n",
     "gistID": "cdc5ce87cde7fcc1b10fad77ff810b61",
@@ -35,7 +35,7 @@
     "foo": "bar"
   },
   {
-    "version": "117",
+    "version": 117,
     "gogen": "coccyx/weblog",
     "notes": "Easily customizable for your own needs.  If you want your IP ranges, edit external_ips.sample.   To modify server hostnames and client IPs, modify webhosts.csv.  Useragents.sample is also pretty dated, so feel free to replace with a more modern list of user agents.\n",
     "gistID": "fcbc97df8ad025c3e79b8550b4b0704a",
@@ -45,7 +45,7 @@
     "name": "weblog"
   },
   {
-    "version": "5",
+    "version": 5,
     "gogen": "coccyx/users",
     "notes": "Simulates a user which badges in, does 4 web requests and then badges out.  Good example of using lua scripts to generate data using custom logic.  Simulating multiple users is accomplished by running multiple generator threads which each maintain their own state.\n",
     "gistID": "e5547be8afd4c4f5ce738ed2181daae3",
@@ -55,7 +55,7 @@
     "name": "users"
   },
   {
-    "version": "5",
+    "version": 5,
     "gogen": "coccyx/df",
     "notes": "Generates Disk Usage in the form of a df command from the Splunk UNIX TA\n",
     "gistID": "72f85dc534bcdd27fa46ffa284839396",
@@ -64,7 +64,7 @@
     "name": "df"
   },
   {
-    "version": "3",
+    "version": 3,
     "gogen": "coccyx/csv",
     "notes": "For CSV OutputTemplate, it's critial to note that it will only work well for one interval, due to the fact that the output template will print a header for every interval.\n",
     "gistID": "99fbc107ecaf95a795a91c01e8480b77",
@@ -74,7 +74,7 @@
     "name": "csv"
   },
   {
-    "version": "2",
+    "version": 2,
     "gogen": "coccyx/bandwidth",
     "notes": "Generates bandwidth usage from the Splunk UNIX TA\n",
     "gistID": "1a80f049fad61663e792ac935e2f9981",
@@ -83,7 +83,7 @@
     "name": "bandwidth"
   },
   {
-    "version": "5",
+    "version": 5,
     "gogen": "coccyx/iostat",
     "notes": "Generates iostat usage from the Splunk UNIX TA\n",
     "gistID": "62267a8ee944060778bd2b93ae638565",
@@ -96,7 +96,7 @@
     "gogen": "coccyx/test"
   },
   {
-    "version": "6",
+    "version": 6,
     "gogen": "coccyx/businessevent",
     "gistID": "578cc9bc104176b6428af10cad9a34d1",
     "sampleEvent": "{\"_raw\":\"2019-12-08 20:41:56,029,Event [Event=UpdateBillingProvQuote, timestamp=1575866516, properties={JMSCorrelationID=NA, JMSMessageID=ID:ESP-PD.FDB6BC828D566:FE1E6897, orderType=ChangeESN, quotePriority=NORMAL, conversationId=ESB~CAAD0AAEBD2D7393:D33AC2B8:5D51C6843CD5:F37A, credits=NA, JMSReplyTo=pub.esb.genericasync.response, timeToLive=-1, serviceName=UpdateBillingProvisioning, esn=84D487B880D3DF, accountNumber=900004081, social=227835369, MethodName=InternalEvent, AdapterName=UpdateBillingProvQuote, meid=NA, orderNumber=9000000000000001, quoteNumber=26803899, ReplyTo=NA, userName=Clorindarozne, EventConversationID=NA, mdn=8872402816, accountType=PostPaid, marketCity=\\\"CHARLOTTESVILLE\\\", marketState=VA, marketZip=22903, billingCycle=26, autoBillPayment=T, phoneCode=IP6P-64, phoneType=iPhone, phoneName=\\\"iPhone 6 Plus 64 Gig\\\", planCode=1400POST5L90, planType=PostPaid, planPrice=89.99, planName=\\\"1400 Minute Family\\\", planDescription=\\\"Nationwide 1400 Minutes, Unlimited Mobile to Mobile, Unlimited Night \\u0026 Weekend, Unlimited Data\\\", cardNumber=201458705534037, networkProviderName=Splunktel}]\",\"host\":\"127.0.0.1\",\"index\":\"cribl\",\"source\":\"/opt/tibco/tra/apps/ESB/logs/business_event.log\",\"sourcetype\":\"business_event\"}\n",
@@ -105,7 +105,7 @@
     "name": "businessevent"
   },
   {
-    "version": "0",
+    "version": 0,
     "gogen": "coccyx/nixOS",
     "notes": "Generates CPU usage in the form of Splunk's UNIX TA\n",
     "gistID": "6c937077b15f1aa02ef19947e2c71259",

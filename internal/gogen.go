@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 
 	log "github.com/coccyx/gogen/logger"
 	"github.com/kr/pretty"
@@ -32,13 +33,12 @@ type GogenList struct {
 
 // List calls /v1/list
 func List() []GogenList {
-	return listsearch("https://api.gogen.io/v1/list")
-
+	return listsearch(fmt.Sprintf("%s/v1/list", getAPIURL()))
 }
 
 // Search calls /v1/search
 func Search(q string) []GogenList {
-	return listsearch("https://api.gogen.io/v1/search?q=" + url.QueryEscape(q))
+	return listsearch(fmt.Sprintf("%s/v1/search?q=%s", getAPIURL(), url.QueryEscape(q)))
 }
 
 func listsearch(url string) (ret []GogenList) {
@@ -79,7 +79,9 @@ func listsearch(url string) (ret []GogenList) {
 // Get calls /v1/get
 func Get(q string) (g GogenInfo, err error) {
 	client := &http.Client{}
-	resp, err := client.Get("https://api.gogen.io/v1/get/" + q)
+	url := fmt.Sprintf("%s/v1/get/%s", getAPIURL(), q)
+	log.Debugf("Calling %s", url)
+	resp, err := client.Get(url)
 	if err != nil || resp.StatusCode != 200 {
 		if resp != nil {
 			if resp.StatusCode == 404 {
@@ -107,6 +109,7 @@ func Get(q string) (g GogenInfo, err error) {
 	if err != nil {
 		return g, fmt.Errorf("Error converting Item to JSON: %s", err)
 	}
+	log.Debugf("tmp: %s", string(tmp))
 	err = json.Unmarshal(tmp, &g)
 	if err != nil {
 		return g, fmt.Errorf("Error unmarshaling item: %s", err)
@@ -125,7 +128,7 @@ func Upsert(g GogenInfo) {
 		log.Fatalf("Error marshaling Gogen %#v: %s", g, err)
 	}
 
-	req, _ := http.NewRequest("POST", "https://api.gogen.io/v1/upsert", bytes.NewReader(b))
+	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/v1/upsert", getAPIURL()), bytes.NewReader(b))
 	req.Header.Add("Authorization", "token "+gh.token)
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode != 200 {
@@ -137,4 +140,12 @@ func Upsert(g GogenInfo) {
 		}
 	}
 	log.Debugf("Upserted: %# v", pretty.Formatter(g))
+}
+
+// getAPIURL returns the API URL from environment variable or default value
+func getAPIURL() string {
+	if url := os.Getenv("GOGEN_APIURL"); url != "" {
+		return url
+	}
+	return "https://api.gogen.io"
 }

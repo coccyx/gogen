@@ -7,7 +7,10 @@ from botocore.config import Config
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
-            return str(obj)
+            # Convert Decimal to float if it's a whole number, otherwise keep as string
+            if obj % 1 == 0:
+                return int(obj)
+            return float(obj)
         return super(DecimalEncoder, self).default(obj)
 
 def backup_table():
@@ -57,7 +60,14 @@ def restore_table(local=True):
         
         with table.batch_writer() as batch:
             for item in items:
-                batch.put_item(Item=item)
+                # Convert numeric strings back to Decimal where appropriate
+                processed_item = {}
+                for key, value in item.items():
+                    if isinstance(value, (int, float)):
+                        processed_item[key] = Decimal(str(value))
+                    else:
+                        processed_item[key] = value
+                batch.put_item(Item=processed_item)
         
         print(f"Restored {len(items)} items to {'local' if local else 'remote'} table")
     except Exception as e:
