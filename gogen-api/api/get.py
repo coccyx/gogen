@@ -1,9 +1,13 @@
 import json
 import decimal
+import urllib.request
+import urllib.error
 from boto3.dynamodb.conditions import Key, Attr
 from db_utils import get_dynamodb_client
+from logger import setup_logger
 
-print('Loading function')
+logger = setup_logger(__name__)
+logger.info('Loading function')
 
 
 def decimal_default(obj):
@@ -22,22 +26,84 @@ def respond(err, res=None):
     }
 
 
+def fetch_gist_content(gist_id):
+    try:
+        # Use GitHub API to get gist content
+        api_url = f'https://api.github.com/gists/{gist_id}'
+        logger.info(f"Fetching gist from GitHub API: {api_url}")
+        
+        with urllib.request.urlopen(api_url) as response:
+            gist_data = json.loads(response.read().decode('utf-8'))
+            logger.info(f"Successfully fetched gist data. Status: {response.status}")
+            
+            # Get the first file's content
+            if not gist_data.get('files'):
+                logger.error("No files found in gist")
+                return None
+                
+            # Get the first file's content
+            first_file = next(iter(gist_data['files'].values()))
+            content = first_file.get('content')
+            
+            if not content:
+                logger.error("No content found in gist file")
+                return None
+                
+            logger.info(f"Successfully extracted content. Length: {len(content)} bytes")
+            return content
+                
+    except urllib.error.URLError as e:
+        logger.error(f"Error fetching gist: {str(e)}")
+        if hasattr(e, 'code'):
+            logger.error(f"HTTP Error Code: {e.code}")
+        if hasattr(e, 'reason'):
+            logger.error(f"Error Reason: {e.reason}")
+        if hasattr(e, 'headers'):
+            logger.debug(f"Error Response Headers: {dict(e.headers)}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error while fetching gist: {str(e)}")
+        return None
+
+
 def lambda_handler(event, context):
-    print(f"Received event: {json.dumps(event, indent=2)}")
+    logger.debug(f"Received event: {json.dumps(event, indent=2)}")
     q = event['pathParameters']['proxy']
-    print(f"Query: {q}")
+    logger.debug(f"Query: {q}")
 
     table = get_dynamodb_client().Table('gogen')
     response = table.get_item(Key={"gogen": q})
 
     if 'Item' not in response:
+        logger.error(f"No item found for query: {q}")
         return {
             'statusCode': '404',
             'body': f'Could not find Gogen: {q}',
         }
-    if 'gogen' not in response["Item"]:
+    
+    item = response['Item']
+    if 'gogen' not in item:
+        logger.error(f"Item found but missing 'gogen' key for query: {q}")
         return {
             'statusCode': '404',
             'body': f'Could not find Gogen: {q}',
         }
+
+    # Fetch the configuration from GitHub gist
+    if 'gistID' in item:
+        logger.debug(f"Found gistID: {item['gistID']} for query: {q}")
+        config_content = fetch_gist_content(item['gistID'])
+        if config_content:
+            item['config'] = config_content
+            logger.debug(f"Successfully added config content to response for query: {q}")
+        else:
+            logger.error(f"Failed to fetch config content for query: {q}")
+            return {
+                'statusCode': '500',
+                'body': f'Failed to fetch configuration from gist for: {q}',
+            }
+    else:
+        logger.info(f"No gistID found in item for query: {q}")
+    
+    response['Item'] = item
     return respond(None, response)

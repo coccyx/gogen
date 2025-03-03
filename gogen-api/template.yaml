@@ -13,10 +13,14 @@ Resources:
 
   GetFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: python3.13-v1
     Properties:
       CodeUri: ./api
       Handler: get.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Events:
         GetGogen:
           Type: Api
@@ -27,10 +31,14 @@ Resources:
 
   ListFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: python3.13-v1
     Properties:
       CodeUri: ./api
       Handler: list.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Events:
         ListGogens:
           Type: Api
@@ -41,10 +49,14 @@ Resources:
 
   SearchFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: python3.13-v1
     Properties:
       CodeUri: ./api
       Handler: search.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Events:
         SearchGogens:
           Type: Api
@@ -55,10 +67,14 @@ Resources:
 
   UpsertFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: python3.13-v1
     Properties:
       CodeUri: ./api
       Handler: upsert.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.13
       Events:
         UpsertGogen:
           Type: Api

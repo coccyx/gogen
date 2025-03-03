@@ -1,15 +1,9 @@
 import json
-import logging
-import sys
 from db_utils import get_dynamodb_client
+from logger import setup_logger
 
-# Set up logging
-handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(handler)
-logger.propagate = False
+logger = setup_logger(__name__)
+logger.info('Loading function')
 
 def respond(err, res=None):
     return {
@@ -23,11 +17,13 @@ def respond(err, res=None):
 
 def lambda_handler(event, context):
     try:
+        logger.debug(f"Received event: {json.dumps(event, indent=2)}")
         table = get_dynamodb_client().Table('gogen')
         
         # Use pagination to handle large datasets
         items = []
         last_evaluated_key = None
+        page_count = 0
         
         while True:
             scan_kwargs = {
@@ -38,13 +34,20 @@ def lambda_handler(event, context):
             if last_evaluated_key:
                 scan_kwargs['ExclusiveStartKey'] = last_evaluated_key
             
+            logger.debug(f"Scanning DynamoDB table with kwargs: {scan_kwargs}")
             response = table.scan(**scan_kwargs)
-            items.extend(response.get('Items', []))
+            
+            page_items = response.get('Items', [])
+            items.extend(page_items)
+            page_count += 1
+            logger.debug(f"Retrieved {len(page_items)} items on page {page_count}")
             
             last_evaluated_key = response.get('LastEvaluatedKey')
             if not last_evaluated_key:
                 break
+            logger.debug(f"More pages available, continuing scan with key: {last_evaluated_key}")
         
+        logger.info(f"Successfully retrieved {len(items)} total items across {page_count} pages")
         return respond(None, {'Items': items})
         
     except Exception as e:

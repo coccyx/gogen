@@ -23,6 +23,7 @@ type GogenInfo struct {
 	SampleEvent string `json:"sampleEvent"`
 	GistID      string `json:"gistID"`
 	Version     int    `json:"version"`
+	Config      string `json:"config"`
 }
 
 // GogenList is returned by the /v1/list and /v1/search APIs for Gogen
@@ -105,16 +106,19 @@ func Get(q string) (g GogenInfo, err error) {
 	if err != nil {
 		return g, fmt.Errorf("Error unmarshaling body: %s", err)
 	}
+	// log.Debugf("gogen: %# v", pretty.Formatter(gogen))
 	tmp, err := json.Marshal(gogen["Item"])
 	if err != nil {
 		return g, fmt.Errorf("Error converting Item to JSON: %s", err)
 	}
-	log.Debugf("tmp: %s", string(tmp))
+	// log.Debugf("tmp: %s", string(tmp))
 	err = json.Unmarshal(tmp, &g)
 	if err != nil {
 		return g, fmt.Errorf("Error unmarshaling item: %s", err)
 	}
-	log.Debugf("Gogen: %# v", pretty.Formatter(g))
+	gCopy := g
+	gCopy.Config = "redacted"
+	log.Debugf("Gogen: %# v", pretty.Formatter(gCopy))
 	return g, nil
 }
 

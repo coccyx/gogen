@@ -1,17 +1,9 @@
 import os
 import boto3
 from botocore.config import Config
-import logging
-import sys
+from logger import setup_logger
 
-# Set up logging to stdout
-handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(handler)
-# Remove any existing handlers to avoid duplicate logs
-logger.propagate = False
+logger = setup_logger(__name__)
 
 def get_dynamodb_client():
     """
@@ -27,7 +19,7 @@ def get_dynamodb_client():
             max_pool_connections=10,
             tcp_keepalive=True
         )
-        logger.info(f"Using config: {config}")
+        logger.debug(f"Using config: {config}")
         
         client = boto3.resource('dynamodb', 
                             endpoint_url='http://dynamodb-local:8000',

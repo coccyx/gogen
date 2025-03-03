@@ -2,8 +2,10 @@ import json
 import http.client
 from boto3.dynamodb.conditions import Key, Attr
 from db_utils import get_dynamodb_client
+from logger import setup_logger
 
-print('Loading function')
+logger = setup_logger(__name__)
+logger.info('Loading function')
 
 
 def respond(err, res=None):
@@ -12,32 +14,84 @@ def respond(err, res=None):
         'body': str(err) if err else json.dumps(res),
         'headers': {
             'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
         },
     }
 
 
-def lambda_handler(event, context):
-    print(f"Received event: {json.dumps(event, indent=2)}")
-    body = json.loads(event['body'])
-    headers = { }
-    if 'Authorization' not in event['headers']:
-        return respond(Exception("Authorization header not present"))
-    headers['Authorization'] = event['headers']['Authorization']
-    headers['User-Agent'] = 'gogen lambda'
-    headers['Content-Length'] = 0
+def validate_github_token(token):
+    """
+    Validate the GitHub token by making a request to GitHub's API
+    """
+    headers = {
+        'Authorization': token,
+        'User-Agent': 'gogen lambda',
+        'Content-Length': '0'
+    }
+    
+    logger.debug("Attempting to validate GitHub token")
     conn = http.client.HTTPSConnection('api.github.com')
     conn.request("GET", "/user", None, headers)
     response = conn.getresponse()
+    
     if response.status != 200:
         data = response.read().decode('utf-8')
-        return respond(Exception(f"Unable to authenticate user to GitHub, status: {response.status}, msg: {response.reason}, data: {data}"))
-    validatedbody = { }
-    for k, v in body.items():
-        if v != "":
-            validatedbody[k] = v
-    print(f"Item: {validatedbody}")
-    table = get_dynamodb_client().Table('gogen')
-    response = table.put_item(
-        Item=validatedbody
-    )
-    return respond(None, response) 
+        logger.error(f"GitHub token validation failed. Status: {response.status}, Reason: {response.reason}")
+        logger.debug(f"GitHub API response: {data}")
+        return False, f"Unable to authenticate user to GitHub, status: {response.status}, msg: {response.reason}"
+    
+    logger.info("GitHub token validation successful")
+    return True, None
+
+
+def lambda_handler(event, context):
+    try:
+        logger.debug(f"Received event: {json.dumps(event, indent=2)}")
+        
+        # Validate request body
+        if 'body' not in event:
+            logger.error("No request body provided")
+            return respond("Request body is required")
+            
+        try:
+            body = json.loads(event['body'])
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in request body: {str(e)}")
+            return respond("Invalid JSON in request body")
+            
+        # Validate GitHub authorization
+        if 'headers' not in event or 'Authorization' not in event['headers']:
+            logger.error("Authorization header not present")
+            return respond("Authorization header not present")
+            
+        # Validate GitHub token
+        is_valid, error_msg = validate_github_token(event['headers']['Authorization'])
+        if not is_valid:
+            return respond(error_msg)
+            
+        # Validate and clean request body
+        validated_body = {}
+        for k, v in body.items():
+            if v != "":
+                validated_body[k] = v
+                
+        if not validated_body:
+            logger.error("No valid fields in request body")
+            return respond("No valid fields in request body")
+            
+        logger.info(f"Processing upsert for item: {validated_body}")
+        
+        # Store in DynamoDB
+        table = get_dynamodb_client().Table('gogen')
+        logger.debug(f"Attempting to upsert item to DynamoDB: {validated_body}")
+        
+        response = table.put_item(
+            Item=validated_body
+        )
+        
+        logger.info(f"Successfully upserted item to DynamoDB")
+        return respond(None, response)
+        
+    except Exception as e:
+        logger.error(f"Error in lambda_handler: {str(e)}", exc_info=True)
+        return respond(e) 
