@@ -125,12 +125,17 @@ func Get(q string) (g GogenInfo, err error) {
 // Upsert calls /v1/upsert
 func Upsert(g GogenInfo) {
 	gh := NewGitHub(true)
+	upsert(g, gh)
+}
+
+func upsert(g GogenInfo, gh *GitHub) {
 	client := &http.Client{}
 
 	b, err := json.Marshal(g)
 	if err != nil {
 		log.Fatalf("Error marshaling Gogen %#v: %s", g, err)
 	}
+	// log.Debugf("Body: %s", string(b))
 
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/v1/upsert", getAPIURL()), bytes.NewReader(b))
 	req.Header.Add("Authorization", "token "+gh.token)
@@ -143,6 +148,11 @@ func Upsert(g GogenInfo) {
 			log.Fatalf("Error POSTing to upsert: %s", err)
 		}
 	}
+	// body, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	log.Fatalf("Error reading response body: %s", err)
+	// }
+	// log.Debugf("Response Body: %s", body)
 	log.Debugf("Upserted: %# v", pretty.Formatter(g))
 }
 
