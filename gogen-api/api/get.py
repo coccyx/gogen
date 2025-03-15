@@ -4,6 +4,7 @@ import urllib.request
 import urllib.error
 from boto3.dynamodb.conditions import Key, Attr
 from db_utils import get_dynamodb_client
+from s3_utils import download_config
 from logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -89,21 +90,38 @@ def lambda_handler(event, context):
             'body': f'Could not find Gogen: {q}',
         }
 
-    # Fetch the configuration from GitHub gist
-    if 'gistID' in item:
-        logger.debug(f"Found gistID: {item['gistID']} for query: {q}")
+    # Try to fetch the configuration from S3 first
+    if 's3Path' in item:
+        logger.debug(f"Found s3Path: {item['s3Path']} for query: {q}")
+        config_content = download_config(item['s3Path'])
+        if config_content:
+            item['config'] = config_content
+            logger.debug(f"Successfully added config content from S3 for query: {q}")
+        else:
+            logger.error(f"Failed to fetch config content from S3 for query: {q}")
+            return {
+                'statusCode': '500',
+                'body': f'Failed to fetch configuration from S3 for: {q}',
+            }
+    # For backward compatibility, try to fetch from GitHub gist if s3Path is not present
+    elif 'gistID' in item:
+        logger.warning(f"Using legacy gistID: {item['gistID']} for query: {q}. This will be deprecated.")
         config_content = fetch_gist_content(item['gistID'])
         if config_content:
             item['config'] = config_content
-            logger.debug(f"Successfully added config content to response for query: {q}")
+            logger.debug(f"Successfully added config content from GitHub gist for query: {q}")
         else:
-            logger.error(f"Failed to fetch config content for query: {q}")
+            logger.error(f"Failed to fetch config content from GitHub gist for query: {q}")
             return {
                 'statusCode': '500',
-                'body': f'Failed to fetch configuration from gist for: {q}',
+                'body': f'Failed to fetch configuration from GitHub gist for: {q}',
             }
     else:
-        logger.info(f"No gistID found in item for query: {q}")
+        logger.error(f"No s3Path or gistID found in item for query: {q}")
+        return {
+            'statusCode': '500',
+            'body': f'Configuration {q} does not have a valid storage location.',
+        }
     
     response['Item'] = item
     return respond(None, response)

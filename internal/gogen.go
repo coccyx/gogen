@@ -78,7 +78,7 @@ func listsearch(url string) (ret []GogenList) {
 }
 
 // Get calls /v1/get
-func Get(q string) (g GogenInfo, err error) {
+var Get = func(q string) (g GogenInfo, err error) {
 	client := &http.Client{}
 	url := fmt.Sprintf("%s/v1/get/%s", getAPIURL(), q)
 	log.Debugf("Calling %s", url)
@@ -138,6 +138,7 @@ func upsert(g GogenInfo, gh *GitHub) {
 	// log.Debugf("Body: %s", string(b))
 
 	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/v1/upsert", getAPIURL()), bytes.NewReader(b))
+	// Still need GitHub token for authorization to verify user identity
 	req.Header.Add("Authorization", "token "+gh.token)
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode != 200 {

@@ -1,0 +1,16 @@
+---
+description: These rules govern work with the api
+globs: gogen-api/**/*.py
+alwaysApply: false
+---
+# General Development Rules
+
+- Keep components modular and focused on a single responsibility
+- Document code with clear comments
+- Update gogen-api/SUMMARY.md after completing significant features
+
+## File Organization
+
+- Each AWS Lambda function is a separate .py file in the `gogen-api` directory.
+- Files were originally written in python2.7 but need to be updated to python3.
+- APIs were originally implemented in 2017 and need to be updated to 2025 APIs.

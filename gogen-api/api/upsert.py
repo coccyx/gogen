@@ -2,6 +2,7 @@ import json
 import http.client
 from boto3.dynamodb.conditions import Key, Attr
 from db_utils import get_dynamodb_client
+from s3_utils import upload_config
 from logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -78,6 +79,37 @@ def lambda_handler(event, context):
         if not validated_body:
             logger.error("No valid fields in request body")
             return respond("No valid fields in request body")
+        
+        # Check if config is present in the request
+        if 'config' in validated_body:
+            config_content = validated_body['config']
+            
+            # Create S3 path in the format username/sample.yml
+            if 'owner' in validated_body and 'name' in validated_body:
+                s3_path = f"{validated_body['owner']}/{validated_body['name']}.yml"
+                
+                # Upload config to S3
+                logger.info(f"Uploading config to S3 at path: {s3_path}")
+                upload_success = upload_config(s3_path, config_content)
+                
+                if not upload_success:
+                    logger.error(f"Failed to upload config to S3 at path: {s3_path}")
+                    return respond("Failed to upload configuration to S3")
+                
+                # Remove config from DynamoDB item to save space
+                # We'll store the S3 path instead
+                validated_body.pop('config', None)
+                
+                # Add S3 path to DynamoDB item
+                validated_body['s3Path'] = s3_path
+                
+                # Remove gistID if present (for migration)
+                validated_body.pop('gistID', None)
+            else:
+                logger.error("Owner or name missing in request body")
+                return respond("Owner and name are required fields")
+        else:
+            logger.warning("No config found in request body")
             
         logger.info(f"Processing upsert for item: {validated_body}")
         
