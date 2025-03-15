@@ -76,8 +76,8 @@ def restore_table(local=True):
 if __name__ == '__main__':
     # If running locally, make sure the table exists first
     if os.environ.get('LOCAL_DYNAMODB'):
-        from init_dynamodb import create_table
-        create_table()
+        from create_local_table import create_local_table
+        create_local_table()
     
     # By default, backup from remote and restore to local
     backup_table()

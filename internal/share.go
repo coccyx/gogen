@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	log "github.com/coccyx/gogen/logger"
 	yaml "gopkg.in/yaml.v2"
@@ -55,7 +56,12 @@ func Push(name string, run Run) (string, string) {
 func push(name string, genc *Config, pushc *Config, run Run) (string, string) {
 	log.Debugf("Pushing config as '%s'", name)
 	gh := NewGitHub(true)
-	user, _, err := gh.client.Users.Get(context.Background(), "")
+
+	// Create a context with a 5-second timeout for GitHub user retrieval
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	user, _, err := gh.client.Users.Get(ctx, "")
 	if err != nil {
 		log.Fatalf("Error getting user in push: %s", err)
 	}

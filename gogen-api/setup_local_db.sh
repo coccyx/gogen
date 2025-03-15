@@ -19,8 +19,8 @@ fi
 echo "Getting table schema..."
 python get_schema.py
 
-# Backup and restore data
-echo "Backing up data and restoring to local DynamoDB..."
-LOCAL_DYNAMODB=true python backup_restore.py
+# Create the table in local DynamoDB using the schema
+echo "Creating table in local DynamoDB using schema..."
+LOCAL_DYNAMODB=true python create_local_table.py
 
 echo "Local DynamoDB setup complete!" 
