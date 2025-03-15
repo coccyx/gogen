@@ -21,3 +21,5 @@ roveralls*
 .specstory
 .pyvenv
 gogen-api/__pycache__
+gogen-api/build
+ui/*

@@ -23,7 +23,7 @@ type Run interface {
 }
 
 // Push pushes the running config to the Gogen API. Returns the owner and empty string (for backward compatibility).
-func Push(name string, run Run) (string, string) {
+func Push(name string, run Run) string {
 	c := NewConfig()
 	ec := BuildConfig(ConfigConfig{
 		FullConfig: c.cc.FullConfig,
@@ -43,17 +43,17 @@ func Push(name string, run Run) (string, string) {
 					FullConfig: m.Sample,
 					Export:     true,
 				})
-				login, _ := push(sc.Samples[0].Name, sc, sc, run)
+				login := push(sc.Samples[0].Name, sc, sc, run)
 				ec.Mix[i].Sample = login + "/" + sc.Samples[0].Name
 			}
 		}
 		return push(name, c, ec, run)
 	}
 	log.Panicf("No samples configured")
-	return "", ""
+	return ""
 }
 
-func push(name string, genc *Config, pushc *Config, run Run) (string, string) {
+func push(name string, genc *Config, pushc *Config, run Run) string {
 	log.Debugf("Pushing config as '%s'", name)
 	gh := NewGitHub(true)
 
@@ -103,9 +103,9 @@ func push(name string, genc *Config, pushc *Config, run Run) (string, string) {
 		}
 		Upsert(g)
 
-		return *user.Login, ""
+		return *user.Login
 	}
-	return "", ""
+	return ""
 }
 
 // Pull grabs a config from the Gogen API and creates it on the filesystem for editing

@@ -8,7 +8,7 @@ def setup_logger(name):
     """
     # Create logger
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     # Only add handler if logger doesn't already have handlers
     if not logger.handlers:

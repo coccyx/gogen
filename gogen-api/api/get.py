@@ -33,42 +33,103 @@ def fetch_gist_content(gist_id):
         api_url = f'https://api.github.com/gists/{gist_id}'
         logger.info(f"Fetching gist from GitHub API: {api_url}")
         
-        with urllib.request.urlopen(api_url) as response:
-            gist_data = json.loads(response.read().decode('utf-8'))
-            logger.info(f"Successfully fetched gist data. Status: {response.status}")
+        # Create a request with headers
+        headers = {
+            'User-Agent': 'Gogen-API-Lambda/1.0',
+            'Accept': 'application/vnd.github.v3+json'
+        }
+        req = urllib.request.Request(api_url, headers=headers)
+        
+        # Set a timeout to avoid hanging
+        logger.debug("Opening URL connection with timeout")
+        
+        # Wrap each step in its own try-except block for detailed error tracking
+        try:
+            connection = urllib.request.urlopen(req, timeout=5)
+            logger.debug("Connection established successfully")
+        except Exception as conn_error:
+            logger.error(f"Error establishing connection: {str(conn_error)}")
+            import traceback
+            logger.error(f"Connection traceback: {traceback.format_exc()}")
+            return None
             
-            # Get the first file's content
-            if not gist_data.get('files'):
-                logger.error("No files found in gist")
-                return None
+        try:
+            with connection as response:
+                logger.debug(f"Connection opened. Reading response data")
+                try:
+                    response_data = response.read()
+                    logger.debug(f"Response data read. Length: {len(response_data)} bytes")
+                except Exception as read_error:
+                    logger.error(f"Error reading response data: {str(read_error)}")
+                    import traceback
+                    logger.error(f"Read traceback: {traceback.format_exc()}")
+                    return None
                 
-            # Get the first file's content
-            first_file = next(iter(gist_data['files'].values()))
-            content = first_file.get('content')
-            
-            if not content:
-                logger.error("No content found in gist file")
-                return None
+                try:
+                    gist_data = json.loads(response_data.decode('utf-8'))
+                    logger.info(f"Successfully fetched gist data. Status: {response.status}")
+                except Exception as json_error:
+                    logger.error(f"Error decoding JSON: {str(json_error)}")
+                    logger.error(f"Raw response data: {response_data[:200]}...")  # Log first 200 chars
+                    import traceback
+                    logger.error(f"JSON decode traceback: {traceback.format_exc()}")
+                    return None
                 
-            logger.info(f"Successfully extracted content. Length: {len(content)} bytes")
-            return content
+                # Get the first file's content
+                try:
+                    if not gist_data.get('files'):
+                        logger.error("No files found in gist")
+                        logger.error(f"Gist data keys: {list(gist_data.keys())}")
+                        return None
+                        
+                    # Get the first file's content
+                    first_file = next(iter(gist_data['files'].values()))
+                    content = first_file.get('content')
+                    
+                    if not content:
+                        logger.error("No content found in gist file")
+                        logger.error(f"First file keys: {list(first_file.keys())}")
+                        return None
+                        
+                    logger.info(f"Successfully extracted content. Length: {len(content)} bytes")
+                    return content
+                except Exception as extract_error:
+                    logger.error(f"Error extracting content from gist data: {str(extract_error)}")
+                    logger.error(f"Gist data structure: {str(gist_data)[:200]}...")  # Log first 200 chars
+                    import traceback
+                    logger.error(f"Content extraction traceback: {traceback.format_exc()}")
+                    return None
+        except Exception as with_error:
+            logger.error(f"Error in 'with' context manager: {str(with_error)}")
+            import traceback
+            logger.error(f"With context traceback: {traceback.format_exc()}")
+            return None
                 
     except urllib.error.URLError as e:
-        logger.error(f"Error fetching gist: {str(e)}")
+        logger.error(f"URLError fetching gist: {str(e)}")
         if hasattr(e, 'code'):
             logger.error(f"HTTP Error Code: {e.code}")
         if hasattr(e, 'reason'):
             logger.error(f"Error Reason: {e.reason}")
         if hasattr(e, 'headers'):
             logger.debug(f"Error Response Headers: {dict(e.headers)}")
+        import traceback
+        logger.error(f"URLError traceback: {traceback.format_exc()}")
+        return None
+    except json.JSONDecodeError as e:
+        logger.error(f"JSONDecodeError from GitHub response: {str(e)}")
+        import traceback
+        logger.error(f"JSONDecodeError traceback: {traceback.format_exc()}")
         return None
     except Exception as e:
         logger.error(f"Unexpected error while fetching gist: {str(e)}")
+        import traceback
+        logger.error(f"General exception traceback: {traceback.format_exc()}")
         return None
 
 
 def lambda_handler(event, context):
-    logger.debug(f"Received event: {json.dumps(event, indent=2)}")
+    logger.debug(f"Received event: {json.dumps(event)}")
     q = event['pathParameters']['proxy']
     logger.debug(f"Query: {q}")
 
