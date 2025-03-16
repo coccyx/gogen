@@ -113,15 +113,9 @@ const ConfigurationsPage = () => {
               <div className="flex justify-between mt-4">
                 <Link
                   to={`/configurations/${config.gogen}`}
-                  className="text-cribl-purple hover:underline"
+                  className="text-blue-800 hover:text-blue-700"
                 >
                   View Details
-                </Link>
-                <Link
-                  to={`/execute/${config.gogen}`}
-                  className="btn-secondary text-sm py-1 px-3"
-                >
-                  Execute
                 </Link>
               </div>
             </div>

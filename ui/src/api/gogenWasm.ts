@@ -164,17 +164,24 @@ const setupVirtualFileSystem = (
   };
 };
 
+export interface ExecutionParams {
+  eventCount: number;
+  intervals: number;
+  intervalSeconds: number;
+  outputTemplate: 'raw' | 'json' | 'configured';
+}
+
 /**
  * Execute a Gogen configuration using WebAssembly
  * 
  * @param configuration The configuration to execute
- * @param count The number of events to generate
+ * @param params The execution parameters
  * @param onOutput Optional callback for streaming output
  * @returns Array of output lines
  */
 export const executeConfiguration = async (
   configuration: Configuration,
-  count: number,
+  params: ExecutionParams,
   onOutput?: (line: string) => void
 ): Promise<string[]> => {
   const fsSetup = setupVirtualFileSystem(configuration, onOutput);
@@ -188,8 +195,28 @@ export const executeConfiguration = async (
     const wasmBytes = await wasmResponse.arrayBuffer();
     const wasmResult = await WebAssembly.instantiate(wasmBytes, go.importObject);
     
+    // Build command line arguments
+    const args = ['gogen', '-c', '/config.yml'];
+
+    // Add output template (-ot) if not 'configured'
+    if (params.outputTemplate !== 'configured') {
+      args.push('-ot', params.outputTemplate);
+    }
+
+    // Add gen command and remaining arguments
+    args.push('gen');
+
+    // Add event interval count (-ei)
+    args.push('-ei', params.intervals.toString());
+
+    // Add interval seconds (-i)
+    args.push('-i', params.intervalSeconds.toString());
+
+    // Add event count (-c)
+    args.push('-c', params.eventCount.toString());
+
     // Set up arguments and run
-    go.argv = ['gogen', '-c', '/config.yml', 'gen', '-ei', '1', '-c', count.toString()];
+    go.argv = args;
     
     try {
       await go.run(wasmResult.instance);

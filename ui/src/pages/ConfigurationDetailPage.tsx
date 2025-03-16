@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import gogenApi, { Configuration } from '../api/gogenApi';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ExecutionComponent from '../components/ExecutionComponent';
+import Editor from '@monaco-editor/react';
 
 const ConfigurationDetailPage = () => {
   const { owner, configName } = useParams<{ owner: string; configName: string }>();
   const navigate = useNavigate();
   const [configuration, setConfiguration] = useState<Configuration | null>(null);
+  const [editedConfig, setEditedConfig] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +26,7 @@ const ConfigurationDetailPage = () => {
         const fullConfigName = `${owner}/${configName}`;
         const data = await gogenApi.getConfiguration(fullConfigName);
         setConfiguration(data);
+        setEditedConfig(data.config || '');
         setError(null);
       } catch (err) {
         setError('Failed to load configuration. Please try again later.');
@@ -34,6 +38,15 @@ const ConfigurationDetailPage = () => {
 
     fetchConfiguration();
   }, [owner, configName]);
+
+  // Create a modified configuration object with the edited config
+  const getExecutionConfiguration = (): Configuration => {
+    if (!configuration) throw new Error('Configuration not loaded');
+    return {
+      ...configuration,
+      config: editedConfig
+    };
+  };
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -57,14 +70,9 @@ const ConfigurationDetailPage = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">{configuration.gogen}</h1>
-        <div className="flex space-x-4">
-          <Link to="/" className="btn-primary">
-            Back to List
-          </Link>
-          <Link to={`/execute/${owner}/${configName}`} className="btn-secondary">
-            Execute
-          </Link>
-        </div>
+        <Link to="/" className="btn-primary">
+          Back to List
+        </Link>
       </div>
 
       {configuration.description && (
@@ -74,14 +82,26 @@ const ConfigurationDetailPage = () => {
         </div>
       )}
 
-      {configuration.config && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Configuration</h2>
-          <pre className="bg-gray-100 p-4 rounded-md overflow-x-auto">
-            <code>{configuration.config}</code>
-          </pre>
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Configuration</h2>
+        <div className="border rounded-lg overflow-hidden shadow-md">
+          <Editor
+            height="400px"
+            defaultLanguage="yaml"
+            value={editedConfig}
+            onChange={(value: string | undefined) => setEditedConfig(value || '')}
+            theme="vs-light"
+            options={{
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              fontSize: 14,
+              lineNumbers: 'on',
+              renderLineHighlight: 'all',
+              automaticLayout: true,
+            }}
+          />
         </div>
-      )}
+      </div>
 
       {configuration.samples && configuration.samples.length > 0 && (
         <div className="mb-8">
@@ -104,6 +124,8 @@ const ConfigurationDetailPage = () => {
           </div>
         </div>
       )}
+
+      <ExecutionComponent configuration={getExecutionConfiguration()} />
     </div>
   );
 };
