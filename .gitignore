@@ -18,3 +18,8 @@ splunk_app_gogen.spl
 .configcache*
 .versioncache*
 roveralls*
+.specstory
+.pyvenv
+gogen-api/__pycache__
+gogen-api/build
+ui/*

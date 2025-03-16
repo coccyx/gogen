@@ -33,7 +33,7 @@ Seems a nice user named Coccyx has published a weblog configuration for us.  Let
 
     gogen info coccyx/weblog
 
-As we see from the info, the actual configuration is stored in a GitHub gist.  Feel free to click through the link in the info to see the full configuration. 
+The full configuration is stored in S3 behind the Gogen API. We can retrieve the configuration with `gogen -c coccyx/weblog config`.
 Let's generate a few weblog entries.
 
     gogen -c coccyx/weblog
