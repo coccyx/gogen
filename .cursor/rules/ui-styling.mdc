@@ -1,0 +1,45 @@
+---
+description: UI Styling rules
+globs: *.tsx
+alwaysApply: false
+---
+# Gogen UI Styling Rules
+
+This document outlines the styling standards for the Gogen UI project.
+
+## Tailwind CSS Usage
+
+- Prefer standard Tailwind utility classes over custom classes when possible
+- When custom classes are needed, define them in `index.css` using the `@apply` directive
+- Document all custom colors and component classes in the README
+- Use consistent spacing and sizing utilities
+
+## Color Scheme
+
+- Use the established color scheme defined in `tailwind.config.js`
+- For primary actions: blue-800 backgrounds with white text
+- For secondary actions: cyan-400 backgrounds with blue-900 text
+- For UI structure: gray-100 for backgrounds, white for cards, gray-800 for footer
+- For text: gray-800 for headings, gray-600 for body text
+
+## Component Styling
+
+- Use the following classes for buttons:
+  - Primary: `bg-blue-800 text-white hover:bg-blue-700`
+  - Secondary: `bg-cyan-400 text-blue-900 hover:bg-cyan-300`
+  - Outline: `border border-blue-800 text-blue-800 hover:bg-blue-50`
+
+- Use the following classes for cards:
+  - `bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow`
+
+- Use the following classes for tables:
+  - Table: `min-w-full bg-white rounded-lg overflow-hidden shadow-md`
+  - Header: `bg-gray-100 text-gray-700`
+  - Rows: `hover:bg-gray-50 divide-y divide-gray-200`
+
+## Responsive Design
+
+- Use responsive utility classes (sm:, md:, lg:) for different screen sizes
+- Ensure tables have overflow handling for smaller screens
+- Use the container class with appropriate padding: `container mx-auto px-4`
+- Design mobile-first, then add breakpoints for larger screens 

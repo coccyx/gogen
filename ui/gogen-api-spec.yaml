@@ -1,0 +1,148 @@
+openapi: 3.0.0
+info:
+  title: Gogen API
+  description: API for interacting with Gogen configurations
+  version: 1.0.0
+servers:
+  - url: https://api.gogen.io/v1
+    description: Production server
+paths:
+  /list:
+    get:
+      summary: List all Gogen configurations
+      description: Returns a list of all available Gogen configurations with their descriptions
+      operationId: listConfigurations
+      responses:
+        '200':
+          description: A list of Gogen configurations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConfigurationSummary'
+  /get/{configName}:
+    get:
+      summary: Get a specific Gogen configuration
+      description: Returns the details of a specific Gogen configuration
+      operationId: getConfiguration
+      parameters:
+        - name: configName
+          in: path
+          required: true
+          description: Name of the Gogen configuration to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A Gogen configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Item:
+                    $ref: '#/components/schemas/Configuration'
+        '404':
+          description: Configuration not found
+  /search:
+    get:
+      summary: Search for Gogen configurations
+      description: Returns a list of Gogen configurations matching the search query
+      operationId: searchConfigurations
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of matching Gogen configurations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConfigurationSummary'
+  /upsert:
+    post:
+      summary: Create or update a Gogen configuration
+      description: Creates a new Gogen configuration or updates an existing one
+      operationId: upsertConfiguration
+      security:
+        - githubAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Configuration'
+      responses:
+        '200':
+          description: Configuration created or updated successfully
+        '400':
+          description: Invalid request
+components:
+  schemas:
+    ConfigurationSummary:
+      type: object
+      properties:
+        gogen:
+          type: string
+          description: The name of the Gogen configuration
+        description:
+          type: string
+          description: A brief description of the configuration
+    Configuration:
+      type: object
+      properties:
+        gogen:
+          type: string
+          description: The name of the Gogen configuration
+        description:
+          type: string
+          description: A brief description of the configuration
+        config:
+          type: string
+          description: The configuration content
+        samples:
+          type: array
+          description: Sample configurations
+          items:
+            type: object
+        raters:
+          type: array
+          description: Rate configurations
+          items:
+            type: object
+        mix:
+          type: array
+          description: Mix configurations
+          items:
+            type: object
+        generators:
+          type: array
+          description: Generator configurations
+          items:
+            type: object
+        global:
+          type: object
+          description: Global configuration settings
+        templates:
+          type: array
+          description: Template configurations
+          items:
+            type: object
+  securitySchemes:
+    githubAuth:
+      type: http
+      scheme: bearer
+      description: GitHub authentication token 

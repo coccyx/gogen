@@ -22,7 +22,7 @@ build:
 	GOOS=linux CGO_ENABLED=0 GOARCH=amd64 go build -tags netgo $(FLAGS) -o build/linux/gogen
 	GOOS=darwin GOARCH=amd64 go build $(FLAGS) -o build/osx/gogen
 	GOOS=windows GOARCH=amd64 go build $(FLAGS) -o build/windows/gogen.exe
-	GOOS=js GOARCH=wasm go build $(FLAGS) -o build/wasm/gogen.wasm
+	GOOS=wasip1 GOARCH=wasm go build $(FLAGS) -o build/wasm/gogen.wasm
 
 deps:
 	go install github.com/mattn/goveralls@latest

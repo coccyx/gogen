@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Gogen UI - A web interface for Gogen configurations" />
+    <title>Gogen UI</title>
+    <script src="/wasm_exec.js"></script>
+    <script>
+      // Debug helper to inspect WASM exports
+      window.debugWasmExports = async () => {
+        try {
+          console.log("Debugging WASM exports");
+          
+          // Check if Go is available
+          if (!window.Go) {
+            return "Go WASM runtime not available";
+          }
+          
+          // Check if we have any exports
+          if (window.execute) {
+            console.log("Found window.execute export");
+            return "Found window.execute export";
+          } else if (window.gogen) {
+            console.log("Found window.gogen export");
+            return "Found window.gogen export";
+          } else {
+            console.log("No WASM exports found yet");
+            return "No WASM exports found yet";
+          }
+        } catch (error) {
+          console.error("Error in debugWasmExports:", error);
+          return `Error: ${error.message}`;
+        }
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html> 
