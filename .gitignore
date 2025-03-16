@@ -26,4 +26,4 @@ ui/node_modules/*
 ui/dist/*
 ui/build/*
 ui/coverage/*
-ui/src/api/gogen.wasm
+ui/public/gogen.wasm
