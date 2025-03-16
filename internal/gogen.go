@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 
 	log "github.com/coccyx/gogen/logger"
 	"github.com/kr/pretty"
@@ -22,6 +23,7 @@ type GogenInfo struct {
 	SampleEvent string `json:"sampleEvent"`
 	GistID      string `json:"gistID"`
 	Version     int    `json:"version"`
+	Config      string `json:"config"`
 }
 
 // GogenList is returned by the /v1/list and /v1/search APIs for Gogen
@@ -32,13 +34,12 @@ type GogenList struct {
 
 // List calls /v1/list
 func List() []GogenList {
-	return listsearch("https://api.gogen.io/v1/list")
-
+	return listsearch(fmt.Sprintf("%s/v1/list", getAPIURL()))
 }
 
 // Search calls /v1/search
 func Search(q string) []GogenList {
-	return listsearch("https://api.gogen.io/v1/search?q=" + url.QueryEscape(q))
+	return listsearch(fmt.Sprintf("%s/v1/search?q=%s", getAPIURL(), url.QueryEscape(q)))
 }
 
 func listsearch(url string) (ret []GogenList) {
@@ -77,9 +78,11 @@ func listsearch(url string) (ret []GogenList) {
 }
 
 // Get calls /v1/get
-func Get(q string) (g GogenInfo, err error) {
+var Get = func(q string) (g GogenInfo, err error) {
 	client := &http.Client{}
-	resp, err := client.Get("https://api.gogen.io/v1/get/" + q)
+	url := fmt.Sprintf("%s/v1/get/%s", getAPIURL(), q)
+	log.Debugf("Calling %s", url)
+	resp, err := client.Get(url)
 	if err != nil || resp.StatusCode != 200 {
 		if resp != nil {
 			if resp.StatusCode == 404 {
@@ -103,29 +106,39 @@ func Get(q string) (g GogenInfo, err error) {
 	if err != nil {
 		return g, fmt.Errorf("Error unmarshaling body: %s", err)
 	}
+	// log.Debugf("gogen: %# v", pretty.Formatter(gogen))
 	tmp, err := json.Marshal(gogen["Item"])
 	if err != nil {
 		return g, fmt.Errorf("Error converting Item to JSON: %s", err)
 	}
+	// log.Debugf("tmp: %s", string(tmp))
 	err = json.Unmarshal(tmp, &g)
 	if err != nil {
 		return g, fmt.Errorf("Error unmarshaling item: %s", err)
 	}
-	log.Debugf("Gogen: %# v", pretty.Formatter(g))
+	gCopy := g
+	gCopy.Config = "redacted"
+	log.Debugf("Gogen: %# v", pretty.Formatter(gCopy))
 	return g, nil
 }
 
 // Upsert calls /v1/upsert
 func Upsert(g GogenInfo) {
 	gh := NewGitHub(true)
+	upsert(g, gh)
+}
+
+func upsert(g GogenInfo, gh *GitHub) {
 	client := &http.Client{}
 
 	b, err := json.Marshal(g)
 	if err != nil {
 		log.Fatalf("Error marshaling Gogen %#v: %s", g, err)
 	}
+	// log.Debugf("Body: %s", string(b))
 
-	req, _ := http.NewRequest("POST", "https://api.gogen.io/v1/upsert", bytes.NewReader(b))
+	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/v1/upsert", getAPIURL()), bytes.NewReader(b))
+	// Still need GitHub token for authorization to verify user identity
 	req.Header.Add("Authorization", "token "+gh.token)
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode != 200 {
@@ -136,5 +149,18 @@ func Upsert(g GogenInfo) {
 			log.Fatalf("Error POSTing to upsert: %s", err)
 		}
 	}
+	// body, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	log.Fatalf("Error reading response body: %s", err)
+	// }
+	// log.Debugf("Response Body: %s", body)
 	log.Debugf("Upserted: %# v", pretty.Formatter(g))
+}
+
+// getAPIURL returns the API URL from environment variable or default value
+func getAPIURL() string {
+	if url := os.Getenv("GOGEN_APIURL"); url != "" {
+		return url
+	}
+	return "https://api.gogen.io"
 }
