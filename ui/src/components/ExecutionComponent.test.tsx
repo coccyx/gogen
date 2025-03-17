@@ -85,8 +85,8 @@ describe('ExecutionComponent', () => {
     expect(gogenWasm.executeConfiguration).toHaveBeenCalledWith(
       mockConfig,
       {
-        eventCount: 100,
-        intervals: 1,
+        eventCount: 1,
+        intervals: 5,
         intervalSeconds: 1,
         outputTemplate: 'raw'
       },
@@ -112,8 +112,8 @@ describe('ExecutionComponent', () => {
     expect(gogenWasm.executeConfiguration).toHaveBeenCalledWith(
       mockConfig,
       {
-        eventCount: 100,
-        intervals: 1,
+        eventCount: 1,
+        intervals: 5,
         intervalSeconds: 1,
         outputTemplate: 'raw'
       }
