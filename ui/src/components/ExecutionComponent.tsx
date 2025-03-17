@@ -119,7 +119,7 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
   // Execute configuration
   const executeConfiguration = async () => {
     setIsExecuting(true);
-    
+
     const executionParams: ExecutionParams = {
       eventCount,
       intervals,
@@ -230,7 +230,7 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-white text-gray-900"
           />
         </div>
-        
+
         <div>
           <label htmlFor="outputTemplate" className="block text-sm font-medium text-gray-700">
             Output Template
@@ -284,7 +284,9 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
       )}
 
       {outputMode === 'terminal' ? (
-        <div ref={terminalRef} className="border rounded-md p-4 bg-white shadow-md" />
+        <div className="border rounded-md p-4 bg-white shadow-md" data-testid="terminal-container">
+          <div className="terminal" ref={terminalRef} />
+        </div>
       ) : (
         <div className="border rounded-md p-4 bg-white shadow-md">
           <pre className="overflow-x-auto">

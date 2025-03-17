@@ -1,18 +1,6 @@
 import axios from 'axios';
 
-// Add Vite env type definition
-interface ImportMetaEnv {
-  VITE_API_URL?: string;
-  // Add other environment variables as needed
-}
-
-// Extend ImportMeta
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-
 // Define the base URL for the API
-// Use a direct approach to avoid process.env issues
 const API_BASE_URL = '/api';  // This will be proxied to the configured API URL
 
 // Create an axios instance with default config

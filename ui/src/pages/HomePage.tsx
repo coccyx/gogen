@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import gogenApi, { ConfigurationSummary } from '../api/gogenApi';
 import Hero from '../components/Hero';
 import ConfigurationList from '../components/ConfigurationList';

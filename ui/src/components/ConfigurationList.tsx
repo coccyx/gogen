@@ -36,7 +36,7 @@ const ConfigurationList = ({ configurations, loading, error }: ConfigurationList
   };
 
   if (loading) return <LoadingSpinner />;
-  if (error) return <div className="text-red-600">{error}</div>;
+  if (error) return <div className="text-red-600" role="alert">{error}</div>;
 
   return (
     <div>

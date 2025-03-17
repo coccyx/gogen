@@ -1,5 +1,12 @@
 import { Configuration } from './gogenApi';
 
+export interface ExecutionParams {
+  intervals: number;
+  intervalSeconds: number;
+  eventCount: number;
+  outputTemplate: 'raw' | 'json' | 'configured';
+}
+
 // Define the Go type from wasm_exec.js
 declare global {
   interface Window {
@@ -83,19 +90,47 @@ const setupVirtualFileSystem = (
   };
 
   // Set up the fs methods
+  let stdoutBuf = '';
+  let stderrBuf = '';
+
   global.fs.writeSync = (fd: number, buf: Uint8Array) => {
-    outputBuf += decoder.decode(buf);
-    const nl = outputBuf.lastIndexOf("\n");
-    if (nl !== -1) {
-      const line = outputBuf.substring(0, nl);
-      output.push(line);
-      if (onOutput) {
-        onOutput(line);
-      }
-      console.log(line);
-      outputBuf = outputBuf.substring(nl + 1);
+    // fd 1 is stdout, fd 2 is stderr
+    const line = decoder.decode(buf);
+    
+    if (fd === 1) {
+      stdoutBuf = processOutput(stdoutBuf, line, (line) => {
+        output.push(line);
+        if (onOutput) {
+          onOutput(line);
+        }
+        console.log(line);
+      });
+    } else if (fd === 2) {
+      stderrBuf = processOutput(stderrBuf, line, (line) => {
+        console.error(line);
+        if (onOutput) {
+          onOutput(`ERROR: ${line}`);
+        }
+      });
     }
+    
     return buf.length;
+  };
+
+  // Helper function to process output buffers
+  const processOutput = (
+    buffer: string, 
+    newData: string, 
+    lineHandler: (line: string) => void
+  ): string => {
+    buffer += newData;
+    const nl = buffer.lastIndexOf("\n");
+    if (nl !== -1) {
+      const line = buffer.substring(0, nl);
+      lineHandler(line);
+      return buffer.substring(nl + 1);
+    }
+    return buffer;
   };
 
   global.fs.stat = (path: string, callback: Function) => {
@@ -163,13 +198,6 @@ const setupVirtualFileSystem = (
     cleanup
   };
 };
-
-export interface ExecutionParams {
-  eventCount: number;
-  intervals: number;
-  intervalSeconds: number;
-  outputTemplate: 'raw' | 'json' | 'configured';
-}
 
 /**
  * Execute a Gogen configuration using WebAssembly
