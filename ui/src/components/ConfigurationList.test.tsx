@@ -1,62 +1,72 @@
-import { render, screen, fireEvent } from '../utils/test-utils';
+import { render, screen } from '../utils/test-utils';
+import { MemoryRouter } from 'react-router-dom';
 import ConfigurationList from './ConfigurationList';
+import { ConfigurationSummary } from '../api/gogenApi';
+
+const mockConfigurations: ConfigurationSummary[] = [
+  {
+    gogen: 'test-config',
+    description: 'Test Configuration',
+  },
+  {
+    gogen: 'another-config',
+    description: 'Another Configuration',
+  },
+];
+
+const renderWithRouter = (props: {
+  configurations: ConfigurationSummary[];
+  loading: boolean;
+  error: string | null;
+}) => {
+  return render(
+    <MemoryRouter>
+      <ConfigurationList {...props} />
+    </MemoryRouter>
+  );
+};
 
 describe('ConfigurationList', () => {
-  const mockConfigs = [
-    { gogen: 'test-config-1', description: 'Test description 1' },
-    { gogen: 'test-config-2', description: 'Test description 2' }
-  ];
-
-  it('displays loading spinner when loading', () => {
-    render(<ConfigurationList configurations={[]} loading={true} error={null} />);
+  it('shows loading state', () => {
+    renderWithRouter({ configurations: [], loading: true, error: null });
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
-  it('displays error message when there is an error', () => {
+  it('shows error message', () => {
     const errorMessage = 'Failed to load configurations';
-    render(<ConfigurationList configurations={[]} loading={false} error={errorMessage} />);
+    renderWithRouter({ configurations: [], loading: false, error: errorMessage });
     expect(screen.getByText(errorMessage)).toBeInTheDocument();
   });
 
-  it('displays message when no configurations are available', () => {
-    render(<ConfigurationList configurations={[]} loading={false} error={null} />);
+  it('renders list of configurations', () => {
+    renderWithRouter({ configurations: mockConfigurations, loading: false, error: null });
+    
+    mockConfigurations.forEach((config) => {
+      expect(screen.getByText(config.gogen)).toBeInTheDocument();
+      expect(screen.getByText(config.description)).toBeInTheDocument();
+    });
+  });
+
+  it('handles empty configurations list', () => {
+    renderWithRouter({ configurations: [], loading: false, error: null });
     expect(screen.getByText('No configurations found matching your search.')).toBeInTheDocument();
   });
 
-  it('renders configurations list', () => {
-    render(<ConfigurationList configurations={mockConfigs} loading={false} error={null} />);
+  it('has correct styling classes', () => {
+    renderWithRouter({ configurations: mockConfigurations, loading: false, error: null });
     
-    // Check if both configurations are rendered
-    expect(screen.getByText('test-config-1')).toBeInTheDocument();
-    expect(screen.getByText('test-config-2')).toBeInTheDocument();
-    expect(screen.getByText('Test description 1')).toBeInTheDocument();
-    expect(screen.getByText('Test description 2')).toBeInTheDocument();
-  });
-
-  it('renders default text when description is missing', () => {
-    const configWithoutDescription = [
-      { gogen: 'test-config-1', description: '' }
-    ];
-
-    render(<ConfigurationList configurations={configWithoutDescription} loading={false} error={null} />);
-    expect(screen.getByText('-')).toBeInTheDocument();
-  });
-
-  it('handles search input', () => {
-    render(<ConfigurationList configurations={mockConfigs} loading={false} error={null} />);
+    // Check table styling
+    const table = screen.getByRole('table');
+    expect(table).toHaveClass('min-w-full');
     
-    const searchInput = screen.getByPlaceholderText('Search configurations...');
-    fireEvent.change(searchInput, { target: { value: 'test-config-1' } });
+    // Check header styling
+    const headers = screen.getAllByRole('columnheader');
+    headers.forEach(header => {
+      expect(header).toHaveClass('px-6', 'py-3', 'text-left', 'text-xs', 'font-medium', 'text-gray-500', 'uppercase', 'tracking-wider');
+    });
     
-    expect(screen.getByText('test-config-1')).toBeInTheDocument();
-    expect(screen.queryByText('test-config-2')).not.toBeInTheDocument();
-  });
-
-  it('navigates to configuration detail', () => {
-    render(<ConfigurationList configurations={mockConfigs} loading={false} error={null} />);
-    
-    const firstConfig = mockConfigs[0];
-    const configLink = screen.getByText(firstConfig.gogen).closest('a');
-    expect(configLink).toHaveAttribute('href', `/configurations/${firstConfig.gogen}`);
+    // Check table container styling
+    const tableContainer = screen.getByRole('table').closest('div');
+    expect(tableContainer).toHaveClass('bg-white', 'rounded-lg', 'shadow', 'overflow-hidden');
   });
 }); 

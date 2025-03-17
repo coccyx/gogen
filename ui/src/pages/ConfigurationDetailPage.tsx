@@ -48,84 +48,92 @@ const ConfigurationDetailPage = () => {
     };
   };
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
+  const renderContent = () => {
+    if (isLoading) {
+      return <LoadingSpinner />;
+    }
 
-  if (error || !configuration) {
+    if (error || !configuration) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-red-600 mb-4">{error || 'Configuration not found'}</p>
+          <button
+            onClick={() => navigate('/')}
+            className="btn-primary"
+          >
+            Back to Home
+          </button>
+        </div>
+      );
+    }
+
     return (
-      <div className="text-center py-8">
-        <p className="text-red-600 mb-4">{error || 'Configuration not found'}</p>
-        <button
-          onClick={() => navigate('/')}
-          className="btn-primary"
-        >
-          Back to Home
-        </button>
-      </div>
+      <>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">{configuration.gogen}</h1>
+          <Link to="/" className="btn-primary">
+            Back to List
+          </Link>
+        </div>
+
+        {configuration.description && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-2">Description</h2>
+            <p className="text-gray-700">{configuration.description}</p>
+          </div>
+        )}
+
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-2">Configuration</h2>
+          <div className="border rounded-lg overflow-hidden shadow-md">
+            <Editor
+              height="400px"
+              defaultLanguage="yaml"
+              value={editedConfig}
+              onChange={(value: string | undefined) => setEditedConfig(value || '')}
+              theme="vs-light"
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                fontSize: 14,
+                lineNumbers: 'on',
+                renderLineHighlight: 'all',
+                automaticLayout: true,
+              }}
+            />
+          </div>
+        </div>
+
+        {configuration.samples && configuration.samples.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-2">Samples</h2>
+            <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
+              <pre>
+                <code>{JSON.stringify(configuration.samples, null, 2)}</code>
+              </pre>
+            </div>
+          </div>
+        )}
+
+        {configuration.raters && configuration.raters.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-2">Raters</h2>
+            <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
+              <pre>
+                <code>{JSON.stringify(configuration.raters, null, 2)}</code>
+              </pre>
+            </div>
+          </div>
+        )}
+
+        <ExecutionComponent configuration={getExecutionConfiguration()} />
+      </>
     );
-  }
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">{configuration.gogen}</h1>
-        <Link to="/" className="btn-primary">
-          Back to List
-        </Link>
-      </div>
-
-      {configuration.description && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Description</h2>
-          <p className="text-gray-700">{configuration.description}</p>
-        </div>
-      )}
-
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Configuration</h2>
-        <div className="border rounded-lg overflow-hidden shadow-md">
-          <Editor
-            height="400px"
-            defaultLanguage="yaml"
-            value={editedConfig}
-            onChange={(value: string | undefined) => setEditedConfig(value || '')}
-            theme="vs-light"
-            options={{
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              fontSize: 14,
-              lineNumbers: 'on',
-              renderLineHighlight: 'all',
-              automaticLayout: true,
-            }}
-          />
-        </div>
-      </div>
-
-      {configuration.samples && configuration.samples.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Samples</h2>
-          <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
-            <pre>
-              <code>{JSON.stringify(configuration.samples, null, 2)}</code>
-            </pre>
-          </div>
-        </div>
-      )}
-
-      {configuration.raters && configuration.raters.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Raters</h2>
-          <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
-            <pre>
-              <code>{JSON.stringify(configuration.raters, null, 2)}</code>
-            </pre>
-          </div>
-        </div>
-      )}
-
-      <ExecutionComponent configuration={getExecutionConfiguration()} />
+    <div className="container mx-auto px-4 py-8" role="main">
+      {renderContent()}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 const Hero = () => {
   return (
-    <section className="bg-blue-800 text-white py-12">
+    <section className="bg-blue-800 text-white py-12" role="region" aria-label="hero">
       <div className="container mx-auto px-4">
         <div className="max-w-3xl">
           <h2 className="text-4xl font-bold mb-4">Gogen helps generate telemetry data, quickly and easily.</h2>
