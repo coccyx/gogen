@@ -248,28 +248,19 @@ export const executeConfiguration = async (
     
     try {
       await go.run(wasmResult.instance);
-    } catch (error: any) {
-      if (error.message === 'Go program has already exited') {
-        // This is expected - the Go program exits after completion
-        console.log('Go program completed successfully');
-      } else {
-        throw error;
-      }
-    }
-    
-    // Process any remaining output
-    if (fsSetup.outputBuf.length > 0) {
-      fsSetup.output.push(fsSetup.outputBuf);
-      if (onOutput) {
+      return fsSetup.output;
+    } catch (error) {
+      // Ensure any partial output is flushed
+      if (fsSetup.outputBuf && onOutput) {
         onOutput(fsSetup.outputBuf);
       }
+      throw error;
     }
-    
-    return fsSetup.output;
   } catch (error: any) {
     console.error('Error executing WASM:', error);
     throw error;
   } finally {
+    // Always clean up the virtual filesystem
     fsSetup.cleanup();
   }
 };
