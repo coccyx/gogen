@@ -1,0 +1,43 @@
+---
+description: 
+globs: ui/**
+alwaysApply: false
+---
+# Gogen UI Cursor Rules
+
+This document outlines the standard rules for developing the Gogen UI project using Cursor.
+
+## General Rules
+
+- Keep components modular and focused on a single responsibility
+- Use TypeScript interfaces for all data structures
+- Document code with clear comments
+- Update SUMMARY.md after completing significant features
+
+## Development Workflow
+
+- After running the development server, verify UI is working as expected
+- Use mock data during development until the actual API is ready
+- Implement proper error handling for all async operations
+- Test components in isolation before integration
+
+## File Organization
+
+- Place components in the `src/components` directory
+- Place pages in the `src/pages` directory
+- Place API clients in the `src/api` directory
+- Place utility functions in the `src/utils` directory
+- Place TypeScript interfaces in the `src/types` directory
+
+## Development Server Verification
+
+- After running the development server, always prompt the user to verify if the UI is working as expected
+- Example prompt: "Is the UI loading correctly at http://localhost:3000? Are there any visual issues or console errors you're seeing?"
+- Address any issues reported by the user before proceeding with further development
+
+## See Also
+
+- [Styling Rules](mdc:ui-styling.mdc)
+- [Component Rules](mdc:ui-component.mdc)
+- [API Integration Rules](mdc:ui-api.mdc)
+- [Testing Rules](mdc:cursor-rules-testing.mdc) 

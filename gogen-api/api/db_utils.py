@@ -5,6 +5,18 @@ from logger import setup_logger
 
 logger = setup_logger(__name__)
 
+def get_table_name():
+    """
+    Get the DynamoDB table name based on environment
+    """
+    env = os.environ.get('ENVIRONMENT', 'dev')
+    if env == 'staging':
+        return 'gogen-staging'
+    elif env == 'prod':
+        return 'gogen'
+    else:
+        return 'gogen'  # Default to dev table name
+
 def get_dynamodb_client():
     """
     Get a DynamoDB client - uses local endpoint if running locally

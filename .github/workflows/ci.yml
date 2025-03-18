@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   pull_request:
 
 jobs:
@@ -32,16 +32,16 @@ jobs:
           $HOME/gopath/bin/goveralls -v -service=github
 
       - name: Build Project
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
         run: make GOBIN=$HOME/gopath/bin build
 
       - name: Build Docker Image
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
         run: docker build -t clintsharp/gogen .
 
-      # Deployment: These steps run only on the master branch.
+      # Deployment steps run on both master and dev branches
       - name: Configure AWS Credentials
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -49,8 +49,13 @@ jobs:
           aws-region: us-west-1
 
       - name: Deploy Build Artifacts to S3
-        if: github.ref == 'refs/heads/master'
-        run: aws s3 sync build s3://gogen-artifacts --delete
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            aws s3 sync build s3://gogen-artifacts --delete
+          else
+            aws s3 sync build s3://gogen-artifacts-staging --delete
+          fi
 
       - name: Run Docker Push Script
         if: github.ref == 'refs/heads/master'
@@ -62,7 +67,7 @@ jobs:
   deploy-lambdas:
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -92,5 +97,38 @@ jobs:
         run: |
           source .pyvenv/bin/activate
           cd gogen-api
-          # Run the deployment script
-          ./deploy_lambdas.sh 
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            ./deploy_lambdas.sh
+          else
+            ./deploy_lambdas.sh -e staging
+          fi
+
+  deploy-ui:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1
+
+      - name: Deploy UI
+        run: |
+          chmod +x ui/deploy_ui.sh
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            ui/deploy_ui.sh
+          else
+            ui/deploy_ui.sh -e staging
+          fi
+    

@@ -1,0 +1,83 @@
+---
+description: UI Component Rules
+globs: *.tsx
+alwaysApply: false
+---
+# Gogen UI Component Rules
+
+This document outlines the standards for creating and using React components in the Gogen UI project.
+
+## Component Structure
+
+- Use functional components with hooks instead of class components
+- Keep components small and focused on a single responsibility
+- Extract reusable logic into custom hooks
+- Use TypeScript for component props and state
+
+## Props and State
+
+- Define prop types using TypeScript interfaces
+- Use default props when appropriate
+- Destructure props in function parameters
+- Use the useState hook for component state
+- Use the useEffect hook for side effects
+
+## Data Fetching
+
+- Use the useEffect hook for data fetching
+- Implement loading states for all data-dependent components
+- Implement error handling for all API calls
+- Use try/catch blocks for async operations
+- Display user-friendly error messages
+
+## Example Component Structure
+
+```tsx
+import { useState, useEffect } from 'react';
+import { SomeType } from '../types';
+import LoadingSpinner from './LoadingSpinner';
+
+interface MyComponentProps {
+  id: string;
+  title?: string;
+  onAction: (id: string) => void;
+}
+
+const MyComponent = ({ id, title = 'Default Title', onAction }: MyComponentProps) => {
+  const [data, setData] = useState<SomeType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Fetch data here
+        setData(/* fetched data */);
+        setError(null);
+      } catch (err) {
+        setError('Failed to fetch data');
+        console.error('Error fetching data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <div className="error-message">{error}</div>;
+  if (!data) return <div>No data available</div>;
+
+  return (
+    <div className="my-component">
+      <h2>{title}</h2>
+      {/* Render component content */}
+      <button onClick={() => onAction(id)}>Perform Action</button>
+    </div>
+  );
+};
+
+export default MyComponent;
+``` 

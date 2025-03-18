@@ -22,4 +22,9 @@ roveralls*
 .pyvenv
 gogen-api/__pycache__
 gogen-api/build
-ui/*
+ui/node_modules/*
+ui/dist/*
+ui/build/*
+ui/coverage/*
+ui/public/gogen.wasm
+ui/.vite

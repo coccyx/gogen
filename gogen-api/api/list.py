@@ -1,24 +1,24 @@
 import json
-from db_utils import get_dynamodb_client
+from db_utils import get_dynamodb_client, get_table_name
+from cors_utils import cors_response
 from logger import setup_logger
 
 logger = setup_logger(__name__)
 logger.info('Loading function')
 
 def respond(err, res=None):
-    return {
-        'statusCode': '400' if err else '200',
-        'body': str(err) if err else json.dumps(res),
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        },
-    }
+    if err:
+        return cors_response(400, str(err))
+    return cors_response(200, res)
 
 def lambda_handler(event, context):
+    # Handle OPTIONS requests for CORS
+    if event.get('httpMethod') == 'OPTIONS':
+        return cors_response(200, {'message': 'OK'})
+        
     try:
         logger.debug(f"Received event: {json.dumps(event, indent=2)}")
-        table = get_dynamodb_client().Table('gogen')
+        table = get_dynamodb_client().Table(get_table_name())
         
         # Use pagination to handle large datasets
         items = []
