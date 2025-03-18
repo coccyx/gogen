@@ -95,15 +95,9 @@ jobs:
         run: |
           cd gogen-api
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-<<<<<<< HEAD
-            ./deploy_lambdas.sh
-          else
-            ./deploy_lambdas.sh -e staging
-=======
             bash deploy_lambdas.sh
           else
             bash deploy_lambdas.sh -e staging
->>>>>>> 9802994 (trying to fix CICD)
           fi
 
   deploy-ui:
@@ -134,7 +128,3 @@ jobs:
           else
             ui/deploy_ui.sh -e staging
           fi
-<<<<<<< HEAD
-    
-=======
->>>>>>> 9802994 (trying to fix CICD)
