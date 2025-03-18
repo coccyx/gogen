@@ -77,12 +77,10 @@ jobs:
         with:
           python-version: '3.13'
           
-      - name: Set up Python virtual environment
+      - name: Install AWS SAM CLI
         run: |
           python -m pip install --upgrade pip
-          python -m venv .pyvenv
-          source .pyvenv/bin/activate
-          pip install boto3 botocore awscli
+          pip install aws-sam-cli boto3 botocore awscli
           
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -95,12 +93,17 @@ jobs:
         env:
           LAMBDA_ROLE_ARN: ${{ secrets.LAMBDA_ROLE_ARN }}
         run: |
-          source .pyvenv/bin/activate
           cd gogen-api
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+<<<<<<< HEAD
             ./deploy_lambdas.sh
           else
             ./deploy_lambdas.sh -e staging
+=======
+            bash deploy_lambdas.sh
+          else
+            bash deploy_lambdas.sh -e staging
+>>>>>>> 9802994 (trying to fix CICD)
           fi
 
   deploy-ui:
@@ -131,4 +134,7 @@ jobs:
           else
             ui/deploy_ui.sh -e staging
           fi
+<<<<<<< HEAD
     
+=======
+>>>>>>> 9802994 (trying to fix CICD)
