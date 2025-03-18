@@ -3,28 +3,19 @@ import decimal
 import urllib.request
 import urllib.error
 from boto3.dynamodb.conditions import Key, Attr
-from db_utils import get_dynamodb_client
+from db_utils import get_dynamodb_client, get_table_name
 from s3_utils import download_config
+from cors_utils import cors_response
 from logger import setup_logger
 
 logger = setup_logger(__name__)
 logger.info('Loading function')
 
 
-def decimal_default(obj):
-    if isinstance(obj, decimal.Decimal):
-        return float(obj)
-    raise TypeError
-
-
 def respond(err, res=None):
-    return {
-        'statusCode': '400' if err else '200',
-        'body': str(err) if err else json.dumps(res, default=decimal_default),
-        'headers': {
-            'Content-Type': 'application/json',
-        },
-    }
+    if err:
+        return cors_response(400, err)
+    return cors_response(200, res)
 
 
 def fetch_gist_content(gist_id):
@@ -130,26 +121,25 @@ def fetch_gist_content(gist_id):
 
 def lambda_handler(event, context):
     logger.debug(f"Received event: {json.dumps(event)}")
+    
+    # Handle OPTIONS requests for CORS
+    if event.get('httpMethod') == 'OPTIONS':
+        return cors_response(200, {'message': 'OK'})
+        
     q = event['pathParameters']['proxy']
     logger.debug(f"Query: {q}")
 
-    table = get_dynamodb_client().Table('gogen')
+    table = get_dynamodb_client().Table(get_table_name())
     response = table.get_item(Key={"gogen": q})
 
     if 'Item' not in response:
         logger.error(f"No item found for query: {q}")
-        return {
-            'statusCode': '404',
-            'body': f'Could not find Gogen: {q}',
-        }
+        return cors_response(404, f'Could not find Gogen: {q}')
     
     item = response['Item']
     if 'gogen' not in item:
         logger.error(f"Item found but missing 'gogen' key for query: {q}")
-        return {
-            'statusCode': '404',
-            'body': f'Could not find Gogen: {q}',
-        }
+        return cors_response(404, f'Could not find Gogen: {q}')
 
     # Try to fetch the configuration from S3 first
     if 's3Path' in item:
@@ -160,10 +150,7 @@ def lambda_handler(event, context):
             logger.debug(f"Successfully added config content from S3 for query: {q}")
         else:
             logger.error(f"Failed to fetch config content from S3 for query: {q}")
-            return {
-                'statusCode': '500',
-                'body': f'Failed to fetch configuration from S3 for: {q}',
-            }
+            return cors_response(500, f'Failed to fetch configuration from S3 for: {q}')
     # For backward compatibility, try to fetch from GitHub gist if s3Path is not present
     elif 'gistID' in item:
         logger.warning(f"Using legacy gistID: {item['gistID']} for query: {q}. This will be deprecated.")
@@ -173,16 +160,10 @@ def lambda_handler(event, context):
             logger.debug(f"Successfully added config content from GitHub gist for query: {q}")
         else:
             logger.error(f"Failed to fetch config content from GitHub gist for query: {q}")
-            return {
-                'statusCode': '500',
-                'body': f'Failed to fetch configuration from GitHub gist for: {q}',
-            }
+            return cors_response(500, f'Failed to fetch configuration from GitHub gist for: {q}')
     else:
         logger.error(f"No s3Path or gistID found in item for query: {q}")
-        return {
-            'statusCode': '500',
-            'body': f'Configuration {q} does not have a valid storage location.',
-        }
+        return cors_response(500, f'Configuration {q} does not have a valid storage location.')
     
     response['Item'] = item
     return respond(None, response)

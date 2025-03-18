@@ -38,30 +38,39 @@ def get_s3_client():
             raise
         return client
     else:
-        # Production environment - use AWS credentials from environment or instance profile
-        logger.info("Configuring S3 client for production environment")
+        # Production/Staging environment - use AWS credentials from environment or instance profile
+        env = os.environ.get('ENVIRONMENT', 'dev')
+        logger.info(f"Configuring S3 client for {env} environment")
         region = os.environ.get('AWS_REGION', 'us-east-1')
         try:
             client = boto3.resource('s3', region_name=region, config=config)
-            logger.info(f"Successfully created S3 client for region {region}")
+            logger.info(f"Successfully created S3 client for region {region} in {env} environment")
             return client
         except Exception as e:
-            logger.error(f"Failed to create production S3 client: {str(e)}")
+            logger.error(f"Failed to create {env} S3 client: {str(e)}")
             raise
 
 def get_config_bucket():
     """
-    Get the gogen-configs bucket
+    Get the gogen-configs bucket based on environment
     """
     try:
         s3 = get_s3_client()
-        bucket_name = os.environ.get('CONFIG_BUCKET_NAME', 'gogen-configs')
+        env = os.environ.get('ENVIRONMENT', 'dev')
+        if env == 'staging':
+            bucket_name = 'gogen-configs-staging'
+        elif env == 'prod':
+            bucket_name = 'gogen-configs'
+        else:
+            bucket_name = os.environ.get('CONFIG_BUCKET_NAME', 'gogen-configs')  # Default to dev bucket name
+            
+        logger.info(f"Using S3 bucket: {bucket_name} for environment: {env}")
         bucket = s3.Bucket(bucket_name)
         
         try:
             # Verify bucket exists by trying to load bucket properties
             bucket.meta.client.head_bucket(Bucket=bucket_name)
-            logger.info(f"Successfully connected to bucket: {bucket_name}")
+            logger.info(f"Successfully connected to bucket: {bucket_name} in {env} environment")
         except bucket.meta.client.exceptions.ClientError as e:
             error_code = e.response['Error']['Code']
             if error_code == '403':

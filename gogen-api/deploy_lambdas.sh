@@ -5,14 +5,66 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
-# Configuration
-LAMBDA_DIR="$SCRIPT_DIR/api"
-BUILD_DIR="$SCRIPT_DIR/build"
-REGION="us-east-1"  # Change this to your AWS region
-RUNTIME="python3.13"
+# Parse command line arguments
+ENVIRONMENT="prod"  # Default to production
+while getopts "e:" opt; do
+  case $opt in
+    e) ENVIRONMENT="$OPTARG"
+    ;;
+    \?) echo "Invalid option -$OPTARG" >&2
+    ;;
+  esac
+done
 
-# Use environment variable if set, otherwise use the default value
-ROLE_ARN=${LAMBDA_ROLE_ARN:-$ROLE_ARN}
+# Validate environment
+if [[ "$ENVIRONMENT" != "prod" && "$ENVIRONMENT" != "staging" ]]; then
+    echo "Invalid environment: $ENVIRONMENT. Must be 'prod' or 'staging'"
+    exit 1
+fi
+
+# Set the S3 bucket name based on environment
+if [ "$ENVIRONMENT" = "prod" ]; then
+    S3_BUCKET="gogen-artifacts"
+else
+    S3_BUCKET="gogen-artifacts-staging"
+fi
+
+# Ensure the S3 bucket exists
+ensure_s3_bucket() {
+    local bucket=$1
+    if ! aws s3api head-bucket --bucket "$bucket" 2>/dev/null; then
+        echo "S3 bucket $bucket does not exist or is not accessible"
+        exit 1
+    fi
+    echo "Using S3 bucket: $bucket for deployment artifacts"
+}
+
+# Check S3 bucket
+ensure_s3_bucket "$S3_BUCKET"
+
+# Get the appropriate role ARN based on environment
+get_role_arn() {
+    local env=$1
+    local role_name
+    
+    if [ "$env" = "prod" ]; then
+        role_name="gogen_lambda"
+    else
+        role_name="gogen_lambda_staging"
+    fi
+    
+    # Get the role ARN
+    role_arn=$(aws iam get-role --role-name "$role_name" --query 'Role.Arn' --output text)
+    if [ -z "$role_arn" ]; then
+        echo "Failed to get ARN for role: $role_name" >&2
+        exit 1
+    fi
+    echo "$role_arn"
+}
+
+# Get the role ARN
+ROLE_ARN=$(get_role_arn "$ENVIRONMENT")
+echo "Using role ARN: $ROLE_ARN"
 
 # Check if virtual environment exists and activate it
 VENV_PATH="$PROJECT_ROOT/.pyvenv"
@@ -38,88 +90,14 @@ else
         if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
             echo "Installing requirements from $SCRIPT_DIR/requirements.txt..."
             pip install -r "$SCRIPT_DIR/requirements.txt"
-        else
-            echo "Installing boto3 and botocore..."
-            pip install boto3 botocore
         fi
         
-        # Install AWS CLI if needed
-        if ! command -v aws &> /dev/null; then
-            echo "Installing AWS CLI..."
-            pip install awscli
+        # Install AWS SAM CLI if needed
+        if ! command -v sam &> /dev/null; then
+            echo "Installing AWS SAM CLI..."
+            pip install aws-sam-cli
         fi
     fi
-fi
-
-# Create build directory if it doesn't exist
-mkdir -p $BUILD_DIR
-
-# Function to package and deploy a Lambda function
-deploy_lambda() {
-    local function_name="Gogen$1"
-    local handler_file="${1,,}.py"  # Convert to lowercase
-    local handler_name="${1,,}.lambda_handler"
-    local zip_file="$BUILD_DIR/${function_name}.zip"
-    
-    echo "Packaging $function_name..."
-    
-    # Create a temporary directory for packaging
-    local temp_dir=$(mktemp -d)
-    
-    # Copy the handler file and dependencies
-    cp "$LAMBDA_DIR/$handler_file" "$temp_dir/"
-    cp "$LAMBDA_DIR/db_utils.py" "$temp_dir/"
-    cp "$LAMBDA_DIR/logger.py" "$temp_dir/"
-    
-    # Copy s3_utils.py if needed by this function
-    if [[ "$1" == "Get" || "$1" == "Upsert" ]]; then
-        cp "$LAMBDA_DIR/s3_utils.py" "$temp_dir/"
-    fi
-    
-    # Install dependencies into the package
-    if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
-        echo "Installing dependencies from requirements.txt..."
-        pip install -r "$SCRIPT_DIR/requirements.txt" -t "$temp_dir/" --no-cache-dir
-    else
-        echo "requirements.txt not found, installing boto3 and botocore..."
-        pip install boto3 botocore -t "$temp_dir/" --no-cache-dir
-    fi
-    
-    # Create zip file
-    echo "Creating zip file: $zip_file"
-    (cd "$temp_dir" && zip -r "$zip_file" .)
-    
-    # Check if Lambda function exists
-    echo "Checking if Lambda function $function_name exists..."
-    if aws lambda get-function --function-name "$function_name" --region "$REGION" 2>&1 | grep -q "Function not found"; then
-        # Create new Lambda function
-        echo "Creating new Lambda function: $function_name"
-        aws lambda create-function \
-            --function-name "$function_name" \
-            --runtime "$RUNTIME" \
-            --role "$ROLE_ARN" \
-            --handler "$handler_name" \
-            --zip-file "fileb://$zip_file" \
-            --region "$REGION"
-    else
-        # Update existing Lambda function
-        echo "Updating existing Lambda function: $function_name"
-        aws lambda update-function-code \
-            --function-name "$function_name" \
-            --zip-file "fileb://$zip_file" \
-            --region "$REGION"
-    fi
-    
-    # Clean up
-    rm -rf "$temp_dir"
-    
-    echo "$function_name deployment complete!"
-}
-
-# Validate AWS CLI is installed
-if ! command -v aws &> /dev/null; then
-    echo "AWS CLI is not installed. Installing..."
-    pip install awscli
 fi
 
 # Validate AWS credentials are configured
@@ -128,16 +106,43 @@ if ! aws sts get-caller-identity &> /dev/null; then
     exit 1
 fi
 
-# Check if ROLE_ARN is set
-if [ -z "$ROLE_ARN" ]; then
-    echo "Please set the LAMBDA_ROLE_ARN environment variable or the ROLE_ARN variable in this script."
+# Get or create ACM certificate ARN
+get_certificate_arn() {
+    # Check if certificate exists for *.gogen.io
+    CERT_ARN=$(aws acm list-certificates --query "CertificateSummaryList[?DomainName=='*.gogen.io'].CertificateArn" --output text)
+    
+    if [ -z "$CERT_ARN" ]; then
+        echo "No certificate found for *.gogen.io"
+        exit 1
+    fi
+    
+    echo $CERT_ARN
+}
+
+# Get certificate ARN
+CERT_ARN=$(get_certificate_arn)
+if [ -z "$CERT_ARN" ]; then
+    echo "Failed to get certificate ARN"
     exit 1
 fi
 
-# Deploy each Lambda function
-deploy_lambda "Get"
-deploy_lambda "List"
-deploy_lambda "Search"
-deploy_lambda "Upsert"
+echo "Using certificate ARN: $CERT_ARN"
 
-echo "All Lambda functions deployed successfully!" 
+# Build the SAM application
+echo "Building SAM application..."
+sam build --use-container
+
+# Deploy the SAM application
+echo "Deploying SAM application for $ENVIRONMENT environment..."
+sam deploy \
+    --stack-name "gogen-api-${ENVIRONMENT}" \
+    --s3-bucket "$S3_BUCKET" \
+    --parameter-overrides \
+        Environment=$ENVIRONMENT \
+        LambdaRoleArn=$ROLE_ARN \
+        CertificateArn=$CERT_ARN \
+    --capabilities CAPABILITY_IAM \
+    --no-confirm-changeset \
+    --no-fail-on-empty-changeset
+
+echo "Deployment completed successfully for $ENVIRONMENT environment!" 

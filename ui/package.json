@@ -7,6 +7,7 @@
     "copy-wasm": "cp ../build/wasm/gogen.wasm public/",
     "dev": "npm run copy-wasm && vite",
     "build": "npm run copy-wasm && tsc && vite build",
+    "build:staging": "npm run copy-wasm && tsc && vite build --mode staging",
     "preview": "vite preview",
     "test": "jest",
     "test:watch": "jest --watch",

@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     // Add plugin to set Cross-Origin Isolation headers
@@ -23,10 +23,12 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'https://api.gogen.io',
+        target: mode === 'production' 
+          ? 'https://api.gogen.io'
+          : 'http://localhost:4000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/v1'),
-        secure: true,
+        secure: mode === 'production',
       }
     },
     fs: {
@@ -41,4 +43,4 @@ export default defineConfig({
     exclude: ['@wasmer/sdk']
   },
   assetsInclude: ['**/*.wasm'],
-}); 
+})); 

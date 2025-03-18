@@ -1,11 +1,9 @@
 import axios from 'axios';
-
-// Define the base URL for the API
-const API_BASE_URL = '/api';  // This will be proxied to the configured API URL
+import { config } from '../config';
 
 // Create an axios instance with default config
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: config.apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },
