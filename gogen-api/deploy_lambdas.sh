@@ -72,7 +72,6 @@ get_role_arn() {
 ROLE_ARN=$(get_role_arn "$ENVIRONMENT")
 echo "Using role ARN: $ROLE_ARN"
 
-<<<<<<< Updated upstream
 # Create build directory if it doesn't exist
 mkdir -p $BUILD_DIR
 
@@ -139,8 +138,6 @@ deploy_lambda() {
     echo "$function_name deployment complete!"
 }
 
-=======
->>>>>>> Stashed changes
 # Validate AWS credentials are configured
 if ! aws sts get-caller-identity &> /dev/null; then
     echo "AWS credentials are not configured. Please run 'aws configure' first."
