@@ -185,10 +185,7 @@ echo "Deploying SAM application for $ENVIRONMENT environment..."
 sam deploy \
     --stack-name "gogen-api-${ENVIRONMENT}" \
     --s3-bucket "$S3_BUCKET" \
-    --parameter-overrides \
-        Environment=$ENVIRONMENT \
-        LambdaRoleArn=$ROLE_ARN \
-        CertificateArn=$CERT_ARN \
+    --parameter-overrides "ParameterKey=Environment,ParameterValue=${ENVIRONMENT} ParameterKey=LambdaRoleArn,ParameterValue=${ROLE_ARN} ParameterKey=CertificateArn,ParameterValue=${CERT_ARN}" \
     --capabilities CAPABILITY_IAM \
     --no-confirm-changeset \
     --no-fail-on-empty-changeset
