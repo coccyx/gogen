@@ -147,22 +147,20 @@ fi
 # Get or create ACM certificate ARN
 get_certificate_arn() {
     local domain="*.gogen.io"
-    local cert_arn
-    
     echo "Looking for ACM certificate for $domain..."
     
-    # First try us-east-1 (required for CloudFront and API Gateway)
+    # Get certificate from us-east-1 (required for API Gateway)
+    local cert_arn
     cert_arn=$(aws acm list-certificates --region us-east-1 --query "CertificateSummaryList[?DomainName=='$domain'].CertificateArn" --output text)
     
     if [ -z "$cert_arn" ]; then
         echo "Error: No certificate found for $domain in us-east-1"
         echo "Please create a certificate for $domain in ACM in us-east-1 region"
-        echo "For API Gateway custom domains, the certificate must be in us-east-1"
-        return 1
+        exit 1
     fi
     
     echo "Found certificate: $cert_arn"
-    printf "%s" "$cert_arn"
+    echo "$cert_arn"
 }
 
 # Get certificate ARN
