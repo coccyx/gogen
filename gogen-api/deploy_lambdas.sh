@@ -149,23 +149,14 @@ get_certificate_arn() {
     local domain="*.gogen.io"
     echo "Looking for ACM certificate for $domain..."
     
-    # First try us-east-1 (required for CloudFront)
+    # First try us-east-1 (required for CloudFront and API Gateway)
     CERT_ARN=$(aws acm list-certificates --region us-east-1 --query "CertificateSummaryList[?DomainName=='$domain'].CertificateArn" --output text)
     
     if [ -z "$CERT_ARN" ]; then
-        # Try the current region if different from us-east-1
-        if [ "$REGION" != "us-east-1" ]; then
-            echo "Certificate not found in us-east-1, checking $REGION..."
-            CERT_ARN=$(aws acm list-certificates --region $REGION --query "CertificateSummaryList[?DomainName=='$domain'].CertificateArn" --output text)
-        fi
-    fi
-    
-    if [ -z "$CERT_ARN" ]; then
-        echo "Warning: No certificate found for $domain in either us-east-1 or $REGION"
-        echo "Using default certificate for now. Please create a certificate for $domain in ACM later."
-        # Return a dummy ARN - SAM template should handle this case
-        echo "arn:aws:acm:${REGION}:${AWS_ACCOUNT_ID}:certificate/dummy"
-        return 0
+        echo "Error: No certificate found for $domain in us-east-1"
+        echo "Please create a certificate for $domain in ACM in us-east-1 region"
+        echo "For API Gateway custom domains, the certificate must be in us-east-1"
+        exit 1
     fi
     
     echo "Found certificate: $CERT_ARN"
@@ -175,6 +166,12 @@ get_certificate_arn() {
 # Get certificate ARN
 echo "Checking for SSL certificate..."
 CERT_ARN=$(get_certificate_arn)
+if [ -z "$CERT_ARN" ]; then
+    echo "Failed to get certificate ARN"
+    exit 1
+fi
+
+echo "Using certificate ARN: $CERT_ARN"
 
 # Build the SAM application
 echo "Building SAM application..."
