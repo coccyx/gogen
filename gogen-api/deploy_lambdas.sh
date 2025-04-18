@@ -147,20 +147,22 @@ fi
 # Get or create ACM certificate ARN
 get_certificate_arn() {
     local domain="*.gogen.io"
+    local cert_arn
+    
     echo "Looking for ACM certificate for $domain..."
     
     # First try us-east-1 (required for CloudFront and API Gateway)
-    CERT_ARN=$(aws acm list-certificates --region us-east-1 --query "CertificateSummaryList[?DomainName=='$domain'].CertificateArn" --output text)
+    cert_arn=$(aws acm list-certificates --region us-east-1 --query "CertificateSummaryList[?DomainName=='$domain'].CertificateArn" --output text)
     
-    if [ -z "$CERT_ARN" ]; then
+    if [ -z "$cert_arn" ]; then
         echo "Error: No certificate found for $domain in us-east-1"
         echo "Please create a certificate for $domain in ACM in us-east-1 region"
         echo "For API Gateway custom domains, the certificate must be in us-east-1"
-        exit 1
+        return 1
     fi
     
-    echo "Found certificate: $CERT_ARN"
-    echo "$CERT_ARN"
+    echo "Found certificate: $cert_arn"
+    printf "%s" "$cert_arn"
 }
 
 # Get certificate ARN
@@ -179,10 +181,24 @@ sam build --use-container
 
 # Deploy the SAM application
 echo "Deploying SAM application for $ENVIRONMENT environment..."
+echo "Using parameters:"
+echo "  Environment: ${ENVIRONMENT}"
+echo "  LambdaRoleArn: ${ROLE_ARN}"
+echo "  CertificateArn: ${CERT_ARN}"
+
+# Construct parameters string with proper escaping
+PARAMS="ParameterKey=Environment,ParameterValue=${ENVIRONMENT}"
+PARAMS="${PARAMS} ParameterKey=LambdaRoleArn,ParameterValue=${ROLE_ARN}"
+PARAMS="${PARAMS} ParameterKey=CertificateArn,ParameterValue=${CERT_ARN}"
+
+# Print the exact parameters being used
+echo "Parameter overrides:"
+echo "$PARAMS"
+
 sam deploy \
     --stack-name "gogen-api-${ENVIRONMENT}" \
     --s3-bucket "$S3_BUCKET" \
-    --parameter-overrides "ParameterKey=Environment,ParameterValue=${ENVIRONMENT} ParameterKey=LambdaRoleArn,ParameterValue=${ROLE_ARN} ParameterKey=CertificateArn,ParameterValue=${CERT_ARN}" \
+    --parameter-overrides "$PARAMS" \
     --capabilities CAPABILITY_IAM \
     --no-confirm-changeset \
     --no-fail-on-empty-changeset
