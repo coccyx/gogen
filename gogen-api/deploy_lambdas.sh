@@ -147,7 +147,6 @@ fi
 # Get or create ACM certificate ARN
 get_certificate_arn() {
     local domain="*.gogen.io"
-    echo "Looking for ACM certificate for $domain..."
     
     # Get certificate from us-east-1 (required for API Gateway)
     local cert_arn
@@ -155,11 +154,9 @@ get_certificate_arn() {
     
     if [ -z "$cert_arn" ]; then
         echo "Error: No certificate found for $domain in us-east-1"
-        echo "Please create a certificate for $domain in ACM in us-east-1 region"
         exit 1
     fi
     
-    echo "Found certificate: $cert_arn"
     echo "$cert_arn"
 }
 
