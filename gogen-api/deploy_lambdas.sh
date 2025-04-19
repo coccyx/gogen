@@ -48,29 +48,12 @@ ensure_s3_bucket() {
 # Check S3 bucket
 ensure_s3_bucket "$S3_BUCKET"
 
-# Get the appropriate role ARN based on environment
-get_role_arn() {
-    local env=$1
-    local role_name
-    
-    if [ "$env" = "prod" ]; then
-        role_name="gogen_lambda"
-    else
-        role_name="gogen_lambda_staging"
-    fi
-    
-    # Get the role ARN
-    role_arn=$(aws iam get-role --role-name "$role_name" --query 'Role.Arn' --output text)
-    if [ -z "$role_arn" ]; then
-        echo "Failed to get ARN for role: $role_name" >&2
-        exit 1
-    fi
-    echo "$role_arn"
-}
-
-# Get the role ARN
-ROLE_ARN=$(get_role_arn "$ENVIRONMENT")
-echo "Using role ARN: $ROLE_ARN"
+# Expect ROLE_ARN to be set as an environment variable
+if [ -z "$ROLE_ARN" ]; then
+    echo "Error: ROLE_ARN environment variable is not set." >&2
+    exit 1
+fi
+echo "Using role ARN from environment: $ROLE_ARN"
 
 # Create build directory if it doesn't exist
 mkdir -p $BUILD_DIR

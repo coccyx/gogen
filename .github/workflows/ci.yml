@@ -107,11 +107,14 @@ jobs:
           
       - name: Deploy Lambda Functions
         env:
-          LAMBDA_ROLE_ARN: ${{ secrets.LAMBDA_ROLE_ARN }}
+          # Set ROLE_ARN based on the branch
+          ROLE_ARN: ${{ github.ref == 'refs/heads/master' && secrets.PROD_LAMBDA_ROLE_ARN || secrets.STAGING_LAMBDA_ROLE_ARN }}
         run: |
           cd gogen-api
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            # Prod deployment, ROLE_ARN is already set via env
             bash deploy_lambdas.sh
           else
+            # Staging deployment, ROLE_ARN is already set via env
             bash deploy_lambdas.sh -e staging
           fi
