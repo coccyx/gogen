@@ -20,6 +20,7 @@ var (
 	Mutex         sync.RWMutex
 	lastTS        time.Time
 	rotchan       chan *config.OutputStats
+	rotwg         sync.WaitGroup
 	gout          [config.MaxOutputThreads]config.Outputter
 	lasterr       [config.MaxOutputThreads]lastError
 	rotInterval   int
@@ -44,6 +45,7 @@ func init() {
 func ROT(c *config.Config) {
 	rotInterval = c.Global.ROTInterval
 	rotchan = make(chan *config.OutputStats)
+	rotwg.Add(1)
 	go readStats()
 
 	lastEventsWritten := make(map[string]int64)
@@ -79,6 +81,9 @@ func ROT(c *config.Config) {
 
 // ReadFinal outputs final statistics about our run
 func ReadFinal() {
+	close(rotchan)
+	rotwg.Wait()
+
 	totalEvents := int64(0)
 	totalBytes := int64(0)
 	Mutex.RLock()
@@ -94,14 +99,12 @@ func ReadFinal() {
 }
 
 func readStats() {
-	for {
-		select {
-		case os := <-rotchan:
-			Mutex.Lock()
-			BytesWritten[os.SampleName] += os.BytesWritten
-			EventsWritten[os.SampleName] += os.EventsWritten
-			Mutex.Unlock()
-		}
+	defer rotwg.Done()
+	for os := range rotchan {
+		Mutex.Lock()
+		BytesWritten[os.SampleName] += os.BytesWritten
+		EventsWritten[os.SampleName] += os.EventsWritten
+		Mutex.Unlock()
 	}
 }
 
