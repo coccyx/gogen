@@ -1,0 +1,96 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "SAMDeploymentPermissions",
+			"Effect": "Allow",
+			"Action": [
+				"cloudformation:CreateStack",
+				"cloudformation:UpdateStack",
+				"cloudformation:DeleteStack",
+				"cloudformation:DescribeStacks",
+				"cloudformation:DescribeStackEvents",
+				"cloudformation:DescribeStackResource",
+				"cloudformation:DescribeStackResources",
+				"cloudformation:GetTemplateSummary",
+				"cloudformation:ListStacks",
+				"cloudformation:ValidateTemplate",
+				"cloudformation:CreateChangeSet",
+				"cloudformation:DescribeChangeSet",
+				"cloudformation:ExecuteChangeSet",
+				"lambda:CreateFunction",
+				"lambda:DeleteFunction",
+				"lambda:GetFunction",
+				"lambda:UpdateFunctionCode",
+				"lambda:UpdateFunctionConfiguration",
+				"lambda:ListFunctions",
+				"lambda:PublishVersion",
+				"lambda:CreateAlias",
+				"lambda:UpdateAlias",
+				"lambda:DeleteAlias",
+				"lambda:GetAlias",
+				"lambda:TagResource",
+				"apigateway:GET",
+				"apigateway:POST",
+				"apigateway:PUT",
+				"apigateway:DELETE",
+				"apigateway:PATCH",
+				"s3:PutObject",
+				"s3:GetObject",
+				"s3:DeleteObject",
+				"s3:ListBucket",
+				"s3:GetBucketLocation",
+				"iam:PassRole",
+				"iam:GetRole",
+				"iam:CreateRole",
+				"iam:DeleteRole",
+				"iam:PutRolePolicy",
+				"iam:DeleteRolePolicy"
+			],
+			"Resource": [
+				"arn:aws:cloudformation:*:*:stack/gogen-api-prod/*",
+				"arn:aws:cloudformation:*:*:stack/gogen-api-staging/*",
+				"arn:aws:lambda:*:*:function:gogen-api-prod-*",
+				"arn:aws:lambda:*:*:function:gogen-api-staging-*",
+				"arn:aws:apigateway:*::/restapis/*",
+				"arn:aws:apigateway:*::/restapis/*/stages/*",
+				"arn:aws:apigateway:*::/restapis/*/deployments",
+				"arn:aws:apigateway:*::/domainnames/api.gogen.io",
+				"arn:aws:apigateway:*::/domainnames/staging-api.gogen.io",
+				"arn:aws:apigateway:*::/domainnames",
+				"arn:aws:s3:::gogen-artifacts-prod",
+				"arn:aws:s3:::gogen-artifacts-prod/*",
+				"arn:aws:s3:::gogen-artifacts-staging",
+				"arn:aws:s3:::gogen-artifacts-staging/*",
+				"arn:aws:s3:::gogen.io",
+				"arn:aws:s3:::gogen.io/*",
+				"arn:aws:s3:::staging.gogen.io",
+				"arn:aws:s3:::staging.gogen.io/*",
+				"arn:aws:iam::*:role/gogen_lambda",
+				"arn:aws:iam::*:role/gogen_lambda_staging",
+				"arn:aws:iam::*:role/service-role/gogen_lambda",
+				"arn:aws:iam::*:role/service-role/gogen_lambda_staging",
+				"arn:aws:cloudformation:us-east-1:aws:transform/Serverless-2016-10-31"
+			]
+		},
+		{
+			"Sid": "GeneralPermissions",
+			"Effect": "Allow",
+			"Action": [
+				"acm:DescribeCertificate",
+				"acm:ListCertificates",
+				"sts:GetCallerIdentity"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "DynamoDBDescribePermissions",
+			"Effect": "Allow",
+			"Action": "dynamodb:DescribeTable",
+			"Resource": [
+				"arn:aws:dynamodb:*:*:table/gogen-api-prod-gogen",
+				"arn:aws:dynamodb:*:*:table/gogen-staging"
+			]
+		}
+	]
+}

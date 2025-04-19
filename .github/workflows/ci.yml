@@ -52,7 +52,7 @@ jobs:
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-            aws s3 sync build s3://gogen-artifacts --delete
+            aws s3 sync build s3://gogen-artifacts-prod --delete
           else
             aws s3 sync build s3://gogen-artifacts-staging --delete
           fi

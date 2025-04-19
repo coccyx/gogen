@@ -30,7 +30,7 @@ fi
 
 # Set the S3 bucket name based on environment
 if [ "$ENVIRONMENT" = "prod" ]; then
-    S3_BUCKET="gogen-artifacts"
+    S3_BUCKET="gogen-artifacts-prod"
 else
     S3_BUCKET="gogen-artifacts-staging"
 fi
@@ -183,7 +183,7 @@ sam deploy \
         ParameterKey=CertificateArn,ParameterValue=${CERT_ARN} \
         ParameterKey=ProdTableName,ParameterValue=gogen \
         ParameterKey=StagingTableName,ParameterValue=gogen-staging \
-    --capabilities CAPABILITY_IAM \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
     --no-confirm-changeset \
     --no-fail-on-empty-changeset
 
