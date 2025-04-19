@@ -69,6 +69,7 @@ Resources:
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
+          DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
       Events:
         GetGogen:
           Type: Api
@@ -98,6 +99,7 @@ Resources:
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
+          DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
       Events:
         ListGogens:
           Type: Api
@@ -127,6 +129,7 @@ Resources:
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
+          DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
       Events:
         SearchGogens:
           Type: Api
@@ -156,6 +159,7 @@ Resources:
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
+          DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
       Events:
         UpsertGogen:
           Type: Api
@@ -169,35 +173,6 @@ Resources:
             RestApiId: !Ref GoGenApi
             Path: /v1/upsert
             Method: OPTIONS
-
-  DynamoDBTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: gogen
-      AttributeDefinitions:
-        - AttributeName: gogen
-          AttributeType: S
-      KeySchema:
-        - AttributeName: gogen
-          KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5
-
-  DynamoDBStagingTable:
-    Type: AWS::DynamoDB::Table
-    Condition: IsStagingEnvironment
-    Properties:
-      TableName: gogen-staging
-      AttributeDefinitions:
-        - AttributeName: gogen
-          AttributeType: S
-      KeySchema:
-        - AttributeName: gogen
-          KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5
 
 Conditions:
   IsStagingEnvironment: !Equals 
@@ -223,6 +198,16 @@ Parameters:
   LambdaRoleArn:
     Type: String
     Description: ARN of the IAM role for Lambda functions
+
+  ProdTableName:
+    Type: String
+    Default: gogen
+    Description: Name of the existing DynamoDB table for Production
+
+  StagingTableName:
+    Type: String
+    Default: gogen-staging
+    Description: Name of the existing DynamoDB table for Staging
 
 Outputs:
   ApiURL:

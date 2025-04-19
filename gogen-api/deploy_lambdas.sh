@@ -163,20 +163,26 @@ echo "Using parameters:"
 echo "  Environment: ${ENVIRONMENT}"
 echo "  LambdaRoleArn: ${ROLE_ARN}"
 echo "  CertificateArn: ${CERT_ARN}"
-
-# Construct parameters string with proper escaping
-PARAMS="ParameterKey=Environment,ParameterValue=${ENVIRONMENT}"
-PARAMS="${PARAMS} ParameterKey=LambdaRoleArn,ParameterValue=${ROLE_ARN}"
-PARAMS="${PARAMS} ParameterKey=CertificateArn,ParameterValue=${CERT_ARN}"
+echo "  ProdTableName=gogen"
+echo "  StagingTableName=gogen-staging"
 
 # Print the exact parameters being used
 echo "Parameter overrides:"
-echo "$PARAMS"
+echo "  Environment=${ENVIRONMENT}"
+echo "  LambdaRoleArn=${ROLE_ARN}"
+echo "  CertificateArn=${CERT_ARN}"
+echo "  ProdTableName=gogen"
+echo "  StagingTableName=gogen-staging"
 
 sam deploy \
     --stack-name "gogen-api-${ENVIRONMENT}" \
     --s3-bucket "$S3_BUCKET" \
-    --parameter-overrides "$PARAMS" \
+    --parameter-overrides \
+        ParameterKey=Environment,ParameterValue=${ENVIRONMENT} \
+        ParameterKey=LambdaRoleArn,ParameterValue=${ROLE_ARN} \
+        ParameterKey=CertificateArn,ParameterValue=${CERT_ARN} \
+        ParameterKey=ProdTableName,ParameterValue=gogen \
+        ParameterKey=StagingTableName,ParameterValue=gogen-staging \
     --capabilities CAPABILITY_IAM \
     --no-confirm-changeset \
     --no-fail-on-empty-changeset
