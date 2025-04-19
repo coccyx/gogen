@@ -408,7 +408,6 @@ func main() {
 				fmt.Printf("%15s : %s\n", "Owner", g.Owner)
 				fmt.Printf("%15s : %s\n", "Name", g.Name)
 				fmt.Printf("%15s : %s\n", "Description", g.Description)
-				fmt.Printf("%15s : %s\n", "Gist Link", fmt.Sprintf("https://gist.github.com/%s/%s", g.Owner, g.GistID))
 				if len(g.Notes) > 0 {
 					fmt.Printf("Notes:\n")
 					fmt.Printf("------------------------------------------------------\n")
@@ -432,9 +431,9 @@ func main() {
 			Name:  "push",
 			Usage: "Push running config to Gogen sharing service",
 			ArgsUsage: "[name]\n\n" + "This will push your running config to the Gogen sharing API.  This will publish the running config\n" +
-				"in a Git Gist and make an entry in the Gogen API database pointing to the gist with a bit of metadata.\n\n" +
-				"The [name] argument will be the name of the config published.  The entry in the database\n" +
-				"will get its Description and Notes from the first sample.  If a mix is specified, it will\n" +
+				"to the Gogen API.\n\n" +
+				"The [name] argument will be the name of the config published.  The owner will be your GitHub ID.\n" +
+				"The entry in the database will get its Description and Notes from the first sample.  If a mix is specified, it will\n" +
 				"attempt to push all referenced configs in the sample.",
 			Action: func(clic *cli.Context) error {
 				// config.ResetConfig()
@@ -444,8 +443,9 @@ func main() {
 					os.Exit(1)
 				}
 				var r run.Runner
-				owner, id := config.Push(clic.Args().First(), r)
-				fmt.Printf("Push successful.  Gist: https://gist.github.com/%s/%s\n", owner, id)
+				name := clic.Args().First()
+				owner := config.Push(name, r)
+				fmt.Printf("Push successful.  Config: %s/%s\n", owner, name)
 				return nil
 			},
 		},

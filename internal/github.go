@@ -3,15 +3,11 @@ package internal
 // Mostly from https://jacobmartins.com/2016/02/29/getting-started-with-oauth2-in-go/
 
 import (
-	"context"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 
-	yaml "gopkg.in/yaml.v2"
-
-	"github.com/kr/pretty"
 	uuid "github.com/satori/go.uuid"
 	"github.com/skratchdot/open-golang/open"
 
@@ -40,77 +36,6 @@ type GitHub struct {
 	done   chan int
 	token  string
 	client *github.Client
-}
-
-// Push will create a public gist of "name.yml" from our running config
-func (gh *GitHub) Push(name string, c *Config) *github.Gist {
-	gist := new(github.Gist)
-	files := make(map[github.GistFilename]github.GistFile)
-
-	file := new(github.GistFile)
-	fname := name + ".yml"
-	file.Filename = &fname
-	var outb []byte
-	var outbs *string
-	var err error
-	if outb, err = yaml.Marshal(c); err != nil {
-		log.Fatalf("Cannot Marshal c.Global, err: %s", err)
-	}
-	outbs = new(string)
-	*outbs = string(outb)
-	file.Content = outbs
-	files[github.GistFilename(name)] = *file
-
-	gist.Files = files
-	gist.Description = &name
-	public := true
-	gist.Public = &public
-
-	var foundgist *github.Gist
-	foundgist = gh.findgist(name)
-
-	if foundgist != nil {
-		log.Debugf("Found gist, updating")
-		updatedgist, _, err := gh.client.Gists.Edit(context.Background(), *foundgist.ID, gist)
-		if err != nil {
-			log.Fatalf("Error updating gist %# v: %s", pretty.Formatter(gist), err)
-		}
-		return updatedgist
-	}
-	log.Debugf("Gist not found, creating")
-	newgist, _, err := gh.client.Gists.Create(context.Background(), gist)
-	if err != nil {
-		log.Fatalf("Error creating gist %# v: %s", pretty.Formatter(gist), err)
-	}
-	return newgist
-}
-
-// Pull grabs a named gist from GitHub
-func (gh *GitHub) Pull(name string) *github.Gist {
-	var gist *github.Gist
-	gist = gh.findgist(name)
-	if gist == nil {
-		log.Fatalf("Error finding gist %s", name+".yml")
-	}
-	return gist
-}
-
-func (gh *GitHub) findgist(name string) (foundgist *github.Gist) {
-	gists, _, err := gh.client.Gists.List(context.Background(), "", nil)
-	if err != nil {
-		log.Fatalf("Cannot pull Gists list: %s", err)
-	}
-findgist:
-	for _, testgist := range gists {
-		for _, gistfile := range testgist.Files {
-			log.Debugf("Testing %s if match %s", *gistfile.Filename, name+".yml")
-			if *gistfile.Filename == name+".yml" {
-				foundgist = testgist
-				break findgist
-			}
-		}
-	}
-	return foundgist
 }
 
 // NewGitHub returns a GitHub object, with a set auth token

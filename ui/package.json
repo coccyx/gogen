@@ -1,0 +1,51 @@
+{
+  "name": "gogen-ui",
+  "version": "1.0.0",
+  "description": "UI for interacting with Gogen API",
+  "type": "module",
+  "scripts": {
+    "copy-wasm": "cp ../build/wasm/gogen.wasm public/",
+    "dev": "npm run copy-wasm && vite",
+    "build": "npm run copy-wasm && tsc && vite build",
+    "build:staging": "npm run copy-wasm && tsc && vite build --mode staging",
+    "preview": "vite preview",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [
+    "gogen",
+    "react",
+    "ui"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "axios": "^1.6.7",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.1",
+    "typescript": "^5.3.3",
+    "xterm": "^5.3.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^14.2.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^29.5.12",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.20",
+    "canvas": "^2.11.2",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.2.6",
+    "ts-node": "^10.9.2",
+    "vite": "^5.1.3"
+  }
+}
