@@ -1,6 +1,7 @@
 module github.com/coccyx/gogen
 
-go 1.22.0
+go 1.23.0
+
 toolchain go1.24.1
 
 require (
@@ -16,7 +17,7 @@ require (
 	github.com/pkg/profile v1.7.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/segmentio/kafka-go v0.4.47
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4-0.20241118143825-d1e633264448
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/stretchr/testify v1.10.0
 	github.com/yuin/gopher-lua v1.1.1

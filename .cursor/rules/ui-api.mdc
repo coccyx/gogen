@@ -1,0 +1,97 @@
+---
+description: UI API Rules
+globs: *.tsx, *.ts
+alwaysApply: false
+---
+# Gogen UI API Integration Rules
+
+This document outlines the standards for API integration in the Gogen UI project.
+
+## API Client Structure
+
+- Use a centralized API client for all API calls
+- Define TypeScript interfaces for all API responses
+- Use axios for HTTP requests
+- Configure base URL and default headers in a single place
+
+## Error Handling
+
+- Implement proper error handling for all API calls
+- Log errors to the console for debugging
+- Return meaningful error messages to the UI
+- Use try/catch blocks for async operations
+
+## Mock Data
+
+- Create mock data for development and testing
+- Ensure mock data matches the shape of real API responses
+- Use mock data when the API is not available
+- Document the structure of mock data
+
+## Example API Client
+
+```tsx
+import axios from 'axios';
+
+// Define the base URL for the API
+const API_BASE_URL = 'https://api.gogen.io/v1';
+
+// Create an axios instance with default config
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Define interfaces for API responses
+export interface ConfigurationSummary {
+  gogen: string;
+  description: string;
+}
+
+export interface Configuration extends ConfigurationSummary {
+  yaml?: string;
+  samples?: any[];
+  raters?: any[];
+  mix?: any[];
+  generators?: any[];
+  global?: any;
+  templates?: any[];
+}
+
+// API functions
+export const gogenApi = {
+  // Get a list of all configurations
+  listConfigurations: async (): Promise<ConfigurationSummary[]> => {
+    try {
+      const response = await apiClient.get('/list');
+      return response.data.Items || [];
+    } catch (error) {
+      console.error('Error fetching configurations:', error);
+      throw error;
+    }
+  },
+
+  // Get a specific configuration by name
+  getConfiguration: async (configName: string): Promise<Configuration> => {
+    try {
+      const response = await apiClient.get(`/get/${configName}`);
+      return response.data.Item || {};
+    } catch (error) {
+      console.error(`Error fetching configuration ${configName}:`, error);
+      throw error;
+    }
+  },
+};
+
+export default gogenApi;
+```
+
+## API Integration in Components
+
+- Use the useEffect hook for data fetching
+- Implement loading states for all data-dependent components
+- Handle API errors gracefully
+- Use the API client for all API calls
+- Avoid making API calls directly in components 

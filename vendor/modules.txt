@@ -133,7 +133,7 @@ github.com/segmentio/kafka-go/protocol/saslhandshake
 github.com/segmentio/kafka-go/protocol/syncgroup
 github.com/segmentio/kafka-go/protocol/txnoffsetcommit
 github.com/segmentio/kafka-go/sasl
-# github.com/sirupsen/logrus v1.9.3
+# github.com/sirupsen/logrus v1.9.4-0.20241118143825-d1e633264448
 ## explicit; go 1.13
 github.com/sirupsen/logrus
 # github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966

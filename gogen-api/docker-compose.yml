@@ -1,0 +1,48 @@
+version: '3.8'
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb"
+    networks:
+      - lambda-local
+      
+  minio:
+    image: minio/minio:latest
+    container_name: minio-local
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - lambda-local
+      
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      /usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb myminio/gogen-configs;
+      /usr/bin/mc policy set public myminio/gogen-configs;
+      exit 0;
+      "
+    networks:
+      - lambda-local
+
+networks:
+  lambda-local:
+    name: lambda-local
+    driver: bridge
+
+volumes:
+  minio-data:

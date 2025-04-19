@@ -1,0 +1,19 @@
+{
+  "TableName": "gogen",
+  "KeySchema": [
+    {
+      "AttributeName": "gogen",
+      "KeyType": "HASH"
+    }
+  ],
+  "AttributeDefinitions": [
+    {
+      "AttributeName": "gogen",
+      "AttributeType": "S"
+    }
+  ],
+  "ProvisionedThroughput": {
+    "ReadCapacityUnits": 1,
+    "WriteCapacityUnits": 1
+  }
+}

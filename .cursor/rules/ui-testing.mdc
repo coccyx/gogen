@@ -1,0 +1,96 @@
+---
+description: Rules for how to write UI Tests
+globs: *.tsx
+alwaysApply: false
+---
+ # Gogen UI Testing Rules
+
+This document outlines the testing standards for the Gogen UI project.
+
+## Testing Framework
+
+- Use Jest as the test runner
+- Use React Testing Library for component testing
+- Place test files next to the files they test with a `.test.tsx` extension
+
+## Test Coverage
+
+- Write tests for all utility functions
+- Write tests for all API clients
+- Write tests for all reusable components
+- Focus on testing behavior, not implementation details
+
+## Testing Components
+
+- Test that components render without errors
+- Test that components display the correct content
+- Test user interactions (clicks, form submissions, etc.)
+- Test loading and error states
+
+## Mocking
+
+- Mock API calls in component tests
+- Use Jest mock functions for callbacks and event handlers
+- Create mock data that matches the shape of real data
+
+## Example Component Test
+
+```tsx
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import MyComponent from './MyComponent';
+import { fetchData } from '../api/dataApi';
+
+// Mock the API module
+jest.mock('../api/dataApi');
+
+describe('MyComponent', () => {
+  const mockData = { id: '123', name: 'Test Item' };
+  const mockOnAction = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('renders loading state initially', () => {
+    (fetchData as jest.Mock).mockResolvedValueOnce(mockData);
+    render(<MyComponent id="123" onAction={mockOnAction} />);
+    
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+  });
+
+  test('renders data when loaded', async () => {
+    (fetchData as jest.Mock).mockResolvedValueOnce(mockData);
+    render(<MyComponent id="123" onAction={mockOnAction} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Test Item')).toBeInTheDocument();
+    });
+  });
+
+  test('renders error message when API fails', async () => {
+    (fetchData as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
+    render(<MyComponent id="123" onAction={mockOnAction} />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Failed to fetch data')).toBeInTheDocument();
+    });
+  });
+
+  test('calls onAction when button is clicked', async () => {
+    (fetchData as jest.Mock).mockResolvedValueOnce(mockData);
+    render(<MyComponent id="123" onAction={mockOnAction} />);
+    
+    await waitFor(() => {
+      fireEvent.click(screen.getByText('Perform Action'));
+      expect(mockOnAction).toHaveBeenCalledWith('123');
+    });
+  });
+});
+```
+
+## Development Server Verification
+
+- After running the development server, always prompt the user to verify if the UI is working as expected
+- Example prompt: "Is the UI loading correctly at http://localhost:3000? Are there any visual issues or console errors you're seeing?"
+- Address any issues reported by the user before proceeding with further development
