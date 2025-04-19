@@ -90,9 +90,10 @@ Resources:
                 integrationSubtype: s3
                 credentials: !GetAtt ApiGatewayS3Role.Arn
                 httpMethod: GET
-                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/${BucketName}/linux/gogen'
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/{bucket}/{key}'
                 requestParameters:
-                  integration.request.path.BucketName: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
+                  integration.request.path.bucket: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
+                  integration.request.path.key: "'linux/gogen'"
                 responses:
                   default:
                     statusCode: '200'
@@ -117,9 +118,10 @@ Resources:
                 integrationSubtype: s3
                 credentials: !GetAtt ApiGatewayS3Role.Arn
                 httpMethod: GET
-                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/${BucketName}/windows/gogen.exe'
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/{bucket}/{key}'
                 requestParameters:
-                  integration.request.path.BucketName: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
+                  integration.request.path.bucket: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
+                  integration.request.path.key: "'windows/gogen.exe'"
                 responses:
                   default:
                     statusCode: '200'
@@ -144,9 +146,10 @@ Resources:
                 integrationSubtype: s3
                 credentials: !GetAtt ApiGatewayS3Role.Arn
                 httpMethod: GET
-                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/${BucketName}/osx/gogen'
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/{bucket}/{key}'
                 requestParameters:
-                  integration.request.path.BucketName: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
+                  integration.request.path.bucket: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
+                  integration.request.path.key: "'osx/gogen'"
                 responses:
                   default:
                     statusCode: '200'
@@ -171,9 +174,10 @@ Resources:
                 integrationSubtype: s3
                 credentials: !GetAtt ApiGatewayS3Role.Arn
                 httpMethod: GET
-                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/${BucketName}/wasm/gogen.wasm'
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/{bucket}/{key}'
                 requestParameters:
-                  integration.request.path.BucketName: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
+                  integration.request.path.bucket: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
+                  integration.request.path.key: "'wasm/gogen.wasm'"
                 responses:
                   default:
                     statusCode: '200'
