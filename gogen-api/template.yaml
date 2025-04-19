@@ -173,7 +173,7 @@ Resources:
   DynamoDBTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub ${AWS::StackName}-gogen
+      TableName: gogen
       AttributeDefinitions:
         - AttributeName: gogen
           AttributeType: S
