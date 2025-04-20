@@ -41,17 +41,14 @@
 				"s3:ListBucket",
 				"s3:GetBucketLocation",
 				"iam:PassRole",
-				"iam:GetRole",
-				"iam:CreateRole",
-				"iam:DeleteRole",
-				"iam:PutRolePolicy",
-				"iam:DeleteRolePolicy"
+				"iam:GetRole"
 			],
 			"Resource": [
 				"arn:aws:cloudformation:*:*:stack/gogen-api-prod/*",
 				"arn:aws:cloudformation:*:*:stack/gogen-api-staging/*",
 				"arn:aws:lambda:*:*:function:gogen-api-prod-*",
 				"arn:aws:lambda:*:*:function:gogen-api-staging-*",
+				"arn:aws:apigateway:*::/restapis",
 				"arn:aws:apigateway:*::/restapis/*",
 				"arn:aws:apigateway:*::/restapis/*/stages/*",
 				"arn:aws:apigateway:*::/restapis/*/deployments",
@@ -70,8 +67,46 @@
 				"arn:aws:iam::*:role/gogen_lambda_staging",
 				"arn:aws:iam::*:role/service-role/gogen_lambda",
 				"arn:aws:iam::*:role/service-role/gogen_lambda_staging",
+				"arn:aws:iam::*:role/gogen-api-prod-ApiGatewayS3Role-*",
+				"arn:aws:iam::*:role/gogen-api-staging-ApiGatewayS3Role-*",
 				"arn:aws:cloudformation:us-east-1:aws:transform/Serverless-2016-10-31"
 			]
+		},
+		{
+			"Sid": "IAMRoleCreationPermissions",
+			"Effect": "Allow",
+			"Action": "iam:CreateRole",
+			"Resource": "*"
+		},
+		{
+			"Sid": "IAMRolePolicyCreationRestricted",
+			"Effect": "Allow",
+			"Action": [
+				"iam:PutRolePolicy",
+				"iam:GetRole"
+			],
+			"Resource": [
+				"arn:aws:iam::*:role/gogen-api-prod-ApiGatewayS3Role-*",
+				"arn:aws:iam::*:role/gogen-api-staging-ApiGatewayS3Role-*"
+			]
+		},
+		{
+			"Sid": "IAMRoleModificationDeletionRestricted",
+			"Effect": "Allow",
+			"Action": [
+				"iam:DeleteRolePolicy",
+				"iam:DeleteRole",
+				"iam:TagRole"
+			],
+			"Resource": "*",
+			"Condition": {
+				"StringEquals": {
+					"aws:ResourceTag/aws:cloudformation:stack-name": [
+						"gogen-api-prod",
+						"gogen-api-staging"
+					]
+				}
+			}
 		},
 		{
 			"Sid": "GeneralPermissions",

@@ -99,7 +99,7 @@ Resources:
                     statusCode: '200'
                     responseParameters:
                       method.response.header.Content-Type: "'application/octet-stream'"
-                      method.response.header.Content-Disposition: "'attachment; filename=\"gogen\"'"
+                      method.response.header.Content-Disposition: "'attachment; filename=gogen'"
           /windows/gogen.exe:
             get:
               summary: Download Windows binary
@@ -127,7 +127,7 @@ Resources:
                     statusCode: '200'
                     responseParameters:
                       method.response.header.Content-Type: "'application/x-msdownload'"
-                      method.response.header.Content-Disposition: "'attachment; filename=\"gogen.exe\"'"
+                      method.response.header.Content-Disposition: "'attachment; filename=gogen.exe'"
           /osx/gogen:
             get:
               summary: Download macOS binary
@@ -155,7 +155,7 @@ Resources:
                     statusCode: '200'
                     responseParameters:
                       method.response.header.Content-Type: "'application/octet-stream'"
-                      method.response.header.Content-Disposition: "'attachment; filename=\"gogen\"'"
+                      method.response.header.Content-Disposition: "'attachment; filename=gogen'"
           /wasm/gogen.wasm:
             get:
               summary: Download WASM module
@@ -183,7 +183,7 @@ Resources:
                     statusCode: '200'
                     responseParameters:
                       method.response.header.Content-Type: "'application/wasm'"
-                      method.response.header.Content-Disposition: "'attachment; filename=\"gogen.wasm\"'"
+                      method.response.header.Content-Disposition: "'attachment; filename=gogen.wasm'"
           /v1/get/{proxy+}:
             get:
               responses: {}
