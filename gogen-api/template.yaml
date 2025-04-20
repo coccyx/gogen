@@ -5,6 +5,7 @@ Resources:
   ApiGatewayLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
+      LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-api-logs
       RetentionInDays: 14
 
   ApiGatewayLoggingRole:
@@ -26,7 +27,7 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !GetAtt ApiGatewayLogGroup.Arn
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/apigateway/${AWS::StackName}-api-logs:*
 
   GoGenApi:
     Type: AWS::Serverless::Api
@@ -38,7 +39,7 @@ Resources:
         - 'application/x-msdownload'
         - 'application/wasm'
       AccessLogSetting:
-        DestinationArn: !GetAtt ApiGatewayLogGroup.Arn
+        DestinationArn: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/apigateway/${AWS::StackName}-api-logs:*
         Format: >-
           {
           "requestId": "$context.requestId",
