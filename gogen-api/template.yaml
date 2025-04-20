@@ -6,7 +6,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-api-logs
-      RetentionInDays: 14
+      # RetentionInDays: 14
 
   ApiGatewayLoggingRole:
     Type: AWS::IAM::Role
@@ -31,7 +31,10 @@ Resources:
 
   GoGenApi:
     Type: AWS::Serverless::Api
-    DependsOn: ApiGatewayLogGroup
+    DependsOn:
+      - ApiGatewayAccount
+      - ApiGatewayLogGroup
+      - ApiGatewayLoggingRole
     Properties:
       StageName: v1
       BinaryMediaTypes:

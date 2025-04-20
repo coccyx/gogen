@@ -85,7 +85,8 @@
 			"Effect": "Allow",
 			"Action": [
 				"iam:PutRolePolicy",
-				"iam:GetRole"
+				"iam:GetRole",
+				"iam:DeleteRolePolicy"
 			],
 			"Resource": [
 				"arn:aws:iam::*:role/gogen-api-prod-ApiGatewayLoggingRole-*",
@@ -96,7 +97,6 @@
 			"Sid": "IAMRoleModificationDeletionRestricted",
 			"Effect": "Allow",
 			"Action": [
-				"iam:DeleteRolePolicy",
 				"iam:DeleteRole",
 				"iam:TagRole"
 			],
