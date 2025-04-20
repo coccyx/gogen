@@ -41,7 +41,9 @@
 				"s3:ListBucket",
 				"s3:GetBucketLocation",
 				"iam:PassRole",
-				"iam:GetRole"
+				"iam:GetRole",
+				"logs:CreateLogGroup",
+				"logs:DescribeLogGroups"
 			],
 			"Resource": [
 				"arn:aws:cloudformation:*:*:stack/gogen-api-prod/*",
@@ -67,8 +69,8 @@
 				"arn:aws:iam::*:role/gogen_lambda_staging",
 				"arn:aws:iam::*:role/service-role/gogen_lambda",
 				"arn:aws:iam::*:role/service-role/gogen_lambda_staging",
-				"arn:aws:iam::*:role/gogen-api-prod-ApiGatewayS3Role-*",
-				"arn:aws:iam::*:role/gogen-api-staging-ApiGatewayS3Role-*",
+				"arn:aws:iam::*:role/gogen-api-prod-ApiGatewayLoggingRole-*",
+				"arn:aws:iam::*:role/gogen-api-staging-ApiGatewayLoggingRole-*",
 				"arn:aws:cloudformation:us-east-1:aws:transform/Serverless-2016-10-31"
 			]
 		},
@@ -86,8 +88,8 @@
 				"iam:GetRole"
 			],
 			"Resource": [
-				"arn:aws:iam::*:role/gogen-api-prod-ApiGatewayS3Role-*",
-				"arn:aws:iam::*:role/gogen-api-staging-ApiGatewayS3Role-*"
+				"arn:aws:iam::*:role/gogen-api-prod-ApiGatewayLoggingRole-*",
+				"arn:aws:iam::*:role/gogen-api-staging-ApiGatewayLoggingRole-*"
 			]
 		},
 		{

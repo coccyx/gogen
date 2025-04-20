@@ -153,9 +153,20 @@ fi
 
 echo "Using certificate ARN: $CERT_ARN"
 
+# Make sure we are in the right directory for SAM commands
+cd "$SCRIPT_DIR"
+
 # Build the SAM application
 echo "Building SAM application..."
+echo "Ensuring clean build directory..."
+rm -rfv .aws-sam/build # Ensure clean build directory (Verbose)
+echo "Build directory cleanup attempted."
 sam build --use-container
+
+# Debug: Print the built template contents
+echo "--- Contents of built template ---"
+cat .aws-sam/build/template.yaml || echo "Built template not found!"
+echo "--- End of built template ---"
 
 # Deploy the SAM application
 echo "Deploying SAM application for $ENVIRONMENT environment..."

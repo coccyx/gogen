@@ -2,7 +2,13 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Resources:
-  ApiGatewayS3Role:
+  ApiGatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${GoGenApi}
+      RetentionInDays: 14
+
+  ApiGatewayLoggingRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -13,57 +19,44 @@ Resources:
               Service: apigateway.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: ApiGatewayS3AccessPolicy
+        - PolicyName: ApiGatewayCloudWatchLogsPolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action: s3:GetObject
-                Resource:
-                  - !Sub 'arn:aws:s3:::${ProdBucketName}/*'
-                  - !Sub 'arn:aws:s3:::${StagingBucketName}/*'
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt ApiGatewayLogGroup.Arn
 
   GoGenApi:
     Type: AWS::Serverless::Api
     Properties:
       StageName: v1
-      OpenApiVersion: '2.0'
-      Auth:
-        DefaultAuthorizer: NONE
-      GatewayResponses:
-        DEFAULT_4XX:
-          ResponseParameters:
-            Headers:
-              Access-Control-Allow-Origin: !If 
-                - IsProduction
-                - "'https://gogen.io'"
-                - "'https://staging.gogen.io'"
-              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
-              Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With'"
-              Access-Control-Allow-Credentials: "'true'"
-        DEFAULT_5XX:
-          ResponseParameters:
-            Headers:
-              Access-Control-Allow-Origin: !If 
-                - IsProduction
-                - "'https://gogen.io'"
-                - "'https://staging.gogen.io'"
-              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
-              Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With'"
-              Access-Control-Allow-Credentials: "'true'"
-      Cors:
-        AllowMethods: "'GET,POST,OPTIONS'"
-        AllowHeaders: "'Content-Type,Authorization,X-Requested-With'"
-        AllowOrigin: !If 
-          - IsProduction
-          - "'https://gogen.io'"
-          - "'https://staging.gogen.io'"
-        AllowCredentials: true
-        MaxAge: 600
+      BinaryMediaTypes:
+        - 'application/octet-stream'
+        - 'application/x-msdownload'
+        - 'application/wasm'
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiGatewayLogGroup.Arn
+        Format: >-
+          {
+          "requestId": "$context.requestId",
+          "ip": "$context.identity.sourceIp",
+          "caller": "$context.identity.caller",
+          "user": "$context.identity.user",
+          "requestTime": "$context.requestTime",
+          "httpMethod": "$context.httpMethod",
+          "resourcePath": "$context.resourcePath",
+          "status": "$context.status",
+          "protocol": "$context.protocol",
+          "responseLength": "$context.responseLength"
+          }
       MethodSettings:
         - ResourcePath: '/*'
           HttpMethod: '*'
-          CachingEnabled: false
+          LoggingLevel: INFO
+          DataTraceEnabled: true
           ThrottlingBurstLimit: 5000
           ThrottlingRateLimit: 10000
       DefinitionBody:
@@ -71,119 +64,134 @@ Resources:
         info:
           title: GoGen API
           version: '1.0'
+        x-amazon-apigateway-cors:
+          allowOrigins:
+            - !If [IsProduction, "'https://gogen.io'", "'https://staging.gogen.io'"]
+          allowMethods:
+            - GET
+            - POST
+            - OPTIONS
+          allowHeaders:
+            - Content-Type
+            - Authorization
+            - X-Requested-With
+          allowCredentials: true
+          maxAge: 600
         paths:
           /linux/gogen:
             get:
-              summary: Download Linux binary
+              summary: Redirect to Linux binary download
               responses:
-                '200':
-                  description: Linux binary file
+                '302':
+                  description: Redirect to S3
                   headers:
-                    Content-Type:
-                      schema:
-                        type: string
-                    Content-Disposition:
+                    Location:
                       schema:
                         type: string
               x-amazon-apigateway-integration:
-                type: aws
-                integrationSubtype: s3
-                credentials: !GetAtt ApiGatewayS3Role.Arn
-                httpMethod: GET
-                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/{bucket}/{key}'
-                requestParameters:
-                  integration.request.path.bucket: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
-                  integration.request.path.key: "'linux/gogen'"
+                type: mock
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
                 responses:
                   default:
-                    statusCode: '200'
+                    statusCode: '302'
                     responseParameters:
-                      method.response.header.Content-Type: "'application/octet-stream'"
-                      method.response.header.Content-Disposition: "'attachment; filename=gogen'"
+                      method.response.header.Location: !Join [
+                        '',
+                        [
+                          "'",
+                          !If [
+                            IsProduction,
+                            'https://s3.us-east-1.amazonaws.com/gogen-artifacts-prod/linux/gogen',
+                            'https://s3.us-east-1.amazonaws.com/gogen-artifacts-staging/linux/gogen'
+                          ],
+                          "'"
+                        ]
+                      ]
           /windows/gogen.exe:
             get:
-              summary: Download Windows binary
+              summary: Redirect to Windows binary download
               responses:
-                '200':
-                  description: Windows binary file (.exe)
+                '302':
+                  description: Redirect to S3
                   headers:
-                    Content-Type:
-                      schema:
-                        type: string
-                    Content-Disposition:
-                      schema:
-                        type: string
+                    Location: { schema: { type: string } }
               x-amazon-apigateway-integration:
-                type: aws
-                integrationSubtype: s3
-                credentials: !GetAtt ApiGatewayS3Role.Arn
-                httpMethod: GET
-                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/{bucket}/{key}'
-                requestParameters:
-                  integration.request.path.bucket: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
-                  integration.request.path.key: "'windows/gogen.exe'"
+                type: mock
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
                 responses:
                   default:
-                    statusCode: '200'
+                    statusCode: '302'
                     responseParameters:
-                      method.response.header.Content-Type: "'application/x-msdownload'"
-                      method.response.header.Content-Disposition: "'attachment; filename=gogen.exe'"
+                      method.response.header.Location: !Join [
+                        '',
+                        [
+                          "'",
+                          !If [
+                            IsProduction,
+                            'https://s3.us-east-1.amazonaws.com/gogen-artifacts-prod/windows/gogen.exe',
+                            'https://s3.us-east-1.amazonaws.com/gogen-artifacts-staging/windows/gogen.exe'
+                          ],
+                          "'"
+                        ]
+                      ]
           /osx/gogen:
             get:
-              summary: Download macOS binary
+              summary: Redirect to macOS binary download
               responses:
-                '200':
-                  description: macOS binary file
+                '302':
+                  description: Redirect to S3
                   headers:
-                    Content-Type:
-                      schema:
-                        type: string
-                    Content-Disposition:
-                      schema:
-                        type: string
+                    Location: { schema: { type: string } }
               x-amazon-apigateway-integration:
-                type: aws
-                integrationSubtype: s3
-                credentials: !GetAtt ApiGatewayS3Role.Arn
-                httpMethod: GET
-                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/{bucket}/{key}'
-                requestParameters:
-                  integration.request.path.bucket: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
-                  integration.request.path.key: "'osx/gogen'"
+                type: mock
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
                 responses:
                   default:
-                    statusCode: '200'
+                    statusCode: '302'
                     responseParameters:
-                      method.response.header.Content-Type: "'application/octet-stream'"
-                      method.response.header.Content-Disposition: "'attachment; filename=gogen'"
+                      method.response.header.Location: !Join [
+                        '',
+                        [
+                          "'",
+                          !If [
+                            IsProduction,
+                            'https://s3.us-east-1.amazonaws.com/gogen-artifacts-prod/osx/gogen',
+                            'https://s3.us-east-1.amazonaws.com/gogen-artifacts-staging/osx/gogen'
+                          ],
+                          "'"
+                        ]
+                      ]
           /wasm/gogen.wasm:
             get:
-              summary: Download WASM module
+              summary: Redirect to WASM module download
               responses:
-                '200':
-                  description: WASM module file (.wasm)
+                '302':
+                  description: Redirect to S3
                   headers:
-                    Content-Type:
-                      schema:
-                        type: string
-                    Content-Disposition:
-                      schema:
-                        type: string
+                    Location: { schema: { type: string } }
               x-amazon-apigateway-integration:
-                type: aws
-                integrationSubtype: s3
-                credentials: !GetAtt ApiGatewayS3Role.Arn
-                httpMethod: GET
-                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:s3:path/{bucket}/{key}'
-                requestParameters:
-                  integration.request.path.bucket: !If [IsProduction, !Ref ProdBucketName, !Ref StagingBucketName]
-                  integration.request.path.key: "'wasm/gogen.wasm'"
+                type: mock
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
                 responses:
                   default:
-                    statusCode: '200'
+                    statusCode: '302'
                     responseParameters:
-                      method.response.header.Content-Type: "'application/wasm'"
-                      method.response.header.Content-Disposition: "'attachment; filename=gogen.wasm'"
+                      method.response.header.Location: !Join [
+                        '',
+                        [
+                          "'",
+                          !If [
+                            IsProduction,
+                            'https://s3.us-east-1.amazonaws.com/gogen-artifacts-prod/wasm/gogen.wasm',
+                            'https://s3.us-east-1.amazonaws.com/gogen-artifacts-staging/wasm/gogen.wasm'
+                          ],
+                          "'"
+                        ]
+                      ]
           /v1/get/{proxy+}:
             get:
               responses: {}
@@ -191,27 +199,6 @@ Resources:
                 httpMethod: POST
                 type: aws_proxy
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetFunction.Arn}/invocations"
-            options:
-              responses:
-                '200':
-                  description: CORS preflight response
-                  headers:
-                    Access-Control-Allow-Origin: { schema: { type: string } }
-                    Access-Control-Allow-Methods: { schema: { type: string } }
-                    Access-Control-Allow-Headers: { schema: { type: string } }
-                    Access-Control-Allow-Credentials: { schema: { type: string } }
-              x-amazon-apigateway-integration:
-                type: mock
-                requestTemplates:
-                  application/json: '{"statusCode": 200}'
-                responses:
-                  default:
-                    statusCode: '200'
-                    responseParameters:
-                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With'"
-                      method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
-                      method.response.header.Access-Control-Allow-Origin: !If [IsProduction, "'https://gogen.io'", "'https://staging.gogen.io'"]
-                      method.response.header.Access-Control-Allow-Credentials: "'true'"
           /v1/list:
             get:
               responses: {}
@@ -219,16 +206,6 @@ Resources:
                 httpMethod: POST
                 type: aws_proxy
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListFunction.Arn}/invocations"
-            options:
-              responses:
-                '200': { description: CORS preflight response, headers: { Access-Control-Allow-Origin: { schema: { type: string } }, Access-Control-Allow-Methods: { schema: { type: string } }, Access-Control-Allow-Headers: { schema: { type: string } }, Access-Control-Allow-Credentials: { schema: { type: string } } } }
-              x-amazon-apigateway-integration:
-                type: mock
-                requestTemplates: { application/json: '{"statusCode": 200}' }
-                responses:
-                  default:
-                    statusCode: '200'
-                    responseParameters: { method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With'", method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'", method.response.header.Access-Control-Allow-Origin: !If [IsProduction, "'https://gogen.io'", "'https://staging.gogen.io'"], method.response.header.Access-Control-Allow-Credentials: "'true'" }
           /v1/search:
             get:
               responses: {}
@@ -236,16 +213,6 @@ Resources:
                 httpMethod: POST
                 type: aws_proxy
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SearchFunction.Arn}/invocations"
-            options:
-              responses:
-                '200': { description: CORS preflight response, headers: { Access-Control-Allow-Origin: { schema: { type: string } }, Access-Control-Allow-Methods: { schema: { type: string } }, Access-Control-Allow-Headers: { schema: { type: string } }, Access-Control-Allow-Credentials: { schema: { type: string } } } }
-              x-amazon-apigateway-integration:
-                type: mock
-                requestTemplates: { application/json: '{"statusCode": 200}' }
-                responses:
-                  default:
-                    statusCode: '200'
-                    responseParameters: { method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With'", method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'", method.response.header.Access-Control-Allow-Origin: !If [IsProduction, "'https://gogen.io'", "'https://staging.gogen.io'"], method.response.header.Access-Control-Allow-Credentials: "'true'" }
           /v1/upsert:
             post:
               responses: {}
@@ -253,16 +220,6 @@ Resources:
                 httpMethod: POST
                 type: aws_proxy
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpsertFunction.Arn}/invocations"
-            options:
-              responses:
-                '200': { description: CORS preflight response, headers: { Access-Control-Allow-Origin: { schema: { type: string } }, Access-Control-Allow-Methods: { schema: { type: string } }, Access-Control-Allow-Headers: { schema: { type: string } }, Access-Control-Allow-Credentials: { schema: { type: string } } } }
-              x-amazon-apigateway-integration:
-                type: mock
-                requestTemplates: { application/json: '{"statusCode": 200}' }
-                responses:
-                  default:
-                    statusCode: '200'
-                    responseParameters: { method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With'", method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'", method.response.header.Access-Control-Allow-Origin: !If [IsProduction, "'https://gogen.io'", "'https://staging.gogen.io'"], method.response.header.Access-Control-Allow-Credentials: "'true'" }
       Domain:
         DomainName: !If 
           - IsProduction
@@ -340,6 +297,38 @@ Resources:
           ENVIRONMENT: !Ref Environment
           DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
 
+  ListFunctionApiGatewayInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ListFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GoGenApi}/*/GET/v1/list
+
+  SearchFunctionApiGatewayInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SearchFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GoGenApi}/*/GET/v1/search
+
+  UpsertFunctionApiGatewayInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref UpsertFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GoGenApi}/*/POST/v1/upsert
+
+  GetFunctionApiGatewayInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref GetFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GoGenApi}/*/GET/v1/get/*
+
 Conditions:
   IsStagingEnvironment: !Equals 
     - !Ref Environment
@@ -374,16 +363,6 @@ Parameters:
     Type: String
     Default: gogen-staging
     Description: Name of the existing DynamoDB table for Staging
-
-  ProdBucketName:
-    Type: String
-    Default: gogen-artifacts-prod
-    Description: Name of the S3 bucket for Production artifacts
-
-  StagingBucketName:
-    Type: String
-    Default: gogen-artifacts-staging
-    Description: Name of the S3 bucket for Staging artifacts
 
 Outputs:
   ApiURL:
