@@ -30,6 +30,8 @@
 				"lambda:DeleteAlias",
 				"lambda:GetAlias",
 				"lambda:TagResource",
+				"lambda:AddPermission",
+				"lambda:RemovePermission",
 				"apigateway:GET",
 				"apigateway:POST",
 				"apigateway:PUT",
@@ -41,9 +43,7 @@
 				"s3:ListBucket",
 				"s3:GetBucketLocation",
 				"iam:PassRole",
-				"iam:GetRole",
-				"logs:CreateLogGroup",
-				"logs:DescribeLogGroups"
+				"iam:GetRole"
 			],
 			"Resource": [
 				"arn:aws:cloudformation:*:*:stack/gogen-api-prod/*",
@@ -116,7 +116,11 @@
 			"Action": [
 				"acm:DescribeCertificate",
 				"acm:ListCertificates",
-				"sts:GetCallerIdentity"
+				"sts:GetCallerIdentity",
+				"logs:CreateLogGroup",
+				"logs:DescribeLogGroups",
+				"logs:DeleteLogGroup",
+				"logs:TagLogGroup"
 			],
 			"Resource": "*"
 		},
