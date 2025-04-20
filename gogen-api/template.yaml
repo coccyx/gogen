@@ -5,7 +5,6 @@ Resources:
   ApiGatewayLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub /aws/apigateway/${GoGenApi}/v1
       RetentionInDays: 14
 
   ApiGatewayLoggingRole:
