@@ -1,0 +1,177 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      GO111MODULE: on
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+
+      - name: Get version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Update VERSION file
+        run: echo "${{ steps.version.outputs.VERSION }}" > VERSION
+
+      - name: Install Dependencies
+        run: make GOBIN=$HOME/gopath/bin deps
+
+      - name: Run Tests
+        run: make GOBIN=$HOME/gopath/bin test
+
+      - name: Build Project
+        run: make GOBIN=$HOME/gopath/bin build
+
+      - name: Build Docker Images
+        run: |
+          # Build main gogen image with version tag
+          docker build -t clintsharp/gogen:${{ steps.version.outputs.VERSION }} .
+          docker tag clintsharp/gogen:${{ steps.version.outputs.VERSION }} clintsharp/gogen:latest
+          
+          # Build gogen-api image with version tag
+          cd gogen-api
+          docker build -t clintsharp/gogen-api:${{ steps.version.outputs.VERSION }} .
+          docker tag clintsharp/gogen-api:${{ steps.version.outputs.VERSION }} clintsharp/gogen-api:latest
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push Docker Images
+        run: |
+          # Push main gogen image with version tag and latest
+          docker push clintsharp/gogen:${{ steps.version.outputs.VERSION }}
+          docker push clintsharp/gogen:latest
+          
+          # Push gogen-api image with version tag and latest
+          docker push clintsharp/gogen-api:${{ steps.version.outputs.VERSION }}
+          docker push clintsharp/gogen-api:latest
+
+      - name: Create Release Archive
+        run: |
+          # Create archives only if build directories exist
+          if [ -d "build/linux" ]; then
+            tar -czf gogen-${{ steps.version.outputs.VERSION }}-linux-amd64.tar.gz -C build/linux gogen
+          fi
+          if [ -d "build/darwin" ]; then
+            tar -czf gogen-${{ steps.version.outputs.VERSION }}-darwin-amd64.tar.gz -C build/darwin gogen
+          fi
+          if [ -d "build/windows" ]; then
+            tar -czf gogen-${{ steps.version.outputs.VERSION }}-windows-amd64.tar.gz -C build/windows gogen.exe
+          fi
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "## Release ${{ steps.version.outputs.TAG_NAME }}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### Docker Images" >> $GITHUB_OUTPUT
+          echo "- \`docker pull clintsharp/gogen:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_OUTPUT
+          echo "- \`docker pull clintsharp/gogen-api:${{ steps.version.outputs.VERSION }}\`" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### Latest Tag" >> $GITHUB_OUTPUT
+          echo "- \`docker pull clintsharp/gogen:latest\`" >> $GITHUB_OUTPUT
+          echo "- \`docker pull clintsharp/gogen-api:latest\`" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          if [ -f RELEASE_NOTES.md ]; then
+            cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
+          else
+            echo "### Changes in this release" >> $GITHUB_OUTPUT
+            # Get the previous tag for comparison
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            if [ -n "$PREV_TAG" ]; then
+              git log --pretty=format:"- %s" ${PREV_TAG}..HEAD >> $GITHUB_OUTPUT
+            else
+              git log --pretty=format:"- %s" -10 >> $GITHUB_OUTPUT
+            fi
+          fi
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.version.outputs.TAG_NAME }}
+          body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+          files: |
+            gogen-*.tar.gz
+          draft: false
+          prerelease: false
+
+      # Deploy to production
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy Build Artifacts to S3
+        run: |
+          if [ -d "build" ]; then
+            aws s3 sync build s3://gogen-artifacts-prod --delete
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Deploy UI
+        run: |
+          chmod +x ui/deploy_ui.sh
+          ui/deploy_ui.sh
+
+  deploy-lambdas:
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          
+      - name: Install AWS SAM CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install aws-sam-cli boto3 botocore awscli
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+          
+      - name: Deploy Lambda Functions
+        env:
+          ROLE_ARN: ${{ secrets.PROD_LAMBDA_ROLE_ARN }}
+        run: |
+          cd gogen-api
+          bash deploy_lambdas.sh

@@ -1,5 +1,22 @@
 # Gogen Release Notes
 
+## Version 0.12.1
+
+### New Features
+- Added automated release cycle with Docker image versioning
+  - Docker images now tagged with semantic version numbers (e.g., `clintsharp/gogen:0.12.1`)
+  - Added GitHub Actions workflow for automated releases on version tags
+  - Both `gogen` and `gogen-api` images are versioned and published to Docker Hub
+
+### Improvements
+- Enhanced CI/CD pipeline to support version-based releases
+  - CI workflow now skips on tag pushes to avoid conflicts with release workflow
+  - Updated `docker-push.sh` script to support version tagging
+  - Release workflow creates GitHub releases with build artifacts
+
+### Bug Fixes
+- Fixed race condition with nil pointer in outputter.go
+
 ## Version 0.12.0 
 
 ### Breaking Changes
