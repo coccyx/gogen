@@ -28,3 +28,4 @@ ui/build/*
 ui/coverage/*
 ui/public/gogen.wasm
 ui/.vite
+*.idea
