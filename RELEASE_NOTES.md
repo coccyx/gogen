@@ -16,6 +16,7 @@
 
 ### Bug Fixes
 - Fixed race condition with nil pointer in outputter.go
+- Added safety bypass for outputter accounting in fullRetard/berserk mode (CacheIntervals=2147483647) to prevent potential issues
 
 ## Version 0.12.0 
 

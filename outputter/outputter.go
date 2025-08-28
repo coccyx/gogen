@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	config "github.com/coccyx/gogen/internal"
@@ -19,9 +20,9 @@ var (
 	BytesWritten  map[string]int64
 	Mutex         sync.RWMutex
 	lastTS        time.Time
-	rotchan       chan *config.OutputStats
-	rotchanMutex  sync.RWMutex
-	rotwg         sync.WaitGroup
+	rotchanPtr    atomic.Pointer[chan *config.OutputStats]
+	rotDonePtr    atomic.Pointer[chan struct{}]
+	readStatsDone atomic.Pointer[chan struct{}]
 	gout          [config.MaxOutputThreads]config.Outputter
 	lasterr       [config.MaxOutputThreads]lastError
 	rotInterval   int
@@ -45,14 +46,29 @@ func init() {
 // ROT is intended to be started as a goroutine which will log output every c.
 func ROT(c *config.Config) {
 	rotInterval = c.Global.ROTInterval
+	
+	// Check if we're in berserk mode (CacheIntervals set to max int)
+	if c.Global.CacheIntervals == 2147483647 {
+		// In berserk mode, don't create channels or start goroutines
+		// Store nil to indicate accounting is disabled
+		rotchanPtr.Store(nil)
+		log.Debug("Berserk mode detected - disabling outputter accounting for maximum throughput")
+		return
+	}
 
-	// Thread-safe initialization of rotchan
-	rotchanMutex.Lock()
-	rotchan = make(chan *config.OutputStats)
-	rotchanMutex.Unlock()
+	// Create channel with large buffer for performance
+	ch := make(chan *config.OutputStats, 10000)
+	rotchanPtr.Store(&ch)
+	
+	// Create done channel for clean shutdown
+	done := make(chan struct{})
+	rotDonePtr.Store(&done)
+	
+	// Create done channel for readStats
+	statsDone := make(chan struct{})
+	readStatsDone.Store(&statsDone)
 
-	rotwg.Add(1)
-	go readStats()
+	go readStats(&ch, &statsDone)
 
 	lastEventsWritten := make(map[string]int64)
 	lastBytesWritten := make(map[string]int64)
@@ -61,41 +77,58 @@ func ROT(c *config.Config) {
 	lastTS = time.Now()
 	for {
 		timer := time.NewTimer(time.Duration(rotInterval) * time.Second)
-		<-timer.C
-		n := time.Now()
-		eventssec = 0
-		kbytessec = 0
-		Mutex.RLock()
-		for k := range BytesWritten {
-			tempEW = EventsWritten[k]
-			tempBW = BytesWritten[k]
-			eventssec += float64(tempEW-lastEventsWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval)
-			kbytessec += float64(tempBW-lastBytesWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval) / 1024
-			gbday = (kbytessec * 60 * 60 * 24) / 1024 / 1024
-			lastEventsWritten[k] = tempEW
-			lastBytesWritten[k] = tempBW
+		select {
+		case <-timer.C:
+			n := time.Now()
+			eventssec = 0
+			kbytessec = 0
+			Mutex.RLock()
+			for k := range BytesWritten {
+				tempEW = EventsWritten[k]
+				tempBW = BytesWritten[k]
+				eventssec += float64(tempEW-lastEventsWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval)
+				kbytessec += float64(tempBW-lastBytesWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval) / 1024
+				gbday = (kbytessec * 60 * 60 * 24) / 1024 / 1024
+				lastEventsWritten[k] = tempEW
+				lastBytesWritten[k] = tempBW
+			}
+			Mutex.RUnlock()
+			log.WithFields(log.Fields{
+				"eventsSec": eventssec,
+				"kbytesSec": kbytessec,
+				"gbDay":     gbday,
+			}).Infof("Events/Sec: %.2f Kilobytes/Sec: %.2f GB/Day: %.2f", eventssec, kbytessec, gbday)
+			lastTS = n
+		case <-done:
+			timer.Stop()
+			return
 		}
-		Mutex.RUnlock()
-		log.WithFields(log.Fields{
-			"eventsSec": eventssec,
-			"kbytesSec": kbytessec,
-			"gbDay":     gbday,
-		}).Infof("Events/Sec: %.2f Kilobytes/Sec: %.2f GB/Day: %.2f", eventssec, kbytessec, gbday)
-		lastTS = n
 	}
 }
 
 // ReadFinal outputs final statistics about our run
 func ReadFinal() {
-	// Thread-safe channel closing
-	rotchanMutex.Lock()
-	if rotchan != nil {
-		close(rotchan)
-		rotchan = nil
+	// Signal ROT goroutine to stop if it's running
+	donePtr := rotDonePtr.Load()
+	if donePtr != nil && *donePtr != nil {
+		close(*donePtr)
+		rotDonePtr.Store(nil)
 	}
-	rotchanMutex.Unlock()
-
-	rotwg.Wait()
+	
+	// Load and close channel atomically
+	chPtr := rotchanPtr.Load()
+	if chPtr != nil && *chPtr != nil {
+		close(*chPtr)
+		// Store nil to indicate we're shutting down
+		rotchanPtr.Store(nil)
+		
+		// Wait for readStats to finish
+		statsDonePtr := readStatsDone.Load()
+		if statsDonePtr != nil && *statsDonePtr != nil {
+			<-*statsDonePtr
+			readStatsDone.Store(nil)
+		}
+	}
 
 	totalEvents := int64(0)
 	totalBytes := int64(0)
@@ -111,9 +144,9 @@ func ReadFinal() {
 	log.WithField("totalGBytes", totalGBytes).Infof("Total Gigabytes Written: %.2f", totalGBytes)
 }
 
-func readStats() {
-	defer rotwg.Done()
-	for os := range rotchan {
+func readStats(ch *chan *config.OutputStats, done *chan struct{}) {
+	defer close(*done)
+	for os := range *ch {
 		Mutex.Lock()
 		BytesWritten[os.SampleName] += os.BytesWritten
 		EventsWritten[os.SampleName] += os.EventsWritten
@@ -123,26 +156,27 @@ func readStats() {
 
 // Account sends eventsWritten and bytesWritten to the readStats() thread
 func Account(eventsWritten int64, bytesWritten int64, sampleName string) {
-	os := new(config.OutputStats)
-	os.EventsWritten = eventsWritten
-	os.BytesWritten = bytesWritten
-	os.SampleName = sampleName
-
-	// Thread-safe check to prevent deadlock on nil channel
-	rotchanMutex.RLock()
-	ch := rotchan
-	rotchanMutex.RUnlock()
-
-	if ch != nil {
-		select {
-		case ch <- os:
-			// Successfully sent
-		default:
-			// Channel is full or closed, skip this accounting
-			log.Debugf("Could not send accounting data for sample '%s', channel unavailable", sampleName)
-		}
-	} else {
+	// Load channel pointer atomically
+	chPtr := rotchanPtr.Load()
+	if chPtr == nil {
+		// Channel not initialized yet
 		log.Debugf("Accounting channel not initialized for sample '%s', skipping", sampleName)
+		return
+	}
+
+	os := &config.OutputStats{
+		EventsWritten: eventsWritten,
+		BytesWritten:  bytesWritten,
+		SampleName:    sampleName,
+	}
+
+	// Non-blocking send for maximum throughput
+	select {
+	case *chPtr <- os:
+		// Successfully sent
+	default:
+		// Channel is full, drop stats rather than block
+		log.Debugf("Could not send accounting data for sample '%s', channel full", sampleName)
 	}
 }
 
