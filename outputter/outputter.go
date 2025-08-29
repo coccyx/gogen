@@ -21,7 +21,6 @@ var (
 	Mutex         sync.RWMutex
 	lastTS        time.Time
 	rotchanPtr    atomic.Pointer[chan *config.OutputStats]
-	rotDonePtr    atomic.Pointer[chan struct{}]
 	readStatsDone atomic.Pointer[chan struct{}]
 	gout          [config.MaxOutputThreads]config.Outputter
 	lasterr       [config.MaxOutputThreads]lastError
@@ -40,6 +39,9 @@ func init() {
 	EventsWritten = make(map[string]int64)
 	BytesWritten = make(map[string]int64)
 	cacheBufs = make(map[string]*bytes.Buffer)
+	// Reset atomic pointers to ensure clean state
+	rotchanPtr.Store(nil)
+	readStatsDone.Store(nil)
 }
 
 // ROT starts the Read Out Thread which will log statistics about what's being output
@@ -56,13 +58,9 @@ func ROT(c *config.Config) {
 		return
 	}
 
-	// Create channel with large buffer for performance
-	ch := make(chan *config.OutputStats, 10000)
+	// Create unbuffered channel to match original behavior
+	ch := make(chan *config.OutputStats)
 	rotchanPtr.Store(&ch)
-	
-	// Create done channel for clean shutdown
-	done := make(chan struct{})
-	rotDonePtr.Store(&done)
 	
 	// Create done channel for readStats
 	statsDone := make(chan struct{})
@@ -77,44 +75,37 @@ func ROT(c *config.Config) {
 	lastTS = time.Now()
 	for {
 		timer := time.NewTimer(time.Duration(rotInterval) * time.Second)
-		select {
-		case <-timer.C:
-			n := time.Now()
-			eventssec = 0
-			kbytessec = 0
-			Mutex.RLock()
-			for k := range BytesWritten {
-				tempEW = EventsWritten[k]
-				tempBW = BytesWritten[k]
-				eventssec += float64(tempEW-lastEventsWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval)
-				kbytessec += float64(tempBW-lastBytesWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval) / 1024
-				gbday = (kbytessec * 60 * 60 * 24) / 1024 / 1024
-				lastEventsWritten[k] = tempEW
-				lastBytesWritten[k] = tempBW
-			}
-			Mutex.RUnlock()
-			log.WithFields(log.Fields{
-				"eventsSec": eventssec,
-				"kbytesSec": kbytessec,
-				"gbDay":     gbday,
-			}).Infof("Events/Sec: %.2f Kilobytes/Sec: %.2f GB/Day: %.2f", eventssec, kbytessec, gbday)
-			lastTS = n
-		case <-done:
-			timer.Stop()
-			return
+		<-timer.C
+		n := time.Now()
+		eventssec = 0
+		kbytessec = 0
+		Mutex.RLock()
+		// Calculate time delta and prevent division by zero
+		timeDelta := float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval)
+		if timeDelta <= 0 {
+			timeDelta = 1 // Prevent division by zero
 		}
+		for k := range BytesWritten {
+			tempEW = EventsWritten[k]
+			tempBW = BytesWritten[k]
+			eventssec += float64(tempEW-lastEventsWritten[k]) / timeDelta
+			kbytessec += float64(tempBW-lastBytesWritten[k]) / timeDelta / 1024
+			gbday = (kbytessec * 60 * 60 * 24) / 1024 / 1024
+			lastEventsWritten[k] = tempEW
+			lastBytesWritten[k] = tempBW
+		}
+		Mutex.RUnlock()
+		log.WithFields(log.Fields{
+			"eventsSec": eventssec,
+			"kbytesSec": kbytessec,
+			"gbDay":     gbday,
+		}).Infof("Events/Sec: %.2f Kilobytes/Sec: %.2f GB/Day: %.2f", eventssec, kbytessec, gbday)
+		lastTS = n
 	}
 }
 
 // ReadFinal outputs final statistics about our run
 func ReadFinal() {
-	// Signal ROT goroutine to stop if it's running
-	donePtr := rotDonePtr.Load()
-	if donePtr != nil && *donePtr != nil {
-		close(*donePtr)
-		rotDonePtr.Store(nil)
-	}
-	
 	// Load and close channel atomically
 	chPtr := rotchanPtr.Load()
 	if chPtr != nil && *chPtr != nil {
@@ -170,14 +161,8 @@ func Account(eventsWritten int64, bytesWritten int64, sampleName string) {
 		SampleName:    sampleName,
 	}
 
-	// Non-blocking send for maximum throughput
-	select {
-	case *chPtr <- os:
-		// Successfully sent
-	default:
-		// Channel is full, drop stats rather than block
-		log.Debugf("Could not send accounting data for sample '%s', channel full", sampleName)
-	}
+	// Blocking send to maintain backward compatibility
+	*chPtr <- os
 }
 
 func write(item *config.OutQueueItem) {
