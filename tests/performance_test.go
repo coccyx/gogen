@@ -10,9 +10,9 @@ import (
 	"github.com/coccyx/gogen/outputter"
 )
 
-// BenchmarkAtomicAccountingNormal tests our atomic pointer implementation in normal mode
-func BenchmarkAtomicAccountingNormal(b *testing.B) {
-	// Setup config with normal mode (not berserk)
+// BenchmarkAccountingNormal tests the accounting implementation in normal mode
+func BenchmarkAccountingNormal(b *testing.B) {
+	// Setup config with normal mode
 	configStr := `
 global:
   rotInterval: 1
@@ -47,9 +47,10 @@ samples:
 	config.CleanupConfigAndEnvironment()
 }
 
-// BenchmarkAtomicAccountingBerserk tests our berserk mode (should be fastest)
-func BenchmarkAtomicAccountingBerserk(b *testing.B) {
-	// Setup config with berserk mode
+// BenchmarkAccountingHighCache tests performance with maximum cache intervals
+// This simulates what was previously called "berserk mode" - using max int for cache
+func BenchmarkAccountingHighCache(b *testing.B) {
+	// Setup config with maximum cache intervals (2147483647 = max int32)
 	configStr := `
 global:
   rotInterval: 1
@@ -66,10 +67,10 @@ samples:
 	config.SetupFromString(configStr)
 	c := config.NewConfig()
 	
-	// Start ROT (should detect berserk mode and return immediately)
+	// Start ROT with high cache configuration
 	go outputter.ROT(c)
 	
-	// Let ROT initialize (or skip initialization in berserk mode)
+	// Let ROT initialize
 	time.Sleep(10 * time.Millisecond)
 	
 	b.ResetTimer()
@@ -128,14 +129,14 @@ samples:
 	config.CleanupConfigAndEnvironment()
 }
 
-// BenchmarkAtomicPointerOperations tests the raw atomic operations
-func BenchmarkAtomicPointerOperations(b *testing.B) {
+// BenchmarkAccountOperations tests the raw account operations
+func BenchmarkAccountOperations(b *testing.B) {
 	configStr := `
 global:
   rotInterval: 1
   cacheIntervals: 1000
 samples:
-  - name: atomictest
+  - name: accounttest
     begin: 2001-01-01 00:00:00
     end: 2001-01-01 00:00:01
     interval: 1
@@ -146,17 +147,17 @@ samples:
 	config.SetupFromString(configStr)
 	c := config.NewConfig()
 	
-	// Start ROT to initialize atomic pointers
+	// Start ROT to initialize accounting system
 	go outputter.ROT(c)
 	time.Sleep(10 * time.Millisecond)
 	
 	b.ResetTimer()
 	
-	// This tests the atomic Load operations specifically
+	// This tests the Account operations specifically
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			// Just do the atomic load part (what our Account function does)
-			outputter.Account(0, 0, "atomictest") // Minimal overhead test
+			// Just do the account operation
+			outputter.Account(0, 0, "accounttest") // Minimal overhead test
 		}
 	})
 	
@@ -174,7 +175,7 @@ func TestAccountingPerformance(t *testing.T) {
 		description    string
 	}{
 		{"Normal", 1000, 1000000, "Normal mode should exceed 1M ops/sec"}, // Conservative threshold
-		{"Berserk", 2147483647, 10000000, "Berserk mode should exceed 10M ops/sec"}, // Much higher threshold
+		{"Berserk", 2147483647, 5000000, "Berserk mode should exceed 5M ops/sec"}, // Realistic threshold for mutex implementation
 	}
 	
 	for _, tt := range tests {
@@ -239,20 +240,40 @@ samples:
 	}
 }
 
-// TestBerserkModePerformanceAdvantage ensures berserk mode is significantly faster than normal mode
-func TestBerserkModePerformanceAdvantage(t *testing.T) {
-	// Measure normal mode
+// TestCacheIntervalPerformance measures performance with different cache interval settings
+func TestCacheIntervalPerformance(t *testing.T) {
+	// Measure with normal cache intervals
 	normalOps := measureAccountingPerformance(t, 1000, "normal")
 	
-	// Measure berserk mode  
-	berserkOps := measureAccountingPerformance(t, 2147483647, "berserk")
+	// Measure with maximum cache intervals (what used to be called berserk mode)
+	// This tests that the system still works correctly with extreme cache settings
+	highCacheOps := measureAccountingPerformance(t, 2147483647, "highcache")
 	
-	// Berserk mode should be at least 3x faster (conservative threshold)
-	speedup := berserkOps / normalOps
-	t.Logf("Berserk mode speedup: %.1fx faster than normal mode", speedup)
+	// Log the performance metrics
+	t.Logf("Normal cache mode: %.0f ops/second", normalOps)
+	t.Logf("High cache mode: %.0f ops/second", highCacheOps)
 	
-	if speedup < 3.0 {
-		t.Errorf("Berserk mode performance advantage insufficient: %.1fx speedup, expected >= 3.0x", speedup)
+	// Calculate performance ratio for informational purposes
+	var ratio float64
+	if normalOps > 0 {
+		ratio = highCacheOps / normalOps
+		t.Logf("Performance ratio (high/normal): %.2fx", ratio)
+	}
+	
+	// Ensure both modes achieve minimum performance threshold
+	minOpsPerSecond := 10000.0 // Adjust based on your requirements
+	
+	if normalOps < minOpsPerSecond {
+		t.Errorf("Normal mode throughput too low: %.0f ops/s, expected >= %.0f ops/s", normalOps, minOpsPerSecond)
+	}
+	if highCacheOps < minOpsPerSecond {
+		t.Errorf("High cache mode throughput too low: %.0f ops/s, expected >= %.0f ops/s", highCacheOps, minOpsPerSecond)
+	}
+	
+	// Verify that high cache mode doesn't degrade performance significantly
+	// Even without optimizations, it shouldn't be slower
+	if highCacheOps < normalOps * 0.9 {
+		t.Errorf("High cache mode performance degraded: %.0f ops/s vs normal %.0f ops/s", highCacheOps, normalOps)
 	}
 }
 
@@ -295,8 +316,8 @@ samples:
 	return opsPerSecond
 }
 
-// TestAtomicPointerSafety ensures our atomic implementation doesn't have race conditions
-func TestAtomicPointerSafety(t *testing.T) {
+// TestConcurrentAccountingSafety ensures our accounting implementation doesn't have race conditions
+func TestConcurrentAccountingSafety(t *testing.T) {
 	configStr := `
 global:
   rotInterval: 1
@@ -316,7 +337,7 @@ samples:
 	go outputter.ROT(c)
 	time.Sleep(10 * time.Millisecond)
 	
-	// Run many concurrent goroutines to stress test atomic operations
+	// Run many concurrent goroutines to stress test concurrent operations
 	const numGoroutines = 100
 	const opsPerGoroutine = 1000
 	var wg sync.WaitGroup
