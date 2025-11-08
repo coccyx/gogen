@@ -44,6 +44,8 @@ func init() {
 
 // ROT starts the Read Out Thread which will log statistics about what's being output
 // ROT is intended to be started as a goroutine which will log output every c.
+// Note: With local lastTS, multiple ROT instances can run safely without interference,
+// though in production typically only one ROT should be started.
 func ROT(c *config.Config) {
 	rotInterval = c.Global.ROTInterval
 
@@ -79,7 +81,7 @@ func ROT(c *config.Config) {
 	lastBytesWritten := make(map[string]int64)
 	var gbday, eventssec, kbytessec float64
 	var tempEW, tempBW int64
-	lastTS = time.Now()
+	lastTS := time.Now() // Local to this ROT instance
 	for {
 		timer := time.NewTimer(time.Duration(rotInterval) * time.Second)
 		<-timer.C
@@ -90,6 +92,7 @@ func ROT(c *config.Config) {
 		for k := range BytesWritten {
 			tempEW = EventsWritten[k]
 			tempBW = BytesWritten[k]
+			// Keep original calculation, now safe with local lastTS
 			eventssec += float64(tempEW-lastEventsWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval)
 			kbytessec += float64(tempBW-lastBytesWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval) / 1024
 			gbday = (kbytessec * 60 * 60 * 24) / 1024 / 1024
