@@ -45,11 +45,8 @@ func init() {
 // ROT starts the Read Out Thread which will log statistics about what's being output
 // ROT is intended to be started as a goroutine which will log output every c.
 func ROT(c *config.Config) {
-	// Thread-safe access to global rotInterval
-	Mutex.Lock()
 	rotInterval = c.Global.ROTInterval
-	Mutex.Unlock()
-	
+
 	// Check if we're in berserk mode (CacheIntervals set to max int)
 	if c.Global.CacheIntervals == 2147483647 {
 		// In berserk mode, don't create channels or start goroutines
@@ -63,12 +60,12 @@ func ROT(c *config.Config) {
 		rotchanMutex.Unlock()
 		log.Debug("Berserk mode detected - disabling outputter accounting for maximum throughput")
 		return
+	} else {
+		// Not in berserk mode, ensure normal accounting is enabled
+		Mutex.Lock()
+		berserkMode = false
+		Mutex.Unlock()
 	}
-
-	// Not in berserk mode, enable normal accounting
-	Mutex.Lock()
-	berserkMode = false
-	Mutex.Unlock()
 
 	// Thread-safe initialization of rotchan
 	rotchanMutex.Lock()
