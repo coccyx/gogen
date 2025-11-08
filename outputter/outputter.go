@@ -92,9 +92,14 @@ func ROT(c *config.Config) {
 		for k := range BytesWritten {
 			tempEW = EventsWritten[k]
 			tempBW = BytesWritten[k]
-			// Keep original calculation, now safe with local lastTS
-			eventssec += float64(tempEW-lastEventsWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval)
-			kbytessec += float64(tempBW-lastBytesWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval) / 1024
+			// Preserve original calculation with safety clamp to prevent NaN/Inf
+			timeElapsed := int(n.Sub(lastTS)) / int(time.Second) / rotInterval
+			if timeElapsed <= 0 {
+				timeElapsed = 1 // Ensure we always have at least 1 to divide by
+			}
+			timeDivisor := float64(timeElapsed)
+			eventssec += float64(tempEW-lastEventsWritten[k]) / timeDivisor
+			kbytessec += float64(tempBW-lastBytesWritten[k]) / timeDivisor / 1024
 			gbday = (kbytessec * 60 * 60 * 24) / 1024 / 1024
 			lastEventsWritten[k] = tempEW
 			lastBytesWritten[k] = tempBW
