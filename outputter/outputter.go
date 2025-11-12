@@ -114,6 +114,9 @@ func Account(eventsWritten int64, bytesWritten int64, sampleName string) {
 	os.EventsWritten = eventsWritten
 	os.BytesWritten = bytesWritten
 	os.SampleName = sampleName
+	for rotchan == nil {
+		time.Sleep(10 * time.Millisecond)
+	}
 	rotchan <- os
 }
 
