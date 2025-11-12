@@ -2,51 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Resources:
-<<<<<<< HEAD
-  GoGenApi:
-    Type: AWS::Serverless::Api
-    Properties:
-      StageName: v1
-      OpenApiVersion: '2.0'
-      Auth:
-        DefaultAuthorizer: NONE
-      GatewayResponses:
-        DEFAULT_4XX:
-          ResponseParameters:
-            Headers:
-              Access-Control-Allow-Origin: !If 
-                - IsProduction
-                - "'https://gogen.io'"
-                - "'https://staging.gogen.io'"
-              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
-              Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With'"
-              Access-Control-Allow-Credentials: "'true'"
-        DEFAULT_5XX:
-          ResponseParameters:
-            Headers:
-              Access-Control-Allow-Origin: !If 
-                - IsProduction
-                - "'https://gogen.io'"
-                - "'https://staging.gogen.io'"
-              Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
-              Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With'"
-              Access-Control-Allow-Credentials: "'true'"
-      Cors:
-        AllowMethods: "'GET,POST,OPTIONS'"
-        AllowHeaders: "'Content-Type,Authorization,X-Requested-With'"
-        AllowOrigin: !If 
-          - IsProduction
-          - "'https://gogen.io'"
-          - "'https://staging.gogen.io'"
-        AllowCredentials: true
-        MaxAge: 600
-      MethodSettings:
-        - ResourcePath: '/*'
-          HttpMethod: '*'
-          CachingEnabled: false
-          ThrottlingBurstLimit: 5000
-          ThrottlingRateLimit: 10000
-=======
   ApiGatewayLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -269,7 +224,6 @@ Resources:
                 httpMethod: POST
                 type: aws_proxy
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpsertFunction.Arn}/invocations"
->>>>>>> master
       Domain:
         DomainName: !If 
           - IsProduction
@@ -294,23 +248,7 @@ Resources:
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
-<<<<<<< HEAD
-      Events:
-        GetGogen:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GoGenApi
-            Path: /v1/get/{proxy+}
-            Method: GET
-        GetGogenOptions:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GoGenApi
-            Path: /v1/get/{proxy+}
-            Method: OPTIONS
-=======
           DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
->>>>>>> master
 
   ListFunction:
     Type: AWS::Serverless::Function
@@ -327,23 +265,7 @@ Resources:
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
-<<<<<<< HEAD
-      Events:
-        ListGogens:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GoGenApi
-            Path: /v1/list
-            Method: GET
-        ListGogensOptions:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GoGenApi
-            Path: /v1/list
-            Method: OPTIONS
-=======
           DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
->>>>>>> master
 
   SearchFunction:
     Type: AWS::Serverless::Function
@@ -360,23 +282,7 @@ Resources:
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
-<<<<<<< HEAD
-      Events:
-        SearchGogens:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GoGenApi
-            Path: /v1/search
-            Method: GET
-        SearchGogensOptions:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GoGenApi
-            Path: /v1/search
-            Method: OPTIONS
-=======
           DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
->>>>>>> master
 
   UpsertFunction:
     Type: AWS::Serverless::Function
@@ -393,50 +299,6 @@ Resources:
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
-<<<<<<< HEAD
-      Events:
-        UpsertGogen:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GoGenApi
-            Path: /v1/upsert
-            Method: POST
-        UpsertGogenOptions:
-          Type: Api
-          Properties:
-            RestApiId: !Ref GoGenApi
-            Path: /v1/upsert
-            Method: OPTIONS
-
-  DynamoDBTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub ${AWS::StackName}-gogen
-      AttributeDefinitions:
-        - AttributeName: gogen
-          AttributeType: S
-      KeySchema:
-        - AttributeName: gogen
-          KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5
-
-  DynamoDBStagingTable:
-    Type: AWS::DynamoDB::Table
-    Condition: IsStagingEnvironment
-    Properties:
-      TableName: gogen-staging
-      AttributeDefinitions:
-        - AttributeName: gogen
-          AttributeType: S
-      KeySchema:
-        - AttributeName: gogen
-          KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5
-=======
           DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
 
   ListFunctionApiGatewayInvokePermission:
@@ -470,7 +332,6 @@ Resources:
       FunctionName: !Ref GetFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GoGenApi}/*/GET/v1/get/*
->>>>>>> master
 
 Conditions:
   IsStagingEnvironment: !Equals 
@@ -497,8 +358,6 @@ Parameters:
     Type: String
     Description: ARN of the IAM role for Lambda functions
 
-<<<<<<< HEAD
-=======
   ProdTableName:
     Type: String
     Default: gogen
@@ -509,7 +368,6 @@ Parameters:
     Default: gogen-staging
     Description: Name of the existing DynamoDB table for Staging
 
->>>>>>> master
 Outputs:
   ApiURL:
     Description: API Gateway endpoint URL
