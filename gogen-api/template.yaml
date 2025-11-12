@@ -32,6 +32,7 @@ Resources:
   GoGenApi:
     Type: AWS::Serverless::Api
     DependsOn:
+      - ApiGatewayAccount
       - ApiGatewayLogGroup
       - ApiGatewayLoggingRole
     Properties:

@@ -127,16 +127,9 @@
 		{
 			"Sid": "DynamoDBDescribePermissions",
 			"Effect": "Allow",
-			"Action": [
-				"dynamodb:Scan",
-				"dynamodb:Query",
-				"dynamodb:GetItem",
-				"dynamodb:PutItem",
-				"dynamodb:UpdateItem",
-				"dynamodb:DeleteItem"
-			],
+			"Action": "dynamodb:DescribeTable",
 			"Resource": [
-				"arn:aws:dynamodb:*:*:table/gogen",
+				"arn:aws:dynamodb:*:*:table/gogen-api-prod-gogen",
 				"arn:aws:dynamodb:*:*:table/gogen-staging"
 			]
 		}
