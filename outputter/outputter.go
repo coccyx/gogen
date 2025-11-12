@@ -20,7 +20,6 @@ var (
 	Mutex         sync.RWMutex
 	lastTS        time.Time
 	rotchan       chan *config.OutputStats
-	rotchanMutex  sync.RWMutex
 	rotwg         sync.WaitGroup
 	gout          [config.MaxOutputThreads]config.Outputter
 	lasterr       [config.MaxOutputThreads]lastError
@@ -45,12 +44,7 @@ func init() {
 // ROT is intended to be started as a goroutine which will log output every c.
 func ROT(c *config.Config) {
 	rotInterval = c.Global.ROTInterval
-
-	// Thread-safe initialization of rotchan
-	rotchanMutex.Lock()
 	rotchan = make(chan *config.OutputStats)
-	rotchanMutex.Unlock()
-
 	rotwg.Add(1)
 	go readStats()
 
@@ -87,14 +81,7 @@ func ROT(c *config.Config) {
 
 // ReadFinal outputs final statistics about our run
 func ReadFinal() {
-	// Thread-safe channel closing
-	rotchanMutex.Lock()
-	if rotchan != nil {
-		close(rotchan)
-		rotchan = nil
-	}
-	rotchanMutex.Unlock()
-
+	close(rotchan)
 	rotwg.Wait()
 
 	totalEvents := int64(0)
@@ -127,23 +114,7 @@ func Account(eventsWritten int64, bytesWritten int64, sampleName string) {
 	os.EventsWritten = eventsWritten
 	os.BytesWritten = bytesWritten
 	os.SampleName = sampleName
-
-	// Thread-safe check to prevent deadlock on nil channel
-	rotchanMutex.RLock()
-	ch := rotchan
-	rotchanMutex.RUnlock()
-
-	if ch != nil {
-		select {
-		case ch <- os:
-			// Successfully sent
-		default:
-			// Channel is full or closed, skip this accounting
-			log.Debugf("Could not send accounting data for sample '%s', channel unavailable", sampleName)
-		}
-	} else {
-		log.Debugf("Accounting channel not initialized for sample '%s', skipping", sampleName)
-	}
+	rotchan <- os
 }
 
 func write(item *config.OutQueueItem) {
