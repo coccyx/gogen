@@ -30,7 +30,7 @@ fi
 
 # Set the S3 bucket name based on environment
 if [ "$ENVIRONMENT" = "prod" ]; then
-    S3_BUCKET="gogen-artifacts"
+    S3_BUCKET="gogen-artifacts-prod"
 else
     S3_BUCKET="gogen-artifacts-staging"
 fi
@@ -48,29 +48,12 @@ ensure_s3_bucket() {
 # Check S3 bucket
 ensure_s3_bucket "$S3_BUCKET"
 
-# Get the appropriate role ARN based on environment
-get_role_arn() {
-    local env=$1
-    local role_name
-    
-    if [ "$env" = "prod" ]; then
-        role_name="gogen_lambda"
-    else
-        role_name="gogen_lambda_staging"
-    fi
-    
-    # Get the role ARN
-    role_arn=$(aws iam get-role --role-name "$role_name" --query 'Role.Arn' --output text)
-    if [ -z "$role_arn" ]; then
-        echo "Failed to get ARN for role: $role_name" >&2
-        exit 1
-    fi
-    echo "$role_arn"
-}
-
-# Get the role ARN
-ROLE_ARN=$(get_role_arn "$ENVIRONMENT")
-echo "Using role ARN: $ROLE_ARN"
+# Expect ROLE_ARN to be set as an environment variable
+if [ -z "$ROLE_ARN" ]; then
+    echo "Error: ROLE_ARN environment variable is not set." >&2
+    exit 1
+fi
+echo "Using role ARN from environment: $ROLE_ARN"
 
 # Create build directory if it doesn't exist
 mkdir -p $BUILD_DIR
@@ -170,9 +153,20 @@ fi
 
 echo "Using certificate ARN: $CERT_ARN"
 
+# Make sure we are in the right directory for SAM commands
+cd "$SCRIPT_DIR"
+
 # Build the SAM application
 echo "Building SAM application..."
+echo "Ensuring clean build directory..."
+rm -rfv .aws-sam/build # Ensure clean build directory (Verbose)
+echo "Build directory cleanup attempted."
 sam build --use-container
+
+# Debug: Print the built template contents
+echo "--- Contents of built template ---"
+cat .aws-sam/build/template.yaml || echo "Built template not found!"
+echo "--- End of built template ---"
 
 # Deploy the SAM application
 echo "Deploying SAM application for $ENVIRONMENT environment..."
@@ -180,21 +174,27 @@ echo "Using parameters:"
 echo "  Environment: ${ENVIRONMENT}"
 echo "  LambdaRoleArn: ${ROLE_ARN}"
 echo "  CertificateArn: ${CERT_ARN}"
-
-# Construct parameters string with proper escaping
-PARAMS="ParameterKey=Environment,ParameterValue=${ENVIRONMENT}"
-PARAMS="${PARAMS} ParameterKey=LambdaRoleArn,ParameterValue=${ROLE_ARN}"
-PARAMS="${PARAMS} ParameterKey=CertificateArn,ParameterValue=${CERT_ARN}"
+echo "  ProdTableName=gogen"
+echo "  StagingTableName=gogen-staging"
 
 # Print the exact parameters being used
 echo "Parameter overrides:"
-echo "$PARAMS"
+echo "  Environment=${ENVIRONMENT}"
+echo "  LambdaRoleArn=${ROLE_ARN}"
+echo "  CertificateArn=${CERT_ARN}"
+echo "  ProdTableName=gogen"
+echo "  StagingTableName=gogen-staging"
 
 sam deploy \
     --stack-name "gogen-api-${ENVIRONMENT}" \
     --s3-bucket "$S3_BUCKET" \
-    --parameter-overrides "$PARAMS" \
-    --capabilities CAPABILITY_IAM \
+    --parameter-overrides \
+        ParameterKey=Environment,ParameterValue=${ENVIRONMENT} \
+        ParameterKey=LambdaRoleArn,ParameterValue=${ROLE_ARN} \
+        ParameterKey=CertificateArn,ParameterValue=${CERT_ARN} \
+        ParameterKey=ProdTableName,ParameterValue=gogen \
+        ParameterKey=StagingTableName,ParameterValue=gogen-staging \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
     --no-confirm-changeset \
     --no-fail-on-empty-changeset
 

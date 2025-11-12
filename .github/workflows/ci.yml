@@ -52,7 +52,11 @@ jobs:
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
         run: |
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+<<<<<<< HEAD
             aws s3 sync build s3://gogen-artifacts --delete
+=======
+            aws s3 sync build s3://gogen-artifacts-prod --delete
+>>>>>>> master
           else
             aws s3 sync build s3://gogen-artifacts-staging --delete
           fi
@@ -107,11 +111,14 @@ jobs:
           
       - name: Deploy Lambda Functions
         env:
-          LAMBDA_ROLE_ARN: ${{ secrets.LAMBDA_ROLE_ARN }}
+          # Set ROLE_ARN based on the branch
+          ROLE_ARN: ${{ github.ref == 'refs/heads/master' && secrets.PROD_LAMBDA_ROLE_ARN || secrets.STAGING_LAMBDA_ROLE_ARN }}
         run: |
           cd gogen-api
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            # Prod deployment, ROLE_ARN is already set via env
             bash deploy_lambdas.sh
           else
+            # Staging deployment, ROLE_ARN is already set via env
             bash deploy_lambdas.sh -e staging
           fi
