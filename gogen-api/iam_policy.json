@@ -50,6 +50,7 @@
 				"arn:aws:cloudformation:*:*:stack/gogen-api-staging/*",
 				"arn:aws:lambda:*:*:function:gogen-api-prod-*",
 				"arn:aws:lambda:*:*:function:gogen-api-staging-*",
+				"arn:aws:apigateway:*::/account",
 				"arn:aws:apigateway:*::/restapis",
 				"arn:aws:apigateway:*::/restapis/*",
 				"arn:aws:apigateway:*::/restapis/*/stages/*",
