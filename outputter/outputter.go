@@ -20,12 +20,10 @@ var (
 	Mutex         sync.RWMutex
 	lastTS        time.Time
 	rotchan       chan *config.OutputStats
-	rotchanMutex  sync.RWMutex
 	rotwg         sync.WaitGroup
 	gout          [config.MaxOutputThreads]config.Outputter
 	lasterr       [config.MaxOutputThreads]lastError
 	rotInterval   int
-	berserkMode   bool
 	cacheBufs     map[string]*bytes.Buffer
 	cacheMutex    sync.RWMutex
 )
@@ -44,36 +42,9 @@ func init() {
 
 // ROT starts the Read Out Thread which will log statistics about what's being output
 // ROT is intended to be started as a goroutine which will log output every c.
-// Note: With local lastTS, multiple ROT instances can run safely without interference,
-// though in production typically only one ROT should be started.
 func ROT(c *config.Config) {
 	rotInterval = c.Global.ROTInterval
-
-	// Check if we're in berserk mode (CacheIntervals set to max int)
-	if c.Global.CacheIntervals == 2147483647 {
-		// In berserk mode, don't create channels or start goroutines
-		// Store nil to indicate accounting is disabled
-		Mutex.Lock()
-		berserkMode = true
-		Mutex.Unlock()
-		
-		rotchanMutex.Lock()
-		rotchan = nil
-		rotchanMutex.Unlock()
-		log.Debug("Berserk mode detected - disabling outputter accounting for maximum throughput")
-		return
-	} else {
-		// Not in berserk mode, ensure normal accounting is enabled
-		Mutex.Lock()
-		berserkMode = false
-		Mutex.Unlock()
-	}
-
-	// Thread-safe initialization of rotchan
-	rotchanMutex.Lock()
 	rotchan = make(chan *config.OutputStats)
-	rotchanMutex.Unlock()
-
 	rotwg.Add(1)
 	go readStats()
 
@@ -81,7 +52,7 @@ func ROT(c *config.Config) {
 	lastBytesWritten := make(map[string]int64)
 	var gbday, eventssec, kbytessec float64
 	var tempEW, tempBW int64
-	lastTS := time.Now() // Local to this ROT instance
+	lastTS = time.Now()
 	for {
 		timer := time.NewTimer(time.Duration(rotInterval) * time.Second)
 		<-timer.C
@@ -92,14 +63,8 @@ func ROT(c *config.Config) {
 		for k := range BytesWritten {
 			tempEW = EventsWritten[k]
 			tempBW = BytesWritten[k]
-			// Preserve original calculation with safety clamp to prevent NaN/Inf
-			timeElapsed := int(n.Sub(lastTS)) / int(time.Second) / rotInterval
-			if timeElapsed <= 0 {
-				timeElapsed = 1 // Ensure we always have at least 1 to divide by
-			}
-			timeDivisor := float64(timeElapsed)
-			eventssec += float64(tempEW-lastEventsWritten[k]) / timeDivisor
-			kbytessec += float64(tempBW-lastBytesWritten[k]) / timeDivisor / 1024
+			eventssec += float64(tempEW-lastEventsWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval)
+			kbytessec += float64(tempBW-lastBytesWritten[k]) / float64(int(n.Sub(lastTS))/int(time.Second)/rotInterval) / 1024
 			gbday = (kbytessec * 60 * 60 * 24) / 1024 / 1024
 			lastEventsWritten[k] = tempEW
 			lastBytesWritten[k] = tempBW
@@ -116,14 +81,7 @@ func ROT(c *config.Config) {
 
 // ReadFinal outputs final statistics about our run
 func ReadFinal() {
-	// Thread-safe channel closing
-	rotchanMutex.Lock()
-	if rotchan != nil {
-		close(rotchan)
-		rotchan = nil
-	}
-	rotchanMutex.Unlock()
-
+	close(rotchan)
 	rotwg.Wait()
 
 	totalEvents := int64(0)
@@ -152,36 +110,14 @@ func readStats() {
 
 // Account sends eventsWritten and bytesWritten to the readStats() thread
 func Account(eventsWritten int64, bytesWritten int64, sampleName string) {
-	// In berserk mode, skip all accounting operations for maximum performance
-	Mutex.RLock()
-	isBerserk := berserkMode
-	Mutex.RUnlock()
-	
-	if isBerserk {
-		return // Fast exit in berserk mode
-	}
-
 	os := new(config.OutputStats)
 	os.EventsWritten = eventsWritten
 	os.BytesWritten = bytesWritten
 	os.SampleName = sampleName
-
-	// Thread-safe check to prevent deadlock on nil channel
-	rotchanMutex.RLock()
-	ch := rotchan
-	rotchanMutex.RUnlock()
-
-	if ch != nil {
-		select {
-		case ch <- os:
-			// Successfully sent
-		default:
-			// Channel is full or closed, skip this accounting
-			log.Debugf("Could not send accounting data for sample '%s', channel unavailable", sampleName)
-		}
-	} else {
-		log.Debugf("Accounting channel not initialized for sample '%s', skipping", sampleName)
+	for rotchan == nil {
+		time.Sleep(10 * time.Millisecond)
 	}
+	rotchan <- os
 }
 
 func write(item *config.OutQueueItem) {
@@ -303,15 +239,7 @@ func write(item *config.OutQueueItem) {
 		bytesCounter = int64(tempBytes)
 		// log.Infof("Used cache, sent %d events and %d bytes", len(item.Events), bytesCounter)
 	}
-	
-	// Skip accounting entirely in berserk mode for maximum performance
-	Mutex.RLock()
-	isBerserk := berserkMode
-	Mutex.RUnlock()
-	
-	if !isBerserk {
-		Account(int64(len(item.Events)), bytesCounter, item.S.Name)
-	}
+	Account(int64(len(item.Events)), bytesCounter, item.S.Name)
 }
 
 // Start starts an output thread and runs until notified to shut down
