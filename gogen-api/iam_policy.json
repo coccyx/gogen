@@ -43,7 +43,9 @@
 				"s3:ListBucket",
 				"s3:GetBucketLocation",
 				"iam:PassRole",
-				"iam:GetRole"
+				"iam:GetRole",
+				"iam:AttachRolePolicy",
+				"iam:DetachRolePolicy"
 			],
 			"Resource": [
 				"arn:aws:cloudformation:*:*:stack/gogen-api-prod/*",
