@@ -80,7 +80,7 @@ Resources:
           version: '1.0'
         x-amazon-apigateway-cors:
           allowOrigins:
-            - !If [IsProduction, "'https://gogen.io'", "'https://staging.gogen.io'"]
+            - !If [IsProduction, "https://gogen.io", "https://staging.gogen.io"]
           allowMethods:
             - GET
             - POST
