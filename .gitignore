@@ -22,6 +22,7 @@ roveralls*
 .pyvenv
 gogen-api/__pycache__
 gogen-api/build
+gogen-api/env.json
 ui/node_modules/*
 ui/dist/*
 ui/build/*
