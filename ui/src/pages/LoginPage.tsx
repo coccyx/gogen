@@ -20,26 +20,26 @@ const LoginPage = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-term-green"></div>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto px-4 py-16">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+      <div className="max-w-md mx-auto bg-term-bg-elevated border border-term-border rounded p-8">
+        <h1 className="text-xl font-bold text-term-text mb-6 text-center">
           Sign in to Gogen
         </h1>
-        <p className="text-gray-600 mb-8 text-center">
+        <p className="text-term-text-muted mb-8 text-center text-sm">
           Sign in with your GitHub account to create, edit, and manage your Gogen configurations.
         </p>
         <button
           onClick={login}
-          className="w-full flex items-center justify-center gap-3 bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors"
+          className="w-full flex items-center justify-center gap-3 bg-term-bg-muted border border-term-border text-term-text px-6 py-2.5 rounded hover:bg-term-border transition-colors"
         >
           <svg
-            className="w-6 h-6"
+            className="w-5 h-5"
             fill="currentColor"
             viewBox="0 0 24 24"
             aria-hidden="true"
@@ -52,7 +52,7 @@ const LoginPage = () => {
           </svg>
           Sign in with GitHub
         </button>
-        <p className="text-sm text-gray-500 mt-6 text-center">
+        <p className="text-xs text-term-text-muted mt-6 text-center">
           By signing in, you agree to our terms of service.
         </p>
       </div>

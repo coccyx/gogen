@@ -134,36 +134,36 @@ const EditConfigurationPage = () => {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6">
         <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-6">
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-term-text">
             {isEditMode ? 'Edit Configuration' : 'New Configuration'}
           </h1>
           <Link
             to={isEditMode ? `/configurations/${owner}/${configName}` : '/my-configurations'}
-            className="text-gray-600 hover:text-gray-800"
+            className="text-term-text-muted hover:text-term-text"
           >
             Cancel
           </Link>
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+          <div className="error-box mb-6">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="name" className="block text-sm font-medium text-term-text-muted mb-1">
               Name
             </label>
             <input
@@ -173,17 +173,17 @@ const EditConfigurationPage = () => {
               onChange={(e) => setName(e.target.value)}
               disabled={isEditMode}
               placeholder="my-configuration"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="input disabled:bg-term-bg-muted disabled:cursor-not-allowed"
             />
             {isEditMode && (
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-term-text-muted">
                 Configuration name cannot be changed after creation.
               </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="description" className="block text-sm font-medium text-term-text-muted mb-1">
               Description
             </label>
             <textarea
@@ -192,25 +192,26 @@ const EditConfigurationPage = () => {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="A brief description of your configuration..."
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 resize-none"
+              className="input resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-term-text-muted mb-1">
               Configuration (YAML)
             </label>
-            <div className="border rounded-lg overflow-hidden shadow-md">
+            <div className="border border-term-border rounded overflow-hidden">
               <Editor
                 height="400px"
                 defaultLanguage="yaml"
                 value={config}
                 onChange={(value) => setConfig(value || '')}
-                theme="vs-light"
+                theme="vs-dark"
                 options={{
                   minimap: { enabled: false },
                   scrollBeyondLastLine: false,
-                  fontSize: 14,
+                  fontSize: 13,
+                  fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, monospace',
                   lineNumbers: 'on',
                   renderLineHighlight: 'all',
                   automaticLayout: true,
@@ -223,14 +224,14 @@ const EditConfigurationPage = () => {
           <div className="flex justify-end gap-4 pt-4">
             <Link
               to={isEditMode ? `/configurations/${owner}/${configName}` : '/my-configurations'}
-              className="px-6 py-2 text-gray-600 hover:text-gray-800"
+              className="px-4 py-1.5 text-term-text-muted hover:text-term-text"
             >
               Cancel
             </Link>
             <button
               type="submit"
               disabled={isSaving}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create Configuration'}
             </button>

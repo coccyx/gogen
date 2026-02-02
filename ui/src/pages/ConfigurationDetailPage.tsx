@@ -90,7 +90,7 @@ const ConfigurationDetailPage = () => {
     if (error || !configuration) {
       return (
         <div className="text-center py-8">
-          <p className="text-red-600 mb-4">{error || 'Configuration not found'}</p>
+          <p className="text-term-red mb-4">{error || 'Configuration not found'}</p>
           <button
             onClick={() => navigate('/')}
             className="btn-primary"
@@ -105,21 +105,21 @@ const ConfigurationDetailPage = () => {
       <>
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">{configuration.gogen}</h1>
-            <p className="text-gray-500 text-sm mt-1">by {owner}</p>
+            <h1 className="text-2xl font-bold text-term-text font-mono">{configuration.gogen}</h1>
+            <p className="text-term-text-muted text-sm mt-1">by {owner}</p>
           </div>
           <div className="flex items-center gap-3">
             {isOwner ? (
               <>
                 <Link
                   to={`/edit/${owner}/${configName}`}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="bg-term-cyan text-term-bg px-3 py-1.5 rounded hover:bg-opacity-90 transition-colors text-sm font-medium"
                 >
                   Edit
                 </Link>
                 <button
                   onClick={() => setDeleteModal(true)}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                  className="btn-danger text-sm"
                 >
                   Delete
                 </button>
@@ -127,37 +127,38 @@ const ConfigurationDetailPage = () => {
             ) : isAuthenticated ? (
               <button
                 onClick={handleFork}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                className="btn-primary text-sm"
               >
                 Fork
               </button>
             ) : null}
-            <Link to="/" className="btn-primary">
+            <Link to="/" className="btn-secondary text-sm">
               Back to List
             </Link>
           </div>
         </div>
 
         {configuration.description && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-2">Description</h2>
-            <p className="text-gray-700">{configuration.description}</p>
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-term-text mb-2">Description</h2>
+            <p className="text-term-text-muted">{configuration.description}</p>
           </div>
         )}
 
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-2">Configuration</h2>
-          <div className="border rounded-lg overflow-hidden shadow-md">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-term-text mb-2">Configuration</h2>
+          <div className="border border-term-border rounded overflow-hidden">
             <Editor
               height="400px"
               defaultLanguage="yaml"
               value={editedConfig}
               onChange={(value: string | undefined) => setEditedConfig(value || '')}
-              theme="vs-light"
+              theme="vs-dark"
               options={{
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
-                fontSize: 14,
+                fontSize: 13,
+                fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, monospace',
                 lineNumbers: 'on',
                 renderLineHighlight: 'all',
                 automaticLayout: true,
@@ -167,10 +168,10 @@ const ConfigurationDetailPage = () => {
         </div>
 
         {configuration.samples && configuration.samples.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-2">Samples</h2>
-            <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
-              <pre>
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-term-text mb-2">Samples</h2>
+            <div className="bg-term-bg-elevated border border-term-border p-4 rounded overflow-x-auto">
+              <pre className="text-term-text font-mono text-sm">
                 <code>{JSON.stringify(configuration.samples, null, 2)}</code>
               </pre>
             </div>
@@ -178,10 +179,10 @@ const ConfigurationDetailPage = () => {
         )}
 
         {configuration.raters && configuration.raters.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-2">Raters</h2>
-            <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
-              <pre>
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-term-text mb-2">Raters</h2>
+            <div className="bg-term-bg-elevated border border-term-border p-4 rounded overflow-x-auto">
+              <pre className="text-term-text font-mono text-sm">
                 <code>{JSON.stringify(configuration.raters, null, 2)}</code>
               </pre>
             </div>
@@ -194,32 +195,32 @@ const ConfigurationDetailPage = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8" role="main">
+    <div className="container mx-auto px-4 py-6" role="main">
       {renderContent()}
 
       {/* Delete Confirmation Modal */}
       {deleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <h2 className="text-lg font-bold text-term-text mb-4">
               Delete Configuration
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-term-text-muted mb-6">
               Are you sure you want to delete{' '}
-              <span className="font-semibold">{configName}</span>? This action cannot be undone.
+              <span className="font-semibold text-term-text font-mono">{configName}</span>? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => setDeleteModal(false)}
                 disabled={isDeleting}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                className="px-4 py-1.5 text-term-text-muted hover:text-term-text disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                className="btn-danger disabled:opacity-50"
               >
                 {isDeleting ? 'Deleting...' : 'Delete'}
               </button>

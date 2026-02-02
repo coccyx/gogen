@@ -20,13 +20,15 @@ const Header = () => {
   }, []);
 
   return (
-    <header className="bg-blue-900 text-white p-4 shadow-md">
+    <header className="bg-term-bg-elevated text-term-text px-4 py-2 border-b border-term-border">
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold no-underline text-white">Gogen UI</Link>
+        <Link to="/" className="font-mono text-xl font-semibold no-underline text-term-text hover:text-term-green transition-colors">
+          gogen
+        </Link>
         <nav>
           <ul className="flex items-center space-x-4">
             <li>
-              <Link to="/" className="hover:text-cyan-400 transition-colors">Home</Link>
+              <Link to="/" className="text-sm hover:text-term-green transition-colors">Home</Link>
             </li>
             {!isLoading && (
               <>
@@ -35,7 +37,7 @@ const Header = () => {
                     <li>
                       <Link
                         to="/my-configurations"
-                        className="hover:text-cyan-400 transition-colors"
+                        className="text-sm hover:text-term-green transition-colors"
                       >
                         My Configs
                       </Link>
@@ -43,7 +45,7 @@ const Header = () => {
                     <li>
                       <Link
                         to="/new"
-                        className="bg-cyan-600 hover:bg-cyan-700 px-3 py-1 rounded transition-colors"
+                        className="bg-term-green hover:bg-opacity-90 text-term-bg px-3 py-1 rounded text-sm font-medium transition-colors"
                       >
                         New Config
                       </Link>
@@ -51,14 +53,14 @@ const Header = () => {
                     <li className="relative" ref={dropdownRef}>
                       <button
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className="flex items-center space-x-2 hover:text-cyan-400 transition-colors"
+                        className="flex items-center space-x-2 hover:text-term-green transition-colors"
                       >
                         <img
                           src={user.avatar_url}
                           alt={user.login}
-                          className="w-8 h-8 rounded-full border-2 border-white"
+                          className="w-7 h-7 rounded-full border border-term-border"
                         />
-                        <span className="hidden sm:inline">{user.login}</span>
+                        <span className="hidden sm:inline text-sm">{user.login}</span>
                         <svg
                           className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
                           fill="none"
@@ -69,28 +71,28 @@ const Header = () => {
                         </svg>
                       </button>
                       {isDropdownOpen && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                        <div className="absolute right-0 mt-2 w-48 bg-term-bg-elevated border border-term-border rounded shadow-lg py-1 z-50">
                           <Link
                             to="/my-configurations"
-                            className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                            className="block px-4 py-2 text-sm text-term-text hover:bg-term-bg-muted"
                             onClick={() => setIsDropdownOpen(false)}
                           >
                             My Configurations
                           </Link>
                           <Link
                             to="/new"
-                            className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                            className="block px-4 py-2 text-sm text-term-text hover:bg-term-bg-muted"
                             onClick={() => setIsDropdownOpen(false)}
                           >
                             New Configuration
                           </Link>
-                          <hr className="my-1" />
+                          <hr className="my-1 border-term-border" />
                           <button
                             onClick={() => {
                               setIsDropdownOpen(false);
                               logout();
                             }}
-                            className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                            className="block w-full text-left px-4 py-2 text-sm text-term-text hover:bg-term-bg-muted"
                           >
                             Sign out
                           </button>
@@ -102,7 +104,7 @@ const Header = () => {
                   <li>
                     <Link
                       to="/login"
-                      className="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded transition-colors"
+                      className="bg-term-green hover:bg-opacity-90 text-term-bg px-3 py-1.5 rounded text-sm font-medium transition-colors"
                     >
                       Login
                     </Link>
