@@ -172,6 +172,8 @@ jobs:
       - name: Deploy Lambda Functions
         env:
           ROLE_ARN: ${{ secrets.PROD_LAMBDA_ROLE_ARN }}
+          GITHUB_OAUTH_CLIENT_ID: ${{ secrets.PROD_GITHUB_OAUTH_CLIENT_ID }}
+          GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.PROD_GITHUB_OAUTH_CLIENT_SECRET }}
         run: |
           cd gogen-api
           bash deploy_lambdas.sh

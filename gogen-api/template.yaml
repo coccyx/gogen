@@ -84,6 +84,7 @@ Resources:
           allowMethods:
             - GET
             - POST
+            - DELETE
             - OPTIONS
           allowHeaders:
             - Content-Type
@@ -234,6 +235,27 @@ Resources:
                 httpMethod: POST
                 type: aws_proxy
                 uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpsertFunction.Arn}/invocations"
+          /v1/auth/github:
+            post:
+              responses: {}
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthFunction.Arn}/invocations"
+          /v1/delete/{proxy+}:
+            delete:
+              responses: {}
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteFunction.Arn}/invocations"
+          /v1/my-configs:
+            get:
+              responses: {}
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MyConfigsFunction.Arn}/invocations"
       Domain:
         DomainName: !If 
           - IsProduction
@@ -311,6 +333,58 @@ Resources:
           ENVIRONMENT: !Ref Environment
           DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
 
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: python3.13-v1
+    Properties:
+      CodeUri: ./api
+      Handler: auth.lambda_handler
+      Runtime: python3.13
+      Timeout: 10
+      Role: !Ref LambdaRoleArn
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          GITHUB_OAUTH_CLIENT_ID: !Ref GitHubOAuthClientId
+          GITHUB_OAUTH_CLIENT_SECRET: !Ref GitHubOAuthClientSecret
+
+  DeleteFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: python3.13-v1
+    Properties:
+      CodeUri: ./api
+      Handler: delete.lambda_handler
+      Runtime: python3.13
+      Timeout: 10
+      Role: !Ref LambdaRoleArn
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
+
+  MyConfigsFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: python3.13-v1
+    Properties:
+      CodeUri: ./api
+      Handler: my_configs.lambda_handler
+      Runtime: python3.13
+      Timeout: 10
+      Role: !Ref LambdaRoleArn
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          DYNAMODB_TABLE_NAME: !If [IsProduction, !Ref ProdTableName, !Ref StagingTableName]
+
   ListFunctionApiGatewayInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -342,6 +416,30 @@ Resources:
       FunctionName: !Ref GetFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GoGenApi}/*/GET/v1/get/*
+
+  AuthFunctionApiGatewayInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref AuthFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GoGenApi}/*/POST/v1/auth/github
+
+  DeleteFunctionApiGatewayInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref DeleteFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GoGenApi}/*/DELETE/v1/delete/*
+
+  MyConfigsFunctionApiGatewayInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref MyConfigsFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${GoGenApi}/*/GET/v1/my-configs
 
 Conditions:
   IsStagingEnvironment: !Equals 
@@ -377,6 +475,15 @@ Parameters:
     Type: String
     Default: gogen-staging
     Description: Name of the existing DynamoDB table for Staging
+
+  GitHubOAuthClientId:
+    Type: String
+    Description: GitHub OAuth App Client ID
+
+  GitHubOAuthClientSecret:
+    Type: String
+    NoEcho: true
+    Description: GitHub OAuth App Client Secret
 
 Outputs:
   ApiURL:

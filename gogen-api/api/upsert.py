@@ -1,9 +1,8 @@
 import json
-import http.client
-from boto3.dynamodb.conditions import Key, Attr
 from db_utils import get_dynamodb_client, get_table_name
 from s3_utils import upload_config
 from cors_utils import cors_response
+from github_utils import validate_github_token
 from logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -14,31 +13,6 @@ def respond(err, res=None):
     if err:
         return cors_response(400, str(err))
     return cors_response(200, res)
-
-
-def validate_github_token(token):
-    """
-    Validate the GitHub token by making a request to GitHub's API
-    """
-    headers = {
-        'Authorization': token,
-        'User-Agent': 'gogen lambda',
-        'Content-Length': '0'
-    }
-    
-    logger.debug("Attempting to validate GitHub token")
-    conn = http.client.HTTPSConnection('api.github.com')
-    conn.request("GET", "/user", None, headers)
-    response = conn.getresponse()
-    
-    if response.status != 200:
-        data = response.read().decode('utf-8')
-        logger.error(f"GitHub token validation failed. Status: {response.status}, Reason: {response.reason}")
-        logger.debug(f"GitHub API response: {data}")
-        return False, f"Unable to authenticate user to GitHub, status: {response.status}, msg: {response.reason}"
-    
-    logger.info("GitHub token validation successful")
-    return True, None
 
 
 def lambda_handler(event, context):
@@ -102,7 +76,10 @@ def lambda_handler(event, context):
                 
                 # Add S3 path to DynamoDB item
                 validated_body['s3Path'] = s3_path
-                
+
+                # Set the primary key (gogen = owner/name)
+                validated_body['gogen'] = f"{validated_body['owner']}/{validated_body['name']}"
+
                 # Remove gistID if present (for migration)
                 validated_body.pop('gistID', None)
             else:
