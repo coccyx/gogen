@@ -3,15 +3,29 @@ package outputter
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
 	config "github.com/coccyx/gogen/internal"
 	log "github.com/coccyx/gogen/logger"
 	"github.com/coccyx/gogen/template"
+)
+
+// Pools for reusable objects
+var (
+	stringBuilderPool = sync.Pool{
+		New: func() interface{} {
+			return &strings.Builder{}
+		},
+	}
+	outputStatsPool = sync.Pool{
+		New: func() interface{} {
+			return &config.OutputStats{}
+		},
+	}
 )
 
 var (
@@ -105,12 +119,13 @@ func readStats() {
 		BytesWritten[os.SampleName] += os.BytesWritten
 		EventsWritten[os.SampleName] += os.EventsWritten
 		Mutex.Unlock()
+		outputStatsPool.Put(os)
 	}
 }
 
 // Account sends eventsWritten and bytesWritten to the readStats() thread
 func Account(eventsWritten int64, bytesWritten int64, sampleName string) {
-	os := new(config.OutputStats)
+	os := outputStatsPool.Get().(*config.OutputStats)
 	os.EventsWritten = eventsWritten
 	os.BytesWritten = bytesWritten
 	os.SampleName = sampleName
@@ -123,6 +138,24 @@ func Account(eventsWritten int64, bytesWritten int64, sampleName string) {
 func write(item *config.OutQueueItem) {
 	var bytesCounter int64
 	var w io.Writer
+
+	// FAST PATH: If we have pre-formatted output, just write it directly
+	if item.FastOutput != nil {
+		defer item.IO.W.Close()
+		n, err := item.IO.W.Write(item.FastOutput)
+		if err != nil {
+			log.Errorf("Error writing FastOutput: %s", err)
+		}
+		// Add newline at end if not present
+		if len(item.FastOutput) > 0 && item.FastOutput[len(item.FastOutput)-1] != '\n' {
+			item.IO.W.Write([]byte("\n"))
+			n++
+		}
+		Account(int64(item.EventCount), int64(n), item.S.Name)
+		return
+	}
+
+	// TRADITIONAL PATH: Format events from map[string]string
 	cacheBuf, cacheBufOk := cacheBufs[item.S.Name]
 	useCache := item.Cache.UseCache && cacheBufOk // if we aren't in the cache yet, just output cached generated events
 	if item.Cache.UseCache && !useCache {
@@ -158,47 +191,83 @@ func write(item *config.OutQueueItem) {
 						}
 						tempbytes, err = w.Write(jb)
 					case "splunkhec":
-						if _, ok := line["_raw"]; ok {
-							line["event"] = line["_raw"]
-							delete(line, "_raw")
-						}
-						if _, ok := line["_time"]; ok {
-							line["time"] = line["_time"]
-							delete(line, "_time")
-						}
-						// TODO Refactor to avoid copy pasta, being lazy for now
-						jb, err := json.Marshal(line)
-						if err != nil {
-							log.Errorf("Error marshaling json: %s", err)
-						}
-						tempbytes, err = w.Write(jb)
+						// Build JSON directly with field remapping to avoid map copy
+						tempbytes, err = writeJSONWithHECRemap(w, line)
 					case "rfc3164":
-						tempbytes, err = io.WriteString(w, fmt.Sprintf("<%s>%s %s %s[%s]: %s", line["priority"], line["_time"], line["host"], line["tag"], line["pid"], line["_raw"]))
+						sb := stringBuilderPool.Get().(*strings.Builder)
+						sb.Reset()
+						sb.Grow(len(line["priority"]) + len(line["_time"]) + len(line["host"]) + len(line["tag"]) + len(line["pid"]) + len(line["_raw"]) + 10)
+						sb.WriteByte('<')
+						sb.WriteString(line["priority"])
+						sb.WriteByte('>')
+						sb.WriteString(line["_time"])
+						sb.WriteByte(' ')
+						sb.WriteString(line["host"])
+						sb.WriteByte(' ')
+						sb.WriteString(line["tag"])
+						sb.WriteByte('[')
+						sb.WriteString(line["pid"])
+						sb.WriteString("]: ")
+						sb.WriteString(line["_raw"])
+						tempbytes, err = io.WriteString(w, sb.String())
+						stringBuilderPool.Put(sb)
 					case "rfc5424":
-						kv := "-"
+						kvBuilder := stringBuilderPool.Get().(*strings.Builder)
+						kvBuilder.Reset()
+						kvBuilder.Grow(64)
+						hasKV := false
 						for k, v := range line {
 							if k != "_raw" && k != "_time" && k != "priority" && k != "host" && k != "appName" && k != "pid" && k != "tag" {
-								kv = kv + fmt.Sprintf("%s=\"%s\" ", k, v)
+								if hasKV {
+									kvBuilder.WriteByte(' ')
+								}
+								kvBuilder.WriteString(k)
+								kvBuilder.WriteString("=\"")
+								kvBuilder.WriteString(v)
+								kvBuilder.WriteByte('"')
+								hasKV = true
 							}
 						}
-						if len(kv) != 1 {
-							kv = fmt.Sprintf("[meta %s]", kv[1:len(kv)-1])
+						sb := stringBuilderPool.Get().(*strings.Builder)
+						sb.Reset()
+						sb.Grow(200)
+						sb.WriteByte('<')
+						sb.WriteString(line["priority"])
+						sb.WriteString(">1 ")
+						sb.WriteString(line["_time"])
+						sb.WriteByte(' ')
+						sb.WriteString(line["host"])
+						sb.WriteByte(' ')
+						sb.WriteString(line["appName"])
+						sb.WriteByte(' ')
+						sb.WriteString(line["pid"])
+						sb.WriteString(" - ")
+						if hasKV {
+							sb.WriteString("[meta ")
+							sb.WriteString(kvBuilder.String())
+							sb.WriteByte(']')
+						} else {
+							sb.WriteByte('-')
 						}
-						tempbytes, err = io.WriteString(w, fmt.Sprintf("<%s>%d %s %s %s %s - %s %s", line["priority"], 1, line["_time"], line["host"], line["appName"], line["pid"], kv, line["_raw"]))
+						sb.WriteByte(' ')
+						sb.WriteString(line["_raw"])
+						tempbytes, err = io.WriteString(w, sb.String())
+						stringBuilderPool.Put(kvBuilder)
+						stringBuilderPool.Put(sb)
 					case "elasticsearch":
-						_, err := io.WriteString(w, fmt.Sprintf("{ \"index\": { \"_index\": \"%s\", \"_type\": \"doc\" } }\n", line["index"]))
+						sb := stringBuilderPool.Get().(*strings.Builder)
+						sb.Reset()
+						sb.Grow(50 + len(line["index"]))
+						sb.WriteString("{ \"index\": { \"_index\": \"")
+						sb.WriteString(line["index"])
+						sb.WriteString("\", \"_type\": \"doc\" } }\n")
+						_, err := io.WriteString(w, sb.String())
+						stringBuilderPool.Put(sb)
 						if err != nil {
 							break
 						}
-						if _, ok := line["_raw"]; ok {
-							line["message"] = line["_raw"]
-							delete(line, "_raw")
-						}
-						jb, err := json.Marshal(line)
-						if err != nil {
-							break
-						}
-						tempbytes, err = w.Write(jb)
+						// Build JSON directly with field remapping to avoid map copy
+						tempbytes, err = writeJSONWithRemap(w, line, "_raw", "message")
 					}
 					if err != nil {
 						log.Errorf("Error writing to IO Buffer: %s", err)
@@ -308,6 +377,95 @@ func getLine(templatename string, s *config.Sample, line map[string]string, w io
 		}
 	}
 	return bytes
+}
+
+// writeJSONWithRemap writes a map as JSON, remapping one key to another
+func writeJSONWithRemap(w io.Writer, m map[string]string, oldKey, newKey string) (int, error) {
+	sb := stringBuilderPool.Get().(*strings.Builder)
+	sb.Reset()
+	sb.Grow(256)
+	sb.WriteByte('{')
+	first := true
+	for k, v := range m {
+		if !first {
+			sb.WriteByte(',')
+		}
+		first = false
+		// Remap the key if needed
+		outKey := k
+		if k == oldKey {
+			outKey = newKey
+		}
+		sb.WriteByte('"')
+		sb.WriteString(outKey)
+		sb.WriteString("\":")
+		writeJSONString(sb, v)
+	}
+	sb.WriteByte('}')
+	n, err := io.WriteString(w, sb.String())
+	stringBuilderPool.Put(sb)
+	return n, err
+}
+
+// writeJSONWithHECRemap writes a map as JSON with Splunk HEC field remapping
+// _raw -> event, _time -> time
+func writeJSONWithHECRemap(w io.Writer, m map[string]string) (int, error) {
+	sb := stringBuilderPool.Get().(*strings.Builder)
+	sb.Reset()
+	sb.Grow(256)
+	sb.WriteByte('{')
+	first := true
+	for k, v := range m {
+		if !first {
+			sb.WriteByte(',')
+		}
+		first = false
+		// Remap keys for HEC format
+		outKey := k
+		if k == "_raw" {
+			outKey = "event"
+		} else if k == "_time" {
+			outKey = "time"
+		}
+		sb.WriteByte('"')
+		sb.WriteString(outKey)
+		sb.WriteString("\":")
+		writeJSONString(sb, v)
+	}
+	sb.WriteByte('}')
+	n, err := io.WriteString(w, sb.String())
+	stringBuilderPool.Put(sb)
+	return n, err
+}
+
+// writeJSONString writes a JSON-escaped string to the builder
+func writeJSONString(sb *strings.Builder, s string) {
+	sb.WriteByte('"')
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch c {
+		case '"':
+			sb.WriteString("\\\"")
+		case '\\':
+			sb.WriteString("\\\\")
+		case '\n':
+			sb.WriteString("\\n")
+		case '\r':
+			sb.WriteString("\\r")
+		case '\t':
+			sb.WriteString("\\t")
+		default:
+			if c < 0x20 {
+				// Control characters - write as unicode escape
+				sb.WriteString("\\u00")
+				sb.WriteByte("0123456789abcdef"[c>>4])
+				sb.WriteByte("0123456789abcdef"[c&0xf])
+			} else {
+				sb.WriteByte(c)
+			}
+		}
+	}
+	sb.WriteByte('"')
 }
 
 func setup(generator *rand.Rand, item *config.OutQueueItem, num int) config.Outputter {

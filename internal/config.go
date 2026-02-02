@@ -916,6 +916,14 @@ func (c *Config) validate(s *Sample) {
 				s.Disabled = true
 			}
 		}
+
+		// Initialize FastPath if possible - this pre-compiles output templates
+		// for maximum performance (bypasses all map operations in hot path)
+		if !s.Disabled && (s.Generator == "sample" || s.Generator == "replay") {
+			if s.InitFastPath(c.Global.Output.OutputTemplate) {
+				log.Infof("FastPath enabled for sample '%s' with output '%s'", s.Name, c.Global.Output.OutputTemplate)
+			}
+		}
 	}
 }
 

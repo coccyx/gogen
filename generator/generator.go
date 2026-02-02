@@ -28,11 +28,16 @@ func Start(gq chan *config.GenQueueItem, gqs chan int) {
 		item.Rand = generator
 		// Check to see if our generator is not set
 		if gens[item.S.Name] == nil {
-			log.Infof("Setting sample '%s' to generator '%s'", item.S.Name, item.S.Generator)
-			if item.S.Generator == "sample" || item.S.Generator == "replay" {
+			// Try fast path first for sample generators
+			if (item.S.Generator == "sample" || item.S.Generator == "replay") && CanUseFastPath(item.S) {
+				log.Infof("Setting sample '%s' to FAST PATH generator", item.S.Name)
+				gens[item.S.Name] = new(fastgen)
+			} else if item.S.Generator == "sample" || item.S.Generator == "replay" {
+				log.Infof("Setting sample '%s' to generator '%s'", item.S.Name, item.S.Generator)
 				s := new(sample)
 				gens[item.S.Name] = s
 			} else {
+				log.Infof("Setting sample '%s' to generator '%s'", item.S.Name, item.S.Generator)
 				s := new(luagen)
 				gens[item.S.Name] = s
 			}

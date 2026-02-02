@@ -63,6 +63,10 @@ type Sample struct {
 	LuaMutex        *sync.Mutex                  `json:"-" yaml:"-"`
 	Buf             *bytes.Buffer                `json:"-" yaml:"-"`
 	realSample      bool                         // Used to represent samples which aren't just used to store lines from CSV or raw
+
+	// FastPath optimization - pre-compiled output templates
+	FastTemplates   []*FastTemplate `json:"-" yaml:"-"` // One per line, indexed same as Lines
+	UseFastPath     bool            `json:"-" yaml:"-"` // True if all conditions met for fast path
 }
 
 // Clock allows for implementers to keep track of their own view
@@ -82,6 +86,74 @@ func (s *Sample) Now() time.Time {
 		return s.Current
 	}
 	return time.Now()
+}
+
+// InitFastPath initializes pre-compiled output templates for the sample.
+// This enables the fast path which bypasses map operations in the hot loop.
+// Returns true if fast path was enabled, false if conditions weren't met.
+func (s *Sample) InitFastPath(outputType string) bool {
+	// Check if fast path is possible
+	if !s.canUseFastPath() {
+		s.UseFastPath = false
+		return false
+	}
+
+	// Check if output type is supported
+	switch outputType {
+	case "raw", "json", "splunkhec", "elasticsearch":
+		// Supported
+	default:
+		s.UseFastPath = false
+		return false
+	}
+
+	// Build templates for each line
+	s.FastTemplates = make([]*FastTemplate, len(s.Lines))
+	for i, line := range s.Lines {
+		ft := BuildFastTemplate(line, s.Tokens, outputType)
+		if ft == nil {
+			s.UseFastPath = false
+			s.FastTemplates = nil
+			return false
+		}
+		s.FastTemplates[i] = ft
+	}
+
+	s.UseFastPath = true
+	return true
+}
+
+// canUseFastPath checks if all conditions are met for fast path generation
+func (s *Sample) canUseFastPath() bool {
+	// Need lines to work with
+	if len(s.Lines) == 0 {
+		return false
+	}
+
+	// SinglePass uses BrokenLines which has different structure
+	if s.SinglePass {
+		return false
+	}
+
+	// Check all tokens are compatible with fast path
+	for i := range s.Tokens {
+		t := &s.Tokens[i]
+		if t.Disabled {
+			continue
+		}
+
+		// Only template format tokens are supported (not regex)
+		if t.Format != "template" {
+			return false
+		}
+
+		// Script tokens have side effects and complex state
+		if t.Type == "script" {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Token describes a replacement task to run against a sample

@@ -13,6 +13,10 @@ type OutQueueItem struct {
 	IO     *OutputIO
 	OS     chan *OutputStats
 	Cache  *CacheItem
+
+	// FastPath - pre-formatted output bytes (nil if using traditional path)
+	FastOutput []byte
+	EventCount int // Number of events when using FastOutput
 }
 
 // OutputStats are sent by each outputter to the ReadOutThread for accounting
