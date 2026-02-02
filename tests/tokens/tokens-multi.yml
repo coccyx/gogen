@@ -1,0 +1,30 @@
+name: tokens-multi
+description: Multi-token event for testing Replace() string concatenation
+tokens:
+  - name: token1
+    type: static
+    replacement: ONE
+    format: template
+    token: "$token1$"
+  - name: token2
+    type: static
+    replacement: TWO
+    format: template
+    token: "$token2$"
+  - name: token3
+    type: static
+    replacement: THREE
+    format: template
+    token: "$token3$"
+  - name: token4
+    type: static
+    replacement: FOUR
+    format: template
+    token: "$token4$"
+  - name: token5
+    type: static
+    replacement: FIVE
+    format: template
+    token: "$token5$"
+lines:
+- "_raw": "Event with $token1$ and $token2$ and $token3$ and $token4$ and $token5$ tokens"

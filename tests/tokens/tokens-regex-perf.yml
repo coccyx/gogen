@@ -1,0 +1,10 @@
+name: tokens-regex-perf
+description: Regex token for testing regex compilation overhead
+tokens:
+  - name: regex_replace
+    type: static
+    replacement: REPLACED
+    format: regex
+    token: "(PLACEHOLDER)"
+lines:
+- "_raw": "Line with PLACEHOLDER in it"

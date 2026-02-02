@@ -1,0 +1,29 @@
+name: tokens-perf
+description: Token configurations for performance benchmarking
+tokens:
+  # IPv4 - tests string building with dots
+  - name: random_ipv4
+    type: random
+    replacement: ipv4
+  # IPv6 - tests string building with colons
+  - name: random_ipv6
+    type: random
+    replacement: ipv6
+  # Script token - tests Lua VM creation
+  - name: script_static
+    type: script
+    script: |
+      return "scripted"
+  # Long random string - tests char-by-char concat
+  - name: random_string_long
+    type: random
+    replacement: string
+    length: 100
+  # Regex token for testing regex compilation
+  - name: regex_token
+    type: static
+    replacement: replaced
+    format: regex
+    token: "\\$token\\$"
+lines:
+- "_raw": "test $token$ line"

@@ -115,6 +115,7 @@ type Token struct {
 	mutex                      *sync.Mutex
 	weightedChoiceTotals       []int
 	weightedChoiceRunningTotal int
+	compiledRegex              *regexp.Regexp // Cached compiled regex for regex format tokens
 }
 
 // WeightedChoice is a simple data structure for allowing a list of items with a Choice to pick and a Weight for that choice
@@ -144,7 +145,7 @@ type StringOrToken struct {
 // Replace replaces any instances of this token in the string pointed to by event.  Since time is native is Gogen, we can pass in
 // earliest and latest time ranges to generate the event between.  Lastly, some times we want to span a selected choice over multiple
 // tokens.  Passing in a pointer to choice allows the replacement to choose a preselected row in FieldChoice or Choice.
-func (t Token) Replace(event *string, choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand, fullevent map[string]string) (int, error) {
+func (t *Token) Replace(event *string, choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand, fullevent map[string]string) (int, error) {
 	// s := t.Sample
 	e := *event
 
@@ -153,23 +154,27 @@ func (t Token) Replace(event *string, choice int, et time.Time, lt time.Time, no
 	} else {
 		retchoice := choice
 		lastoffset := 0
-		*event = ""
+		// Use strings.Builder to avoid quadratic string concatenation
+		var sb strings.Builder
+		sb.Grow(len(e) + len(offsets)*16) // Pre-allocate estimated size
 		for _, match := range offsets {
 			replacement, newchoice, err := t.GenReplacement(retchoice, et, lt, now, randgen, fullevent)
 			if err != nil {
 				return -1, err
 			}
-			*event = *event + e[lastoffset:match[0]] + replacement
+			sb.WriteString(e[lastoffset:match[0]])
+			sb.WriteString(replacement)
 			retchoice = newchoice
 			lastoffset = match[1]
 		}
-		*event += e[lastoffset:]
+		sb.WriteString(e[lastoffset:])
+		*event = sb.String()
 		return retchoice, nil
 	}
 }
 
 // GetReplacementOffsets returns the beginning and end of a token inside an event string
-func (t Token) GetReplacementOffsets(event string) ([][]int, error) {
+func (t *Token) GetReplacementOffsets(event string) ([][]int, error) {
 	ret := make([][]int, 0)
 	switch t.Format {
 	case "template":
@@ -183,11 +188,15 @@ func (t Token) GetReplacementOffsets(event string) ([][]int, error) {
 			offset += pos + len(t.Token)
 		}
 	case "regex":
-		re, err := regexp.Compile(t.Token)
-		if err != nil {
-			return ret, err
+		// Use cached compiled regex if available, otherwise compile and cache
+		if t.compiledRegex == nil {
+			re, err := regexp.Compile(t.Token)
+			if err != nil {
+				return ret, err
+			}
+			t.compiledRegex = re
 		}
-		matches := re.FindAllStringSubmatchIndex(event, -1)
+		matches := t.compiledRegex.FindAllStringSubmatchIndex(event, -1)
 		if matches != nil {
 			for _, match := range matches {
 				if len(match) >= 4 {
@@ -204,7 +213,7 @@ func (t Token) GetReplacementOffsets(event string) ([][]int, error) {
 
 // GenReplacement generates a replacement value for the token.  choice allows the user to specify
 // a specific value to choose in the array.  This is useful for saving picks amongst tokens.
-func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand, fullevent map[string]string) (string, int, error) {
+func (t *Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.Time, randgen *rand.Rand, fullevent map[string]string) (string, int, error) {
 	switch t.Type {
 	case "timestamp", "gotimestamp", "epochtimestamp":
 		td := lt.Sub(et)
@@ -235,7 +244,7 @@ func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.T
 			} else if (t.Upper - t.Lower) <= 0 {
 				ret = t.Upper
 			}
-			rate := t.Rater.TokenRate(t, now)
+			rate := t.Rater.TokenRate(*t, now)
 			rated := float64(ret) * rate
 			if rated < 0 {
 				ret = int(rated - 0.5)
@@ -252,7 +261,7 @@ func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.T
 			} else {
 				f = float64(upper) / math.Pow10(t.Precision)
 			}
-			rate := t.Rater.TokenRate(t, now)
+			rate := t.Rater.TokenRate(*t, now)
 			f = f * rate
 			return strconv.FormatFloat(f, 'f', t.Precision, 64), -1, nil
 		}
@@ -266,41 +275,47 @@ func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.T
 			upper := t.Upper * int(math.Pow10(t.Precision))
 			f := float64(randgen.Intn(upper-lower)+lower) / math.Pow10(t.Precision)
 			return strconv.FormatFloat(f, 'f', t.Precision, 64), -1, nil
-		case "string", "hex":
-			var ret string
+		case "string":
+			// Pre-allocate byte slice to avoid per-character allocations
+			buf := make([]byte, t.Length)
 			for i := 0; i < t.Length; i++ {
-				if t.Replacement == "string" {
-					ri := randgen.Intn(len(randStringLetters))
-					ret += randStringLetters[ri : ri+1]
-				} else {
-					ri := randgen.Intn(len(randHexLetters))
-					ret += randHexLetters[ri : ri+1]
-				}
+				buf[i] = randStringLetters[randgen.Intn(len(randStringLetters))]
 			}
-			return ret, -1, nil
+			return string(buf), -1, nil
+		case "hex":
+			// Pre-allocate byte slice to avoid per-character allocations
+			buf := make([]byte, t.Length)
+			for i := 0; i < t.Length; i++ {
+				buf[i] = randHexLetters[randgen.Intn(len(randHexLetters))]
+			}
+			return string(buf), -1, nil
 		case "guid":
 			u := uuid.NewV4()
 			return u.String(), -1, nil
 		case "ipv4":
-			var ret string
+			// Pre-allocate buffer for IPv4 (max "255.255.255.255" = 15 chars)
+			var sb strings.Builder
+			sb.Grow(15)
 			for i := 0; i < 4; i++ {
 				ri := randgen.Intn(255)
-				ret += strconv.Itoa(ri)
+				sb.WriteString(strconv.Itoa(ri))
 				if i < 3 {
-					ret += "."
+					sb.WriteByte('.')
 				}
 			}
-			return ret, -1, nil
+			return sb.String(), -1, nil
 		case "ipv6":
-			var ret string
+			// Pre-allocate buffer for IPv6 (max 8 * 4 hex + 7 colons = 39 chars)
+			var sb strings.Builder
+			sb.Grow(39)
 			for i := 0; i < 8; i++ {
 				ri := randgen.Intn(65535)
-				ret += fmt.Sprintf("%x", ri)
+				sb.WriteString(strconv.FormatInt(int64(ri), 16))
 				if i < 7 {
-					ret += ":"
+					sb.WriteByte(':')
 				}
 			}
-			return ret, -1, nil
+			return sb.String(), -1, nil
 		}
 	case "choice":
 		if choice == -1 {
@@ -341,13 +356,18 @@ func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.T
 	case "script":
 		t.mutex.Lock()
 		defer t.mutex.Unlock()
-		L := lua.NewState()
-		defer L.Close()
-		L.SetGlobal("state", t.luaState)
-		if err := L.DoString(t.Script); err != nil {
+		// Reuse Lua state instead of creating new one each time
+		if t.L == nil {
+			t.L = lua.NewState()
+			t.L.SetGlobal("state", t.luaState)
+		}
+		// Clear the stack before executing
+		t.L.SetTop(0)
+		if err := t.L.DoString(t.Script); err != nil {
 			log.Errorf("Error executing script for token '%s' in sample '%s': %s", t.Name, t.Parent.Name, err)
 		}
-		return lua.LVAsString(L.Get(-1)), -1, nil
+		result := lua.LVAsString(t.L.Get(-1))
+		return result, -1, nil
 	case "_channel":
 		channelConfStr := strings.Join([]string{"host::", fullevent["host"], "|source::", fullevent["source"], "|", fullevent["sourcetype"], "|"}, "")
 		var chanIdx int
