@@ -23,12 +23,14 @@ export default defineConfig(({ mode }) => ({
     open: true,
     proxy: {
       '/api': {
-        target: mode === 'production' 
-          ? 'https://api.gogen.io'
-          : 'http://localhost:4000',
+        target: mode === 'staging'
+          ? 'https://staging-api.gogen.io'
+          : mode === 'production'
+            ? 'https://api.gogen.io'
+            : 'http://localhost:4000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/v1'),
-        secure: mode === 'production',
+        secure: mode !== 'development',
       }
     },
     fs: {
