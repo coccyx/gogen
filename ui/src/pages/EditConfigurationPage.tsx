@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import gogenApi from '../api/gogenApi';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ExecutionComponent from '../components/ExecutionComponent';
 import Editor from '@monaco-editor/react';
 
 const DEFAULT_CONFIG = `# Gogen Configuration
@@ -237,6 +238,14 @@ const EditConfigurationPage = () => {
             </button>
           </div>
         </form>
+
+        <ExecutionComponent
+          configuration={{
+            gogen: name || 'preview',
+            description: description,
+            config: config,
+          }}
+        />
       </div>
     </div>
   );
