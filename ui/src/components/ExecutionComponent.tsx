@@ -39,7 +39,7 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
   const [intervalSeconds, setIntervalSeconds] = useState<number>(1);
   const [outputTemplate, setOutputTemplate] = useState<'raw' | 'json' | 'configured'>('raw');
   const [error, setError] = useState<string | null>(null);
-  
+
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalInstance = useRef<Terminal | null>(null);
 
@@ -73,7 +73,7 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
             link.href = 'https://unpkg.com/xterm@5.3.0/css/xterm.css';
             document.head.appendChild(link);
           }
-          
+
           // Check if Terminal class is available
           if (typeof Terminal === 'undefined') {
             try {
@@ -83,7 +83,7 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
               return;
             }
           }
-          
+
           // Create new terminal instance
           if (terminalRef.current && !terminalInstance.current) {
             const term = new Terminal({
@@ -92,20 +92,41 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
               rows: 20,
               cols: 100,
               theme: {
-                background: '#f8f9fa',
-                foreground: '#212529',
+                background: '#0d1117',
+                foreground: '#e6edf3',
+                cursor: '#e6edf3',
+                cursorAccent: '#0d1117',
+                selectionBackground: '#30363d',
+                black: '#0d1117',
+                red: '#f85149',
+                green: '#3fb950',
+                yellow: '#d29922',
+                blue: '#58a6ff',
+                magenta: '#bc8cff',
+                cyan: '#39c5cf',
+                white: '#e6edf3',
+                brightBlack: '#8b949e',
+                brightRed: '#f85149',
+                brightGreen: '#3fb950',
+                brightYellow: '#d29922',
+                brightBlue: '#58a6ff',
+                brightMagenta: '#bc8cff',
+                brightCyan: '#39c5cf',
+                brightWhite: '#ffffff',
               },
+              fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, monospace',
+              fontSize: 13,
             });
-            
+
             term.open(terminalRef.current);
-            
+
             terminalInstance.current = term;
           }
         } catch (error) {
           setError(`Terminal initialization error: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       };
-      
+
       initializeTerminal();
     } else {
       // Clean up terminal when switching to structured mode
@@ -126,11 +147,11 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
       intervalSeconds,
       outputTemplate
     };
-    
+
     try {
       if (outputMode === 'terminal' && terminalInstance.current) {
         terminalInstance.current.clear();
-        
+
         try {
           await gogenWasm.executeConfiguration(
             configuration,
@@ -141,7 +162,7 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
               }
             }
           );
-          
+
         } catch (execError: any) {
           terminalInstance.current.writeln(`\x1b[31mExecution error: ${execError.message || 'Unknown error'}\x1b[0m`);
         }
@@ -173,12 +194,12 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
   };
 
   return (
-    <div className="mt-8 border-t pt-8">
-      <h2 className="text-xl font-semibold mb-4">Execute Configuration</h2>
-      
+    <div className="mt-6 border-t border-term-border pt-6">
+      <h2 className="text-lg font-semibold text-term-text mb-4">Execute Configuration</h2>
+
       <div className="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
         <div>
-          <label htmlFor="intervals" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="intervals" className="block text-sm font-medium text-term-text-muted mb-1">
             Intervals
           </label>
           <input
@@ -191,12 +212,12 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
                 setIntervals(value === '' ? 1 : parseInt(value, 10));
               }
             }}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-white text-gray-900"
+            className="input"
           />
         </div>
 
         <div>
-          <label htmlFor="eventCount" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="eventCount" className="block text-sm font-medium text-term-text-muted mb-1">
             Events Per Interval
           </label>
           <input
@@ -209,12 +230,12 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
                 setEventCount(value === '' ? 1 : parseInt(value, 10));
               }
             }}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-white text-gray-900"
+            className="input"
           />
         </div>
 
         <div>
-          <label htmlFor="intervalSeconds" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="intervalSeconds" className="block text-sm font-medium text-term-text-muted mb-1">
             Interval (in Seconds)
           </label>
           <input
@@ -227,35 +248,35 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
                 setIntervalSeconds(value === '' ? 1 : parseInt(value, 10));
               }
             }}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-white text-gray-900"
+            className="input"
           />
         </div>
 
         <div>
-          <label htmlFor="outputTemplate" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="outputTemplate" className="block text-sm font-medium text-term-text-muted mb-1">
             Output Template
           </label>
           <select
             id="outputTemplate"
             value={outputTemplate}
             onChange={(e) => setOutputTemplate(e.target.value as 'raw' | 'json' | 'configured')}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-white text-gray-900"
+            className="input"
           >
             <option value="raw">Raw</option>
             <option value="json">JSON</option>
             <option value="configured">As configured</option>
           </select>
         </div>
-        
+
         <div>
-          <label htmlFor="outputMode" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="outputMode" className="block text-sm font-medium text-term-text-muted mb-1">
             Output Mode
           </label>
           <select
             id="outputMode"
             value={outputMode}
             onChange={(e) => setOutputMode(e.target.value as 'terminal' | 'structured')}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-white text-gray-900"
+            className="input"
           >
             <option value="terminal">Terminal</option>
             <option value="structured">Structured</option>
@@ -266,11 +287,11 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
           <button
             onClick={executeConfiguration}
             disabled={isExecuting}
-            className={`w-full px-4 py-2 rounded-md ${
+            className={`w-full px-4 py-1.5 rounded font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-term-green ${
               isExecuting
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-800 hover:bg-blue-700'
-            } text-white font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                ? 'bg-term-bg-muted text-term-text-muted cursor-not-allowed'
+                : 'bg-term-green hover:bg-opacity-90 text-term-bg'
+            }`}
           >
             {isExecuting ? 'Executing...' : 'Execute'}
           </button>
@@ -278,18 +299,18 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
       </div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
+        <div className="mb-4 error-box">
           {error}
         </div>
       )}
 
       {outputMode === 'terminal' ? (
-        <div className="border rounded-md p-4 bg-white shadow-md" data-testid="terminal-container">
+        <div className="border border-term-border rounded bg-term-bg p-2" data-testid="terminal-container">
           <div className="terminal" ref={terminalRef} />
         </div>
       ) : (
-        <div className="border rounded-md p-4 bg-white shadow-md">
-          <pre className="overflow-x-auto">
+        <div className="border border-term-border rounded bg-term-bg-elevated p-4">
+          <pre className="overflow-x-auto text-term-text font-mono text-sm">
             <code>{JSON.stringify(structuredOutput, null, 2)}</code>
           </pre>
         </div>
@@ -298,4 +319,4 @@ const ExecutionComponent: React.FC<ExecutionComponentProps> = ({ configuration }
   );
 };
 
-export default ExecutionComponent; 
+export default ExecutionComponent;

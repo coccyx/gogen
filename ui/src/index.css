@@ -7,9 +7,9 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light;
-  color: #261926;
-  background-color: #ffffff;
+  color-scheme: dark;
+  color: #e6edf3;
+  background-color: #0d1117;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -30,30 +30,50 @@ body {
 
 @layer components {
   .btn-primary {
-    @apply bg-cribl-cyan text-cribl-dark font-semibold py-2 px-4 rounded hover:bg-opacity-90 transition-colors;
+    @apply bg-term-green text-term-bg font-semibold py-1.5 px-3 rounded hover:bg-opacity-90 transition-colors;
   }
-  
+
   .btn-secondary {
-    @apply bg-cribl-purple text-white font-semibold py-2 px-4 rounded hover:bg-opacity-90 transition-colors;
+    @apply border border-term-border text-term-text font-semibold py-1.5 px-3 rounded hover:bg-term-bg-muted transition-colors;
   }
-  
+
+  .btn-danger {
+    @apply bg-term-red text-white font-semibold py-1.5 px-3 rounded hover:bg-opacity-90 transition-colors;
+  }
+
   .btn-outline {
-    @apply border border-cribl-cyan text-cribl-cyan font-semibold py-2 px-4 rounded hover:bg-cribl-cyan hover:bg-opacity-10 transition-colors;
+    @apply border border-term-green text-term-green font-semibold py-1.5 px-3 rounded hover:bg-term-green hover:bg-opacity-10 transition-colors;
   }
-  
+
+  .input {
+    @apply w-full px-3 py-1.5 rounded border border-term-border bg-term-bg-elevated text-term-text placeholder-term-text-muted focus:border-term-cyan focus:ring-1 focus:ring-term-cyan focus:outline-none sm:text-sm;
+  }
+
   .card {
-    @apply bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow;
+    @apply bg-term-bg-elevated rounded border border-term-border p-4 transition-colors;
   }
-  
+
+  .modal-backdrop {
+    @apply fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50;
+  }
+
+  .modal-content {
+    @apply bg-term-bg-elevated border border-term-border rounded p-6 max-w-md w-full mx-4;
+  }
+
+  .error-box {
+    @apply bg-term-red bg-opacity-10 border border-term-red text-term-red px-4 py-3 rounded;
+  }
+
   .container-custom {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
-  
+
   .nav-link {
-    @apply hover:text-cribl-cyan transition-colors;
+    @apply hover:text-term-green transition-colors;
   }
-  
+
   .section-heading {
-    @apply text-3xl font-bold text-cribl-primary mb-4;
+    @apply text-2xl font-bold text-term-text mb-4;
   }
-} 
+}

@@ -1,14 +1,14 @@
 const Hero = () => {
   return (
-    <section className="bg-blue-800 text-white py-12" role="region" aria-label="hero">
+    <section className="bg-term-bg-elevated text-term-text py-6 border-b border-term-border" role="region" aria-label="hero">
       <div className="container mx-auto px-4">
         <div className="max-w-3xl">
-          <h2 className="text-4xl font-bold mb-4">Gogen helps generate telemetry data, quickly and easily.</h2>
-          <p className="text-xl">View and manage your Gogen configurations.</p>
+          <h2 className="text-2xl font-bold mb-2">Generate telemetry data, quickly and easily.</h2>
+          <p className="text-term-text-muted">View and manage your Gogen configurations.</p>
         </div>
       </div>
     </section>
   );
 };
 
-export default Hero; 
+export default Hero;

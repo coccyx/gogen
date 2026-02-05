@@ -66,93 +66,93 @@ const MyConfigurationsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6">
         <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">My Configurations</h1>
+    <div className="container mx-auto px-4 py-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-term-text">My Configurations</h1>
         <Link
           to="/new"
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="btn-primary"
         >
           New Configuration
         </Link>
       </div>
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+        <div className="error-box mb-6">
           {error}
         </div>
       )}
 
       {configurations.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <h2 className="text-xl font-semibold text-gray-600 mb-4">
+        <div className="text-center py-12 bg-term-bg-elevated border border-term-border rounded">
+          <h2 className="text-lg font-semibold text-term-text-muted mb-4">
             No configurations yet
           </h2>
-          <p className="text-gray-500 mb-6">
+          <p className="text-term-text-muted mb-6 text-sm">
             Create your first configuration to get started.
           </p>
           <Link
             to="/new"
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-block"
+            className="btn-primary inline-block"
           >
             Create Configuration
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="bg-term-bg-elevated rounded border border-term-border overflow-hidden">
+          <table className="min-w-full">
+            <thead className="bg-term-bg-muted">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-2 text-left text-xs font-medium text-term-text-muted uppercase tracking-wider">
                   Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-2 text-left text-xs font-medium text-term-text-muted uppercase tracking-wider">
                   Description
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-2 text-right text-xs font-medium text-term-text-muted uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-term-border">
               {configurations.map((config) => (
-                <tr key={config.gogen} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                <tr key={config.gogen} className="hover:bg-term-bg-muted transition-colors">
+                  <td className="px-6 py-3 whitespace-nowrap">
                     <Link
                       to={`/configurations/${config.gogen}`}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
+                      className="text-term-cyan hover:text-term-green font-mono font-medium"
                     >
                       {getConfigDisplayName(config.gogen)}
                     </Link>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-gray-600 line-clamp-2">
+                  <td className="px-6 py-3">
+                    <span className="text-term-text-muted line-clamp-2 text-sm">
                       {config.description || 'No description'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                     <Link
                       to={`/configurations/${config.gogen}`}
-                      className="text-gray-600 hover:text-gray-900 mr-4"
+                      className="text-term-text-muted hover:text-term-text mr-4"
                     >
                       View
                     </Link>
                     <Link
                       to={`/edit/${config.gogen}`}
-                      className="text-blue-600 hover:text-blue-800 mr-4"
+                      className="text-term-cyan hover:text-term-green mr-4"
                     >
                       Edit
                     </Link>
                     <button
                       onClick={() => handleDeleteClick(config.gogen)}
-                      className="text-red-600 hover:text-red-800"
+                      className="text-term-red hover:text-red-400"
                     >
                       Delete
                     </button>
@@ -166,14 +166,14 @@ const MyConfigurationsPage = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <h2 className="text-lg font-bold text-term-text mb-4">
               Delete Configuration
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-term-text-muted mb-6">
               Are you sure you want to delete{' '}
-              <span className="font-semibold">
+              <span className="font-semibold text-term-text font-mono">
                 {deleteModal.configName ? getConfigDisplayName(deleteModal.configName) : ''}
               </span>
               ? This action cannot be undone.
@@ -182,14 +182,14 @@ const MyConfigurationsPage = () => {
               <button
                 onClick={handleDeleteCancel}
                 disabled={isDeleting}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                className="px-4 py-1.5 text-term-text-muted hover:text-term-text disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteConfirm}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                className="btn-danger disabled:opacity-50"
               >
                 {isDeleting ? 'Deleting...' : 'Delete'}
               </button>

@@ -28,10 +28,10 @@ const HomePage = () => {
   return (
     <>
       <Hero />
-      <main className="container mx-auto px-4 py-8">
-        <section className="mb-12">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">Configurations</h2>
-          <ConfigurationList 
+      <main className="container mx-auto px-4 py-4">
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold text-term-text mb-4">Configurations</h2>
+          <ConfigurationList
             configurations={configurations}
             loading={loading}
             error={error}
@@ -42,4 +42,4 @@ const HomePage = () => {
   );
 };
 
-export default HomePage; 
+export default HomePage;
