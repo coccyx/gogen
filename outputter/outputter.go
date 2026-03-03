@@ -158,15 +158,7 @@ func write(item *config.OutQueueItem) {
 						}
 						tempbytes, err = w.Write(jb)
 					case "splunkhec":
-						if _, ok := line["_raw"]; ok {
-							line["event"] = line["_raw"]
-							delete(line, "_raw")
-						}
-						if _, ok := line["_time"]; ok {
-							line["time"] = line["_time"]
-							delete(line, "_time")
-						}
-						// TODO Refactor to avoid copy pasta, being lazy for now
+						template.TransformHECFields(line)
 						jb, err := json.Marshal(line)
 						if err != nil {
 							log.Errorf("Error marshaling json: %s", err)
