@@ -7,12 +7,12 @@ import (
 	"time"
 
 	config "github.com/coccyx/gogen/internal"
+	"github.com/coccyx/gogen/outputter"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestOnceWithConfig(t *testing.T) {
-	// Clean up any existing config
-	config.ResetConfig()
+	resetRunState()
 
 	// Setup test configuration
 	configStr := `
@@ -57,6 +57,9 @@ samples:
 	// Setup config and get the instance that will be used
 	config.SetupFromString(configStr)
 	c := config.NewConfig()
+
+	// Start ROT in case a previous test closed rotchan
+	go outputter.ROT(c)
 
 	// Record time before and after test to validate timestamp is within range
 	beforeTest := time.Now().Truncate(time.Second)

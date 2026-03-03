@@ -230,6 +230,136 @@ func benchmarkToken(conf string, i int, b *testing.B) {
 	}
 }
 
+// mockRater implements Rater for testing rated tokens
+type mockRater struct {
+	rate float64
+}
+
+func (m *mockRater) EventRate(s *Sample, now time.Time, count int) float64 { return m.rate }
+func (m *mockRater) TokenRate(t Token, now time.Time) float64              { return m.rate }
+
+func TestGenReplacementRatedInt(t *testing.T) {
+	source := rand.NewSource(0)
+	randgen := rand.New(source)
+	fullevent := make(map[string]string)
+	now := time.Now()
+
+	token := Token{
+		Name:        "ratedint",
+		Type:        "rated",
+		Replacement: "int",
+		Lower:       10,
+		Upper:       20,
+		Rater:       &mockRater{rate: 2.0},
+	}
+	result, _, err := token.GenReplacement(-1, now, now, now, randgen, fullevent)
+	assert.NoError(t, err)
+	// With rate=2.0, value should be roughly doubled
+	val, _ := fmt.Sscanf(result, "%d", new(int))
+	assert.Equal(t, 1, val, "should parse as an integer")
+}
+
+func TestGenReplacementRatedIntEqualBounds(t *testing.T) {
+	source := rand.NewSource(0)
+	randgen := rand.New(source)
+	fullevent := make(map[string]string)
+	now := time.Now()
+
+	token := Token{
+		Name:        "ratedintequal",
+		Type:        "rated",
+		Replacement: "int",
+		Lower:       5,
+		Upper:       5,
+		Rater:       &mockRater{rate: 1.0},
+	}
+	result, _, err := token.GenReplacement(-1, now, now, now, randgen, fullevent)
+	assert.NoError(t, err)
+	assert.Equal(t, "5", result)
+}
+
+func TestGenReplacementRatedFloat(t *testing.T) {
+	source := rand.NewSource(0)
+	randgen := rand.New(source)
+	fullevent := make(map[string]string)
+	now := time.Now()
+
+	token := Token{
+		Name:        "ratedfloat",
+		Type:        "rated",
+		Replacement: "float",
+		Lower:       1,
+		Upper:       10,
+		Precision:   2,
+		Rater:       &mockRater{rate: 1.5},
+	}
+	result, _, err := token.GenReplacement(-1, now, now, now, randgen, fullevent)
+	assert.NoError(t, err)
+	// Should be a float string with 2 decimal places
+	assert.Contains(t, result, ".")
+}
+
+func TestGenReplacementRatedFloatEqualBounds(t *testing.T) {
+	source := rand.NewSource(0)
+	randgen := rand.New(source)
+	fullevent := make(map[string]string)
+	now := time.Now()
+
+	token := Token{
+		Name:        "ratedfloatequal",
+		Type:        "rated",
+		Replacement: "float",
+		Lower:       5,
+		Upper:       5,
+		Precision:   2,
+		Rater:       &mockRater{rate: 1.0},
+	}
+	result, _, err := token.GenReplacement(-1, now, now, now, randgen, fullevent)
+	assert.NoError(t, err)
+	assert.Equal(t, "5.00", result)
+}
+
+func TestGenReplacementFieldChoice(t *testing.T) {
+	source := rand.NewSource(0)
+	randgen := rand.New(source)
+	fullevent := make(map[string]string)
+	now := time.Now()
+
+	token := Token{
+		Name:     "fieldchoice",
+		Type:     "fieldChoice",
+		SrcField: "city",
+		FieldChoice: []map[string]string{
+			{"city": "NYC", "state": "NY"},
+			{"city": "LA", "state": "CA"},
+		},
+	}
+	result, choice, err := token.GenReplacement(-1, now, now, now, randgen, fullevent)
+	assert.NoError(t, err)
+	assert.True(t, result == "NYC" || result == "LA")
+	assert.True(t, choice >= 0)
+
+	// Test with specific choice
+	result, _, err = token.GenReplacement(0, now, now, now, randgen, fullevent)
+	assert.NoError(t, err)
+	assert.Equal(t, "NYC", result)
+}
+
+func TestGenReplacementInvalidType(t *testing.T) {
+	source := rand.NewSource(0)
+	randgen := rand.New(source)
+	fullevent := make(map[string]string)
+	now := time.Now()
+
+	token := Token{
+		Name: "badtype",
+		Type: "nonexistenttype",
+	}
+	_, _, err := token.GenReplacement(-1, now, now, now, randgen, fullevent)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid type")
+}
+
 func BenchmarkReplacement(b *testing.B) {
 	os.Setenv("GOGEN_HOME", "..")
 	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
