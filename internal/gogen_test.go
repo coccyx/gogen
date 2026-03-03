@@ -2,7 +2,7 @@ package internal
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -119,7 +119,7 @@ func mockGogenServer(t *testing.T) (*httptest.Server, []GogenList) {
 			}
 
 			// Read the request body
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				http.Error(w, "Error reading request body", http.StatusBadRequest)
 				return
@@ -163,7 +163,8 @@ func TestListWithMockServer(t *testing.T) {
 	defer os.Setenv("GOGEN_APIURL", originalAPIURL) // Restore the original value when done
 
 	// Call the List function
-	result := List()
+	result, err := List()
+	assert.NoError(t, err, "List should not return an error")
 
 	// Verify the results
 	assert.NotEmpty(t, result, "List result should not be empty")
@@ -233,7 +234,8 @@ func TestSearchWithMockServer(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run("Search_"+tc.query, func(t *testing.T) {
 			// Call the Search function
-			result := Search(tc.query)
+			result, err := Search(tc.query)
+			assert.NoError(t, err, "Search should not return an error for query: %s", tc.query)
 
 			// Verify the results
 			assert.NotEmpty(t, result, "Search result should not be empty for query: %s", tc.query)
@@ -290,7 +292,7 @@ func TestGetWithMockServer(t *testing.T) {
 	// Test with an invalid Gogen ID
 	_, err = Get("coccyx/nonexistent")
 	assert.Error(t, err, "Get should return an error for an invalid Gogen ID")
-	assert.Contains(t, err.Error(), "Could not find Gogen", "Error message should indicate Gogen not found")
+	assert.Contains(t, err.Error(), "could not find Gogen", "Error message should indicate Gogen not found")
 }
 
 // Mock the GitHub struct for testing Upsert
@@ -329,11 +331,9 @@ func TestUpsertWithMockServer(t *testing.T) {
 		Config:      "",
 	}
 
-	// Call the Upsert function
-	upsert(gogen, &GitHub{token: "mock-github-token"})
-
-	// Since Upsert doesn't return anything, we can only verify that it didn't panic
-	// The mock server will return an error if the request is not formatted correctly
+	// Call the upsert function
+	err := upsert(gogen, &GitHub{token: "mock-github-token"})
+	assert.NoError(t, err, "upsert should not return an error")
 }
 
 // Helper function to filter expected items based on a query string

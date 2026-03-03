@@ -99,7 +99,9 @@ func push(name string, genc *Config, pushc *Config, run Run) string {
 			Version:     version,
 			Config:      string(configYaml),
 		}
-		Upsert(g)
+		if err := Upsert(g); err != nil {
+			log.Fatalf("Error upserting Gogen: %s", err)
+		}
 
 		return *user.Login
 	}

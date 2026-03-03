@@ -55,13 +55,13 @@ func (h *httpout) flush() error {
 	if err != nil && h.resp == nil {
 		return fmt.Errorf("Error making request from sample '%s' to endpoint '%s': %s", h.lastSampleName, h.endpoint, err)
 	}
+	defer h.resp.Body.Close()
 	body, err := io.ReadAll(h.resp.Body)
 	if err != nil {
 		return fmt.Errorf("Error making request from sample '%s' to endpoint '%s': %s", h.lastSampleName, h.endpoint, err)
 	} else if h.resp.StatusCode < 200 || h.resp.StatusCode > 299 {
 		return fmt.Errorf("Error making request from sample '%s' to endpoint '%s', status '%d': %s", h.lastSampleName, h.endpoint, h.resp.StatusCode, body)
 	}
-	h.resp.Body.Close()
 	h.buf.Reset()
 	return nil
 }

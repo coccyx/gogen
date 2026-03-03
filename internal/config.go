@@ -1172,6 +1172,7 @@ func (c *Config) parseWebConfig(out interface{}, url string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	contents, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
