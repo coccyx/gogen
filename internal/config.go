@@ -6,7 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -906,7 +906,7 @@ func (c *Config) readGenerator(configDir string, g *GeneratorConfig) error {
 	} else if err != nil {
 		return err
 	}
-	contents, err := ioutil.ReadFile(fullPath)
+	contents, err := os.ReadFile(fullPath)
 	if err != nil {
 		return err
 	}
@@ -1139,7 +1139,7 @@ func (c *Config) parseFileConfig(out interface{}, path ...string) error {
 		return err
 	}
 
-	contents, err := ioutil.ReadFile(fullPath)
+	contents, err := os.ReadFile(fullPath)
 	if err != nil {
 		return err
 	}
@@ -1172,7 +1172,7 @@ func (c *Config) parseWebConfig(out interface{}, url string) error {
 	if err != nil {
 		return err
 	}
-	contents, err := ioutil.ReadAll(resp.Body)
+	contents, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -47,13 +47,13 @@ func listsearch(url string) (ret []GogenList) {
 	resp, err := client.Get(url)
 	if err != nil || resp.StatusCode != 200 {
 		if resp.StatusCode != 200 {
-			body, _ := ioutil.ReadAll(resp.Body)
+			body, _ := io.ReadAll(resp.Body)
 			log.Fatalf("Non 200 response code searching for Gogen: %s", string(body))
 		} else {
 			log.Fatalf("Error retrieving list of Gogens: %s", err)
 		}
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatalf("Error reading body from response: %s", err)
 	}
@@ -89,14 +89,14 @@ var Get = func(q string) (g GogenInfo, err error) {
 				return g, fmt.Errorf("Could not find Gogen: %s\n", q)
 			}
 			if resp.StatusCode != 200 {
-				body, _ := ioutil.ReadAll(resp.Body)
+				body, _ := io.ReadAll(resp.Body)
 				return g, fmt.Errorf("Non 200 response code retrieving Gogen: %s", string(body))
 			}
 		} else {
 			return g, fmt.Errorf("Error retrieving Gogen %s: %s", q, err)
 		}
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return g, fmt.Errorf("Error reading body from response: %s", err)
 	}
@@ -143,13 +143,13 @@ func upsert(g GogenInfo, gh *GitHub) {
 	resp, err := client.Do(req)
 	if err != nil || resp.StatusCode != 200 {
 		if resp.StatusCode != 200 {
-			body, _ := ioutil.ReadAll(resp.Body)
+			body, _ := io.ReadAll(resp.Body)
 			log.Fatalf("Non 200 response code Upserting: %s", string(body))
 		} else {
 			log.Fatalf("Error POSTing to upsert: %s", err)
 		}
 	}
-	// body, err := ioutil.ReadAll(resp.Body)
+	// body, err := io.ReadAll(resp.Body)
 	// if err != nil {
 	// 	log.Fatalf("Error reading response body: %s", err)
 	// }

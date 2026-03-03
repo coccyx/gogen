@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -37,8 +36,7 @@ func Push(name string, run Run) string {
 		// Push all file based mixes
 		for i := range ec.Mix {
 			m := ec.Mix[i]
-			acceptableExtensions := map[string]bool{".yml": true, ".yaml": true, ".json": true}
-			if _, ok := acceptableExtensions[filepath.Ext(m.Sample)]; ok {
+			if _, ok := configExtensions[filepath.Ext(m.Sample)]; ok {
 				sc := BuildConfig(ConfigConfig{
 					FullConfig: m.Sample,
 					Export:     true,
@@ -129,7 +127,7 @@ func Pull(gogen string, dir string, deconstruct bool) {
 
 	// Write the config to a file
 	filename := filepath.Join(dir, name+".yml")
-	err = ioutil.WriteFile(filename, []byte(g.Config), 0644)
+	err = os.WriteFile(filename, []byte(g.Config), 0644)
 	if err != nil {
 		log.Fatalf("Error writing to file %s: %s", filename, err)
 	}
@@ -159,7 +157,7 @@ func PullFile(gogen string, filename string) {
 	versionCacheFile := filepath.Join(os.ExpandEnv("$GOGEN_TMPDIR"), ".versioncache_"+url.QueryEscape(gogen))
 	_, err = os.Stat(versionCacheFile)
 	if err == nil {
-		versionBytes, err := ioutil.ReadFile(versionCacheFile)
+		versionBytes, err := os.ReadFile(versionCacheFile)
 		if err != nil {
 			log.Fatalf("Error reading version cache file '%s': %s", versionCacheFile, err)
 		}
@@ -169,7 +167,7 @@ func PullFile(gogen string, filename string) {
 		}
 		if version == g.Version {
 			log.Debugf("Reading config from cache file '%s'", cacheFile)
-			configContent, err = ioutil.ReadFile(cacheFile)
+			configContent, err = os.ReadFile(cacheFile)
 			if err != nil {
 				cached = false
 			} else {
@@ -291,7 +289,7 @@ func deconstructConfig(filename string, name string, dir string) {
 				}
 				outfname := filepath.Join(samplesDir, name+".yml")
 				log.Debugf("Writing sample file for sammple '%s' at file: %s", s.Name, outfname)
-				err = ioutil.WriteFile(outfname, outb, 0644)
+				err = os.WriteFile(outfname, outb, 0644)
 				if err != nil {
 					log.Fatalf("Cannot write file %s: %s", outfname, err)
 				}
@@ -305,7 +303,7 @@ func deconstructConfig(filename string, name string, dir string) {
 		if outb, err = yaml.Marshal(t); err != nil {
 			log.Fatalf("Cannot Marshal template '%s', err: %s", t.Name, err)
 		}
-		err = ioutil.WriteFile(filepath.Join(templatesDir, t.Name+".yml"), outb, 0644)
+		err = os.WriteFile(filepath.Join(templatesDir, t.Name+".yml"), outb, 0644)
 		if err != nil {
 			log.Fatalf("Error writing file %s", filepath.Join(templatesDir, t.Name+".yml"))
 		}
@@ -314,7 +312,7 @@ func deconstructConfig(filename string, name string, dir string) {
 	for i, g := range c.Generators {
 		if g.FileName != "" {
 			fname := filepath.Base(g.FileName)
-			err = ioutil.WriteFile(filepath.Join(generatorsDir, fname), []byte(g.Script), 0644)
+			err = os.WriteFile(filepath.Join(generatorsDir, fname), []byte(g.Script), 0644)
 			if err != nil {
 				log.Fatalf("Error writing file %s", filepath.Join(generatorsDir, fname))
 			}
@@ -327,7 +325,7 @@ func deconstructConfig(filename string, name string, dir string) {
 		if outb, err = yaml.Marshal(g); err != nil {
 			log.Fatalf("Cannot Marshal generator '%s', err: %s", g.Name, err)
 		}
-		err = ioutil.WriteFile(filepath.Join(generatorsDir, g.Name+".yml"), outb, 0644)
+		err = os.WriteFile(filepath.Join(generatorsDir, g.Name+".yml"), outb, 0644)
 		if err != nil {
 			log.Fatalf("Error writing file %s", filepath.Join(generatorsDir, g.Name+".yml"))
 		}

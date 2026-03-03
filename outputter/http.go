@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 
@@ -56,7 +55,7 @@ func (h *httpout) flush() error {
 	if err != nil && h.resp == nil {
 		return fmt.Errorf("Error making request from sample '%s' to endpoint '%s': %s", h.lastSampleName, h.endpoint, err)
 	}
-	body, err := ioutil.ReadAll(h.resp.Body)
+	body, err := io.ReadAll(h.resp.Body)
 	if err != nil {
 		return fmt.Errorf("Error making request from sample '%s' to endpoint '%s': %s", h.lastSampleName, h.endpoint, err)
 	} else if h.resp.StatusCode < 200 || h.resp.StatusCode > 299 {
