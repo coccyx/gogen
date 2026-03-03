@@ -15,9 +15,6 @@ import (
 func (c *Config) parseFileConfig(out interface{}, path ...string) error {
 	fullPath := filepath.Join(path...)
 	log.Debugf("Config Path: %v", fullPath)
-	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-		return err
-	}
 
 	contents, err := os.ReadFile(fullPath)
 	if err != nil {

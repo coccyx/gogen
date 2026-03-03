@@ -15,11 +15,15 @@ func (c *Config) SetupSystemTokens() {
 		for _, t := range s.Tokens {
 			if t.Name == tokenName {
 				tokenfound = true
+				break
 			}
 		}
-		for _, l := range s.Lines {
-			if _, ok := l[tokenName]; ok {
-				tokenfound = true
+		if !tokenfound {
+			for _, l := range s.Lines {
+				if _, ok := l[tokenName]; ok {
+					tokenfound = true
+					break
+				}
 			}
 		}
 		if !tokenfound {
@@ -91,13 +95,13 @@ func (c *Config) SetupSystemTokens() {
 			tokenType = "gotimestamp"
 			tokenReplacement = "2006-01-02T15:04:05.999999Z07:00"
 		}
+		hostname, _ := os.Hostname()
 		for i := 0; i < len(c.Samples); i++ {
 			s := c.Samples[i]
 			addToken(s, tokenName, tokenType, tokenReplacement) // Timestamp
 			// Add fields for syslog output
 			if syslogOutput {
 				addField(s, "priority", fmt.Sprintf("%d", defaultSyslogPriority))
-				hostname, _ := os.Hostname()
 				addField(s, "host", hostname)
 				tag := "gogen"
 				if len(s.Lines) > 0 && s.Lines[0]["sourcetype"] != "" {

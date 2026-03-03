@@ -19,7 +19,7 @@ const defaultOutputTemplate = "raw"
 const defaultGenerator = "sample"
 const defaultEarliest = "now"
 const defaultLatest = "now"
-const defaultRandomizeEvents = false
+
 const defaultRater = "default"
 
 // Default file output values

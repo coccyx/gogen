@@ -42,21 +42,10 @@ func (c *Config) validate(s *Sample) {
 	s.Output = &c.Global.Output
 
 	// Setup defaults
-	if s.Earliest == "" {
-		s.Earliest = defaultEarliest
-	}
-	if s.Latest == "" {
-		s.Latest = defaultLatest
-	}
-	if s.RandomizeEvents == false {
-		s.RandomizeEvents = defaultRandomizeEvents
-	}
-	if s.Field == "" {
-		s.Field = DefaultField
-	}
-	if s.RaterString == "" {
-		s.RaterString = defaultRater
-	}
+	setDefault(&s.Earliest, defaultEarliest)
+	setDefault(&s.Latest, defaultLatest)
+	setDefault(&s.Field, DefaultField)
+	setDefault(&s.RaterString, defaultRater)
 
 	ParseBeginEnd(s)
 

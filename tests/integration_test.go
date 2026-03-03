@@ -406,8 +406,7 @@ samples:
 }
 
 func TestTokenRandomInt(t *testing.T) {
-	for i := 0; i < 10; i++ {
-		output := captureStdoutRun(t, `
+	output := captureStdoutRun(t, `
 global:
   output:
     outputter: stdout
@@ -417,7 +416,7 @@ samples:
     begin: "2001-10-20 00:00:00"
     end: "2001-10-20 00:00:01"
     interval: 1
-    count: 1
+    count: 10
     tokens:
       - name: randnum
         format: template
@@ -429,7 +428,10 @@ samples:
     lines:
       - _raw: "$randnum$"
 `)
-		val, err := strconv.Atoi(output)
+	lines := strings.Split(output, "\n")
+	assert.Equal(t, 10, len(lines), "expected 10 lines")
+	for _, line := range lines {
+		val, err := strconv.Atoi(line)
 		assert.NoError(t, err, "output should be an integer")
 		assert.GreaterOrEqual(t, val, 10)
 		assert.Less(t, val, 20) // upper is exclusive in randgen.Intn
@@ -596,13 +598,8 @@ func TestDoGetHTTPError(t *testing.T) {
 	assert.True(t, httpErr.IsNotFound())
 }
 
-func TestDoPostWithHeaders(t *testing.T) {
-	// We test indirectly: the Get function uses doGet, but to test doPost
-	// with headers we need an exported function that uses it. Upsert uses
-	// doPost with an Authorization header, but requires GitHub token.
-	// Instead, we test that the server receives custom headers through
-	// a mock of the /v1/list endpoint. Since doPost is unexported, we
-	// verify header passing by testing that List properly calls the server.
+func TestListSendsDefaultHeaders(t *testing.T) {
+	// Verify that List sends standard HTTP headers (User-Agent) to the server.
 	var receivedUA string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedUA = r.UserAgent()

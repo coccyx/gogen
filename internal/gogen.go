@@ -128,7 +128,7 @@ var Get = func(q string) (g GogenInfo, err error) {
 	if err != nil {
 		var httpErr *HTTPError
 		if errors.As(err, &httpErr) && httpErr.IsNotFound() {
-			return g, fmt.Errorf("could not find Gogen: %s", q)
+			return g, fmt.Errorf("could not find Gogen %s: %w", q, err)
 		}
 		return g, fmt.Errorf("error retrieving Gogen %s: %w", q, err)
 	}
