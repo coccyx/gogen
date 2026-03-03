@@ -1,0 +1,43 @@
+generators:
+  - name: roundTest
+    script: |
+        val = round(3.14159, 2)
+        setToken("rounded", tostring(val))
+  - name: logInfoTest
+    script: |
+        info("test log message from lua")
+        setToken("logged", "ok")
+  - name: removeTokenTest
+    script: |
+        setToken("keeper", "keep")
+        setToken("remover", "remove")
+        removeToken("remover")
+  - name: sendEventTest
+    script: |
+        event = { _raw = "sent via sendEvent" }
+        sendEvent(event)
+samples:
+  - name: roundTest
+    generator: roundTest
+    interval: 1
+    endIntervals: 1
+    lines:
+    - _raw: notused
+  - name: logInfoTest
+    generator: logInfoTest
+    interval: 1
+    endIntervals: 1
+    lines:
+    - _raw: notused
+  - name: removeTokenTest
+    generator: removeTokenTest
+    interval: 1
+    endIntervals: 1
+    lines:
+    - _raw: notused
+  - name: sendEventTest
+    generator: sendEventTest
+    interval: 1
+    endIntervals: 1
+    lines:
+    - _raw: notused
