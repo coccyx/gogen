@@ -20,6 +20,7 @@ var (
 	Mutex         sync.RWMutex
 	lastTS        time.Time
 	rotchan       chan *config.OutputStats
+	rotOnce       sync.Once
 	rotwg         sync.WaitGroup
 	gout          [config.MaxOutputThreads]config.Outputter
 	lasterr       [config.MaxOutputThreads]lastError
@@ -40,13 +41,22 @@ func init() {
 	cacheBufs = make(map[string]*bytes.Buffer)
 }
 
+// InitROT initializes the ROT channel and readStats goroutine. Safe to call
+// multiple times; initialization only happens once until ReadFinal resets it.
+// Called automatically by ROT, but can be called separately for testing.
+func InitROT(c *config.Config) {
+	rotOnce.Do(func() {
+		rotInterval = c.Global.ROTInterval
+		rotchan = make(chan *config.OutputStats)
+		rotwg.Add(1)
+		go readStats()
+	})
+}
+
 // ROT starts the Read Out Thread which will log statistics about what's being output
 // ROT is intended to be started as a goroutine which will log output every c.
 func ROT(c *config.Config) {
-	rotInterval = c.Global.ROTInterval
-	rotchan = make(chan *config.OutputStats)
-	rotwg.Add(1)
-	go readStats()
+	InitROT(c)
 
 	lastEventsWritten := make(map[string]int64)
 	lastBytesWritten := make(map[string]int64)
@@ -83,6 +93,8 @@ func ROT(c *config.Config) {
 func ReadFinal() {
 	close(rotchan)
 	rotwg.Wait()
+	// Reset so ROT can be re-initialized (needed for tests)
+	rotOnce = sync.Once{}
 
 	totalEvents := int64(0)
 	totalBytes := int64(0)
