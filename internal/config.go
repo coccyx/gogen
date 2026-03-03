@@ -238,11 +238,17 @@ func BuildConfig(cc ConfigConfig) *Config {
 		c.Templates = append(c.Templates, templates...)
 		for _, t := range c.Templates {
 			if len(t.Header) > 0 {
-				_ = template.New(t.Name+"_header", t.Header)
+				if err := template.New(t.Name+"_header", t.Header); err != nil {
+					log.Errorf("Error creating header template for '%s': %v", t.Name, err)
+				}
 			}
-			_ = template.New(t.Name+"_row", t.Row)
+			if err := template.New(t.Name+"_row", t.Row); err != nil {
+				log.Errorf("Error creating row template for '%s': %v", t.Name, err)
+			}
 			if len(t.Footer) > 0 {
-				_ = template.New(t.Name+"_footer", t.Footer)
+				if err := template.New(t.Name+"_footer", t.Footer); err != nil {
+					log.Errorf("Error creating footer template for '%s': %v", t.Name, err)
+				}
 			}
 		}
 	}
@@ -1144,26 +1150,16 @@ func (c *Config) parseFileConfig(out interface{}, path ...string) error {
 		return err
 	}
 
-	// log.Debugf("Contents: %s", contents)
+	var parseErr error
 	switch filepath.Ext(fullPath) {
 	case ".yml", ".yaml":
-		if err := yaml.Unmarshal(contents, out); err != nil {
-			if ute, ok := err.(*json.UnmarshalTypeError); ok {
-				log.Errorf("JSON parsing error in file '%s' at offset %d: %v", fullPath, ute.Offset, ute)
-			} else {
-				log.Errorf("YAML parsing error in file '%s': %v", fullPath, err)
-			}
-		}
+		parseErr = yaml.Unmarshal(contents, out)
 	case ".json":
-		if err := json.Unmarshal(contents, out); err != nil {
-			if ute, ok := err.(*json.UnmarshalTypeError); ok {
-				log.Errorf("JSON parsing error in file '%s' at offset %d: %v", fullPath, ute.Offset, ute)
-			} else {
-				log.Errorf("JSON parsing error in file '%s': %v", fullPath, err)
-			}
-		}
+		parseErr = json.Unmarshal(contents, out)
 	}
-	// log.Debugf("Out: %#v\n", out)
+	if parseErr != nil {
+		return fmt.Errorf("parsing error in file '%s': %w", fullPath, parseErr)
+	}
 	return nil
 }
 

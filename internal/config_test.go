@@ -1264,8 +1264,8 @@ func TestParseFileConfigYAMLError(t *testing.T) {
 	c := &Config{cc: ConfigConfig{}}
 	s := &Sample{}
 	err := c.parseFileConfig(s, badFile)
-	// parseFileConfig logs errors but returns nil
-	assert.NoError(t, err)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "parsing error in file")
 }
 
 func TestParseFileConfigJSONError(t *testing.T) {
@@ -1278,7 +1278,8 @@ func TestParseFileConfigJSONError(t *testing.T) {
 	c := &Config{cc: ConfigConfig{}}
 	s := &Sample{}
 	err := c.parseFileConfig(s, badFile)
-	assert.NoError(t, err)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "parsing error in file")
 }
 
 func TestParseFileConfigNotExists(t *testing.T) {
