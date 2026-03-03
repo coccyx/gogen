@@ -24,7 +24,7 @@ type httpout struct {
 }
 
 func (h *httpout) Send(item *config.OutQueueItem) error {
-	if h.initialized == false {
+	if !h.initialized {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true, MaxIdleConnsPerHost: -1}
 		h.client = &http.Client{Transport: tr, Timeout: item.S.Output.Timeout}
 		h.buf = bytes.NewBuffer([]byte{})

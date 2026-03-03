@@ -14,7 +14,7 @@ type network struct {
 }
 
 func (n *network) Send(item *config.OutQueueItem) error {
-	if n.initialized == false {
+	if !n.initialized {
 		endpoint := item.S.Output.Endpoints[rand.Intn(len(item.S.Output.Endpoints))]
 		conn, err := net.DialTimeout(item.S.Output.Protocol, endpoint, item.S.Output.Timeout)
 		if err != nil {

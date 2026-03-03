@@ -18,7 +18,7 @@ type file struct {
 }
 
 func (f *file) Send(item *config.OutQueueItem) error {
-	if f.initialized == false {
+	if !f.initialized {
 		info, err := os.Stat(item.S.Output.FileName)
 		// File doesn't exist, so create
 		if os.IsNotExist(err) {
