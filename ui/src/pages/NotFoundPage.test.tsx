@@ -33,10 +33,10 @@ describe('NotFoundPage', () => {
     
     // Check heading styling
     const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading).toHaveClass('text-6xl', 'font-bold', 'text-cribl-primary', 'mb-4');
+    expect(heading).toHaveClass('text-6xl', 'font-bold', 'text-term-text', 'mb-4');
     
     // Check link styling
     const link = screen.getByRole('link', { name: 'Go to Homepage' });
     expect(link).toHaveClass('btn-primary');
   });
-}); 
+});

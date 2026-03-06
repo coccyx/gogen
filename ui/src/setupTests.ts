@@ -25,4 +25,39 @@ global.ResizeObserver = class ResizeObserver {
 
 // Mock TextEncoder/TextDecoder
 global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder as typeof global.TextDecoder; 
+global.TextDecoder = TextDecoder as typeof global.TextDecoder;
+
+const originalConsoleWarn = console.warn;
+const originalConsoleError = console.error;
+
+beforeAll(() => {
+  jest.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+    const message = String(args[0] ?? '');
+    if (
+      message.includes('React Router Future Flag Warning')
+    ) {
+      return;
+    }
+
+    originalConsoleWarn(...args);
+  });
+
+  jest.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+    const message = String(args[0] ?? '');
+    if (
+      message.includes('not wrapped in act') ||
+      message.startsWith('Error fetching configuration') ||
+      message.startsWith('Error fetching configurations:') ||
+      message.startsWith('Error searching configurations:') ||
+      message.startsWith('Error executing WASM:')
+    ) {
+      return;
+    }
+
+    originalConsoleError(...args);
+  });
+});
+
+afterAll(() => {
+  jest.restoreAllMocks();
+});

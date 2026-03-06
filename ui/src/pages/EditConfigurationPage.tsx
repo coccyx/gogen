@@ -117,7 +117,6 @@ const EditConfigurationPage = () => {
 
       await gogenApi.upsertConfiguration({
         name: name.trim(),
-        owner: user.login,
         description: description.trim(),
         config: config,
       });

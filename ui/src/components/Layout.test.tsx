@@ -36,6 +36,6 @@ describe('Layout', () => {
     );
     
     const container = screen.getByTestId('layout-container');
-    expect(container).toHaveClass('min-h-screen', 'bg-gray-100', 'flex', 'flex-col');
+    expect(container).toHaveClass('min-h-screen', 'bg-term-bg', 'flex', 'flex-col');
   });
-}); 
+});
