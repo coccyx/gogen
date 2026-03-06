@@ -62,11 +62,11 @@ describe('ConfigurationList', () => {
     // Check header styling
     const headers = screen.getAllByRole('columnheader');
     headers.forEach(header => {
-      expect(header).toHaveClass('px-6', 'py-3', 'text-left', 'text-xs', 'font-medium', 'text-gray-500', 'uppercase', 'tracking-wider');
+      expect(header).toHaveClass('px-6', 'py-2', 'text-left', 'text-xs', 'font-medium', 'text-term-text-muted', 'uppercase', 'tracking-wider');
     });
     
     // Check table container styling
     const tableContainer = screen.getByRole('table').closest('div');
-    expect(tableContainer).toHaveClass('bg-white', 'rounded-lg', 'shadow', 'overflow-hidden');
+    expect(tableContainer).toHaveClass('bg-term-bg-elevated', 'rounded', 'border', 'border-term-border', 'overflow-hidden');
   });
-}); 
+});

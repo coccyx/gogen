@@ -21,6 +21,7 @@ roveralls*
 .specstory
 .pyvenv
 gogen-api/__pycache__
+__pycache__/
 gogen-api/build
 gogen-api/env.json
 ui/node_modules/*

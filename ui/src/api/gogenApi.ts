@@ -50,7 +50,6 @@ export interface OAuthResponse {
 
 export interface UpsertRequest {
   name: string;
-  owner: string;
   description: string;
   config: string;
 }

@@ -2,7 +2,7 @@ import json
 from db_utils import get_dynamodb_client, get_table_name
 from s3_utils import upload_config
 from cors_utils import cors_response
-from github_utils import validate_github_token
+from auth_utils import get_authenticated_username
 from logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -34,15 +34,9 @@ def lambda_handler(event, context):
             logger.error(f"Invalid JSON in request body: {str(e)}")
             return respond("Invalid JSON in request body")
             
-        # Validate GitHub authorization
-        if 'headers' not in event or 'Authorization' not in event['headers']:
-            logger.error("Authorization header not present")
-            return respond("Authorization header not present")
-            
-        # Validate GitHub token
-        is_valid, error_msg = validate_github_token(event['headers']['Authorization'])
-        if not is_valid:
-            return respond(error_msg)
+        username, auth_error = get_authenticated_username(event)
+        if auth_error:
+            return auth_error
             
         # Validate and clean request body
         validated_body = {}
@@ -58,9 +52,9 @@ def lambda_handler(event, context):
         if 'config' in validated_body:
             config_content = validated_body['config']
             
-            # Create S3 path in the format username/sample.yml
-            if 'owner' in validated_body and 'name' in validated_body:
-                s3_path = f"{validated_body['owner']}/{validated_body['name']}.yml"
+            if 'name' in validated_body:
+                validated_body['owner'] = username
+                s3_path = f"{username}/{validated_body['name']}.yml"
                 
                 # Upload config to S3
                 logger.info(f"Uploading config to S3 at path: {s3_path}")
@@ -78,13 +72,13 @@ def lambda_handler(event, context):
                 validated_body['s3Path'] = s3_path
 
                 # Set the primary key (gogen = owner/name)
-                validated_body['gogen'] = f"{validated_body['owner']}/{validated_body['name']}"
+                validated_body['gogen'] = f"{username}/{validated_body['name']}"
 
                 # Remove gistID if present (for migration)
                 validated_body.pop('gistID', None)
             else:
-                logger.error("Owner or name missing in request body")
-                return respond("Owner and name are required fields")
+                logger.error("Name missing in request body")
+                return respond("Name is a required field")
         else:
             logger.warning("No config found in request body")
             

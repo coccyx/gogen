@@ -48,8 +48,8 @@ describe('Footer', () => {
     const container = footer.firstElementChild;
     const flexContainer = container?.firstElementChild;
 
-    expect(footer).toHaveClass('bg-cribl-primary', 'text-white', 'py-6');
+    expect(footer).toHaveClass('bg-term-bg-elevated', 'text-term-text', 'py-3', 'border-t', 'border-term-border');
     expect(container).toHaveClass('container-custom', 'mx-auto', 'px-4');
     expect(flexContainer).toHaveClass('flex', 'flex-col', 'md:flex-row', 'justify-between', 'items-center');
   });
-}); 
+});

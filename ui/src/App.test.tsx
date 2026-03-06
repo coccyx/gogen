@@ -47,23 +47,23 @@ describe('App Component', () => {
     );
   };
 
-  it('renders the layout component', () => {
+  it('renders the layout component', async () => {
     renderWithRouter();
-    expect(screen.getByTestId('mock-layout')).toBeInTheDocument();
+    expect(await screen.findByTestId('mock-layout')).toBeInTheDocument();
   });
 
-  it('renders home page on root path', () => {
+  it('renders home page on root path', async () => {
     renderWithRouter(['/']);
-    expect(screen.getByTestId('mock-home-page')).toBeInTheDocument();
+    expect(await screen.findByTestId('mock-home-page')).toBeInTheDocument();
   });
 
-  it('renders configuration detail page on configuration path', () => {
+  it('renders configuration detail page on configuration path', async () => {
     renderWithRouter(['/configurations/owner/config-name']);
-    expect(screen.getByTestId('mock-config-detail-page')).toBeInTheDocument();
+    expect(await screen.findByTestId('mock-config-detail-page')).toBeInTheDocument();
   });
 
-  it('renders not found page for unknown routes', () => {
+  it('renders not found page for unknown routes', async () => {
     renderWithRouter(['/unknown-route']);
-    expect(screen.getByTestId('mock-not-found-page')).toBeInTheDocument();
+    expect(await screen.findByTestId('mock-not-found-page')).toBeInTheDocument();
   });
-}); 
+});

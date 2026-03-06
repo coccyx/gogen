@@ -7,7 +7,7 @@ SUMMARY = $(shell git describe --tags --always --dirty)
 DATE = $(shell date --rfc-3339=date)
 
 
-.PHONY: all build deps install test docker splunkapp embed
+.PHONY: all build deps install test api-test docker splunkapp embed
 
 ifeq ($(OS),Windows_NT)
 	dockercmd := docker run -e TERM -e HOME=/go/src/github.com/coccyx/gogen --rm -it -v $(CURDIR):/go/src/github.com/coccyx/gogen -v $(HOME)/.ssh:/root/.ssh clintsharp/gogen bash
@@ -33,6 +33,8 @@ install:
 test:
 	go test -v ./...
 
+api-test:
+	./.pyvenv/bin/python -m unittest gogen-api/test_auth_utils.py gogen-api/test_upsert_auth.py
+
 docker:
 	$(dockercmd)
-

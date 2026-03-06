@@ -2,7 +2,7 @@ import json
 from db_utils import get_dynamodb_client, get_table_name
 from s3_utils import delete_config
 from cors_utils import cors_response
-from github_utils import get_github_user
+from auth_utils import get_authenticated_username
 from logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -28,22 +28,9 @@ def lambda_handler(event, context):
     try:
         logger.debug(f"Received event: {json.dumps(event, indent=2)}")
 
-        # Validate GitHub authorization
-        if 'headers' not in event or 'Authorization' not in event['headers']:
-            logger.error("Authorization header not present")
-            return respond("Authorization header not present", status_code=401)
-
-        # Get user information from GitHub token
-        auth_header = event['headers']['Authorization']
-        user_info, error = get_github_user(auth_header)
-        if error:
-            logger.error(f"Failed to authenticate user: {error}")
-            return respond(error, status_code=401)
-
-        username = user_info.get('login')
-        if not username:
-            logger.error("Could not get username from GitHub")
-            return respond("Could not get username from GitHub", status_code=401)
+        username, auth_error = get_authenticated_username(event)
+        if auth_error:
+            return auth_error
 
         # Extract config name from path
         path_params = event.get('pathParameters', {})
