@@ -128,11 +128,33 @@
 			"Resource": "*"
 		},
 		{
-			"Sid": "DynamoDBDescribePermissions",
+			"Sid": "CloudFrontListPermissions",
 			"Effect": "Allow",
-			"Action": "dynamodb:DescribeTable",
+			"Action": "cloudfront:ListDistributions",
+			"Resource": "*"
+		},
+		{
+			"Sid": "CloudFrontInvalidationPermissions",
+			"Effect": "Allow",
+			"Action": "cloudfront:CreateInvalidation",
 			"Resource": [
-				"arn:aws:dynamodb:*:*:table/gogen-api-prod-gogen",
+				"arn:aws:cloudfront::715681304208:distribution/E1YKFKA6Y16FT0",
+				"arn:aws:cloudfront::715681304208:distribution/E2PCMI0RQZI3B7"
+			]
+		},
+		{
+			"Sid": "DynamoDBPermissions",
+			"Effect": "Allow",
+			"Action": [
+				"dynamodb:Scan",
+				"dynamodb:Query",
+				"dynamodb:GetItem",
+				"dynamodb:PutItem",
+				"dynamodb:UpdateItem",
+				"dynamodb:DeleteItem"
+			],
+			"Resource": [
+				"arn:aws:dynamodb:*:*:table/gogen",
 				"arn:aws:dynamodb:*:*:table/gogen-staging"
 			]
 		}

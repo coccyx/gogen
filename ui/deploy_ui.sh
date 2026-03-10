@@ -60,4 +60,18 @@ fi
 echo "Deploying to s3://$BUCKET/"
 aws s3 sync dist/ "s3://$BUCKET/" --delete
 
+# Invalidate CloudFront cache
+echo "Looking up CloudFront distribution for $BUCKET..."
+DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+    --query "DistributionList.Items[?Aliases.Items[?@=='${BUCKET}']].Id | [0]" \
+    --output text)
+
+if [ -z "$DISTRIBUTION_ID" ] || [ "$DISTRIBUTION_ID" = "None" ]; then
+    echo "Warning: No CloudFront distribution found for $BUCKET. Skipping cache invalidation."
+else
+    echo "Invalidating CloudFront distribution $DISTRIBUTION_ID..."
+    aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
+    echo "CloudFront invalidation created."
+fi
+
 echo "Deployment completed successfully for $ENVIRONMENT environment!" 
