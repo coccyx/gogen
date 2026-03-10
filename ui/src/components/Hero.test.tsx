@@ -8,7 +8,7 @@ describe('Hero', () => {
     // Check for main heading
     expect(screen.getByRole('heading', { 
       level: 2, 
-      name: /gogen helps generate telemetry data, quickly and easily\./i 
+      name: /generate telemetry data, quickly and easily\./i 
     })).toBeInTheDocument();
 
     // Check for description text
@@ -29,7 +29,7 @@ describe('Hero', () => {
     
     // Check section styling
     const heroSection = screen.getByRole('region', { name: /hero/i });
-    expect(heroSection).toHaveClass('bg-blue-800', 'text-white', 'py-12');
+    expect(heroSection).toHaveClass('bg-term-bg-elevated', 'text-term-text', 'py-6', 'border-b', 'border-term-border');
 
     // Check container styling
     const container = heroSection.firstElementChild;
@@ -41,10 +41,10 @@ describe('Hero', () => {
 
     // Check heading styling
     const heading = screen.getByRole('heading', { level: 2 });
-    expect(heading).toHaveClass('text-4xl', 'font-bold', 'mb-4');
+    expect(heading).toHaveClass('text-2xl', 'font-bold', 'mb-2');
 
     // Check paragraph styling
     const paragraph = screen.getByText(/view and manage/i);
-    expect(paragraph).toHaveClass('text-xl');
+    expect(paragraph).toHaveClass('text-term-text-muted');
   });
-}); 
+});

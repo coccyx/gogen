@@ -24,19 +24,18 @@ func New(name string, template string) error {
 	if _, ok := cache[name]; !ok {
 		funcMap := ttemplate.FuncMap{
 			"json": func(v interface{}) string {
-				a, _ := json.Marshal(v)
+				a, err := json.Marshal(v)
+				if err != nil {
+					return fmt.Sprintf("json marshal error: %v", err)
+				}
 				return string(a)
 			},
 			"splunkhec": func(v interface{}) string {
-				if _, ok := v.(map[string]string)["_raw"]; ok {
-					v.(map[string]string)["event"] = v.(map[string]string)["_raw"]
-					delete(v.(map[string]string), "_raw")
+				TransformHECFields(v.(map[string]string))
+				a, err := json.Marshal(v)
+				if err != nil {
+					return fmt.Sprintf("json marshal error: %v", err)
 				}
-				if _, ok = v.(map[string]string)["_time"]; ok {
-					v.(map[string]string)["time"] = v.(map[string]string)["_time"]
-					delete(v.(map[string]string), "_time")
-				}
-				a, _ := json.Marshal(v)
 				return string(a)
 			},
 			"keys": func(m map[string]string) []string {

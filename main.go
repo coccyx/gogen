@@ -87,7 +87,8 @@ func Setup(clic *cli.Context) {
 	}
 	if len(clic.String("config")) > 0 {
 		cstr := clic.String("config")
-		if cstr[0:4] == "http" || cstr[len(cstr)-3:] == "yml" || cstr[len(cstr)-4:] == "yaml" || cstr[len(cstr)-4:] == "json" {
+		ext := filepath.Ext(cstr)
+		if strings.HasPrefix(cstr, "http") || ext == ".yml" || ext == ".yaml" || ext == ".json" {
 			os.Setenv("GOGEN_FULLCONFIG", cstr)
 		} else {
 			config.PullFile(cstr, filepath.Join(os.ExpandEnv("$GOGEN_TMPDIR"), ".config.yml"))
@@ -107,7 +108,7 @@ func Setup(clic *cli.Context) {
 		c.Global.GeneratorWorkers = clic.Int("generators")
 	}
 	if clic.Int("outputters") > 0 {
-		log.Infof("Setting generators to %d", clic.Int("outputters"))
+		log.Infof("Setting outputters to %d", clic.Int("outputters"))
 		c.Global.OutputWorkers = clic.Int("outputters")
 	}
 	if clic.Bool("addTime") {
@@ -123,6 +124,21 @@ func Setup(clic *cli.Context) {
 		c.Global.CacheIntervals = 2147483647
 	}
 
+	applySampleOutputOverrides(c, clic)
+
+	// Must call from runtime in case we are overriding AddTime or Facility from command line
+	c.SetupSystemTokens()
+
+	// log.Debugf("Global: %#v", c.Global)
+	// log.Debugf("Default Tokens: %#v", c.DefaultTokens)
+	// log.Debugf("Default Sample: %#v", c.DefaultSample)
+	// log.Debugf("Samples: %#v", c.Samples)
+	// log.Debugf("Pretty Values %# v\n", pretty.Formatter(c))
+	// j, _ := json.MarshalIndent(c, "", "  ")
+	// log.Debugf("JSON Config: %s\n", j)
+}
+
+func applySampleOutputOverrides(c *config.Config, clic *cli.Context) {
 	for i := 0; i < len(c.Samples); i++ {
 		if len(clic.String("outputter")) > 0 {
 			log.Infof("Setting outputter to '%s'", clic.String("outputter"))
@@ -161,17 +177,6 @@ func Setup(clic *cli.Context) {
 			c.Samples[i].Output.BufferBytes = clic.Int("bufferBytes")
 		}
 	}
-
-	// Must call from runtime in case we are overriding AddTime or Facility from command line
-	c.SetupSystemTokens()
-
-	// log.Debugf("Global: %#v", c.Global)
-	// log.Debugf("Default Tokens: %#v", c.DefaultTokens)
-	// log.Debugf("Default Sample: %#v", c.DefaultSample)
-	// log.Debugf("Samples: %#v", c.Samples)
-	// log.Debugf("Pretty Values %# v\n", pretty.Formatter(c))
-	// j, _ := json.MarshalIndent(c, "", "  ")
-	// log.Debugf("JSON Config: %s\n", j)
 }
 
 func table(l []config.GogenList) {
@@ -365,7 +370,10 @@ func main() {
 			Usage: "List all published Gogens",
 			Action: func(clic *cli.Context) error {
 				fmt.Printf("Showing all Gogens:\n\n")
-				l := config.List()
+				l, err := config.List()
+				if err != nil {
+					log.Fatalf("Error listing Gogens: %s", err)
+				}
 				table(l)
 				return nil
 			},
@@ -380,7 +388,10 @@ func main() {
 				}
 				q = strings.TrimRight(q, " ")
 				fmt.Printf("Returning results for search: \"%s\"\n\n", q)
-				l := config.Search(q)
+				l, err := config.Search(q)
+				if err != nil {
+					log.Fatalf("Error searching Gogens: %s", err)
+				}
 				if len(l) > 0 {
 					table(l)
 				} else {

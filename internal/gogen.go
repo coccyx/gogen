@@ -3,11 +3,13 @@ package internal
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	log "github.com/coccyx/gogen/logger"
 	"github.com/kr/pretty"
@@ -32,36 +34,77 @@ type GogenList struct {
 	Description string
 }
 
+// defaultAPIClient is the shared HTTP client for API calls with a reasonable timeout.
+var defaultAPIClient = &http.Client{Timeout: 30 * time.Second}
+
+// doHTTPRequest executes an HTTP request, reads the response body, and returns
+// the body bytes. It properly closes resp.Body and returns an *HTTPError for
+// non-2xx status codes.
+func doHTTPRequest(client *http.Client, req *http.Request) ([]byte, error) {
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request to %s failed: %w", req.URL, err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body from %s: %w", req.URL, err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, &HTTPError{
+			StatusCode: resp.StatusCode,
+			URL:        req.URL.String(),
+			Body:       string(body),
+		}
+	}
+	return body, nil
+}
+
+// doGet performs an HTTP GET request to the given URL using the default API client.
+func doGet(url string) ([]byte, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for %s: %w", url, err)
+	}
+	return doHTTPRequest(defaultAPIClient, req)
+}
+
+// doPost performs an HTTP POST request to the given URL using the default API client.
+func doPost(url string, body io.Reader, headers map[string]string) ([]byte, error) {
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request for %s: %w", url, err)
+	}
+	for k, v := range headers {
+		req.Header.Add(k, v)
+	}
+	return doHTTPRequest(defaultAPIClient, req)
+}
+
 // List calls /v1/list
-func List() []GogenList {
+func List() ([]GogenList, error) {
 	return listsearch(fmt.Sprintf("%s/v1/list", getAPIURL()))
 }
 
 // Search calls /v1/search
-func Search(q string) []GogenList {
+func Search(q string) ([]GogenList, error) {
 	return listsearch(fmt.Sprintf("%s/v1/search?q=%s", getAPIURL(), url.QueryEscape(q)))
 }
 
-func listsearch(url string) (ret []GogenList) {
-	client := &http.Client{}
-	resp, err := client.Get(url)
-	if err != nil || resp.StatusCode != 200 {
-		if resp.StatusCode != 200 {
-			body, _ := ioutil.ReadAll(resp.Body)
-			log.Fatalf("Non 200 response code searching for Gogen: %s", string(body))
-		} else {
-			log.Fatalf("Error retrieving list of Gogens: %s", err)
-		}
-	}
-	body, err := ioutil.ReadAll(resp.Body)
+func listsearch(url string) ([]GogenList, error) {
+	body, err := doGet(url)
 	if err != nil {
-		log.Fatalf("Error reading body from response: %s", err)
+		return nil, fmt.Errorf("error retrieving list of Gogens: %w", err)
 	}
 	var list map[string]interface{}
 	err = json.Unmarshal(body, &list)
-	// log.Debugf("List body: %s", string(body))
-	// log.Debugf("list: %s", fmt.Sprintf("%# v", pretty.Formatter(list)))
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling list response: %w", err)
+	}
 	items := list["Items"].([]interface{})
+	var ret []GogenList
 	for _, item := range items {
 		tempitem := item.(map[string]interface{})
 		if _, ok := tempitem["gogen"]; !ok {
@@ -74,47 +117,33 @@ func listsearch(url string) (ret []GogenList) {
 		ret = append(ret, li)
 	}
 	log.Debugf("List: %# v", pretty.Formatter(ret))
-	return ret
+	return ret, nil
 }
 
 // Get calls /v1/get
 var Get = func(q string) (g GogenInfo, err error) {
-	client := &http.Client{}
 	url := fmt.Sprintf("%s/v1/get/%s", getAPIURL(), q)
 	log.Debugf("Calling %s", url)
-	resp, err := client.Get(url)
-	if err != nil || resp.StatusCode != 200 {
-		if resp != nil {
-			if resp.StatusCode == 404 {
-				return g, fmt.Errorf("Could not find Gogen: %s\n", q)
-			}
-			if resp.StatusCode != 200 {
-				body, _ := ioutil.ReadAll(resp.Body)
-				return g, fmt.Errorf("Non 200 response code retrieving Gogen: %s", string(body))
-			}
-		} else {
-			return g, fmt.Errorf("Error retrieving Gogen %s: %s", q, err)
-		}
-	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := doGet(url)
 	if err != nil {
-		return g, fmt.Errorf("Error reading body from response: %s", err)
+		var httpErr *HTTPError
+		if errors.As(err, &httpErr) && httpErr.IsNotFound() {
+			return g, fmt.Errorf("could not find Gogen %s: %w", q, err)
+		}
+		return g, fmt.Errorf("error retrieving Gogen %s: %w", q, err)
 	}
-	// log.Debugf("Body: %s", body)
 	var gogen map[string]interface{}
 	err = json.Unmarshal(body, &gogen)
 	if err != nil {
-		return g, fmt.Errorf("Error unmarshaling body: %s", err)
+		return g, fmt.Errorf("error unmarshaling body: %w", err)
 	}
-	// log.Debugf("gogen: %# v", pretty.Formatter(gogen))
 	tmp, err := json.Marshal(gogen["Item"])
 	if err != nil {
-		return g, fmt.Errorf("Error converting Item to JSON: %s", err)
+		return g, fmt.Errorf("error converting Item to JSON: %w", err)
 	}
-	// log.Debugf("tmp: %s", string(tmp))
 	err = json.Unmarshal(tmp, &g)
 	if err != nil {
-		return g, fmt.Errorf("Error unmarshaling item: %s", err)
+		return g, fmt.Errorf("error unmarshaling item: %w", err)
 	}
 	gCopy := g
 	gCopy.Config = "redacted"
@@ -123,38 +152,26 @@ var Get = func(q string) (g GogenInfo, err error) {
 }
 
 // Upsert calls /v1/upsert
-func Upsert(g GogenInfo) {
+func Upsert(g GogenInfo) error {
 	gh := NewGitHub(true)
-	upsert(g, gh)
+	return upsert(g, gh)
 }
 
-func upsert(g GogenInfo, gh *GitHub) {
-	client := &http.Client{}
-
+func upsert(g GogenInfo, gh *GitHub) error {
 	b, err := json.Marshal(g)
 	if err != nil {
-		log.Fatalf("Error marshaling Gogen %#v: %s", g, err)
+		return fmt.Errorf("error marshaling Gogen %#v: %w", g, err)
 	}
-	// log.Debugf("Body: %s", string(b))
 
-	req, _ := http.NewRequest("POST", fmt.Sprintf("%s/v1/upsert", getAPIURL()), bytes.NewReader(b))
-	// Still need GitHub token for authorization to verify user identity
-	req.Header.Add("Authorization", "token "+gh.token)
-	resp, err := client.Do(req)
-	if err != nil || resp.StatusCode != 200 {
-		if resp.StatusCode != 200 {
-			body, _ := ioutil.ReadAll(resp.Body)
-			log.Fatalf("Non 200 response code Upserting: %s", string(body))
-		} else {
-			log.Fatalf("Error POSTing to upsert: %s", err)
-		}
+	headers := map[string]string{
+		"Authorization": "token " + gh.token,
 	}
-	// body, err := ioutil.ReadAll(resp.Body)
-	// if err != nil {
-	// 	log.Fatalf("Error reading response body: %s", err)
-	// }
-	// log.Debugf("Response Body: %s", body)
+	_, err = doPost(fmt.Sprintf("%s/v1/upsert", getAPIURL()), bytes.NewReader(b), headers)
+	if err != nil {
+		return fmt.Errorf("error upserting Gogen: %w", err)
+	}
 	log.Debugf("Upserted: %# v", pretty.Formatter(g))
+	return nil
 }
 
 // getAPIURL returns the API URL from environment variable or default value

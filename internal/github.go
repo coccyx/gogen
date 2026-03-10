@@ -3,7 +3,7 @@ package internal
 // Mostly from https://jacobmartins.com/2016/02/29/getting-started-with-oauth2-in-go/
 
 import (
-	"io/ioutil"
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -55,7 +55,7 @@ func NewGitHub(requireauth bool) *GitHub {
 	tokenFile := filepath.Join(os.ExpandEnv("$GOGEN_HOME"), ".githubtoken")
 	_, err := os.Stat(tokenFile)
 	if err == nil {
-		buf, err := ioutil.ReadFile(tokenFile)
+		buf, err := os.ReadFile(tokenFile)
 		if err != nil {
 			log.Fatalf("Error reading from file %s: %s", tokenFile, err)
 		}
@@ -72,7 +72,7 @@ func NewGitHub(requireauth bool) *GitHub {
 		<-gh.done
 		log.Debugf("Getting GitHub token '%s' from oauth", gh.token)
 
-		err = ioutil.WriteFile(tokenFile, []byte(gh.token), 400)
+		err = os.WriteFile(tokenFile, []byte(gh.token), 400)
 		if err != nil {
 			log.Fatalf("Error writing token to file %s: %s", tokenFile, err)
 		}
@@ -81,7 +81,7 @@ func NewGitHub(requireauth bool) *GitHub {
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: gh.token},
 		)
-		tc := oauth2.NewClient(oauth2.NoContext, ts)
+		tc := oauth2.NewClient(context.Background(), ts)
 		gh.client = github.NewClient(tc)
 	} else {
 		gh.client = github.NewClient(nil)
@@ -103,7 +103,7 @@ func (gh *GitHub) handleGitHubCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	code := r.FormValue("code")
-	token, err := oauthConf.Exchange(oauth2.NoContext, code)
+	token, err := oauthConf.Exchange(context.Background(), code)
 	if err != nil {
 		log.Errorf("Code exchange failed with '%s'\n", err)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)

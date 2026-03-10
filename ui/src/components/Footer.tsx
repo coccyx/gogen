@@ -2,11 +2,11 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-cribl-primary text-white py-6">
+    <footer className="bg-term-bg-elevated text-term-text py-3 border-t border-term-border">
       <div className="container-custom mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-center">
-          <div className="mb-4 md:mb-0">
-            <p className="text-sm">
+          <div className="mb-2 md:mb-0">
+            <p className="text-xs text-term-text-muted">
               &copy; {currentYear} Clint Sharp. All rights reserved.
             </p>
           </div>
@@ -15,11 +15,11 @@ const Footer = () => {
               href="https://github.com/coccyx/gogen"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white hover:text-cribl-pink transition-colors"
+              className="text-term-text-muted hover:text-term-green transition-colors"
               aria-label="GitHub"
             >
               <svg
-                className="h-6 w-6"
+                className="h-5 w-5"
                 fill="currentColor"
                 viewBox="0 0 24 24"
                 aria-hidden="true"
@@ -38,4 +38,4 @@ const Footer = () => {
   );
 };
 
-export default Footer; 
+export default Footer;

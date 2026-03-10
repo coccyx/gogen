@@ -2,7 +2,6 @@ package tests
 
 import (
 	"testing"
-	"time"
 
 	config "github.com/coccyx/gogen/internal"
 	"github.com/coccyx/gogen/outputter"
@@ -36,12 +35,12 @@ func TestReadFinalSynchronization(t *testing.T) {
 		// Add other necessary dummy fields for config if ROT accesses them
 	}
 
-	// Initialize the outputter system (starts readStats goroutine)
-	// Run ROT in a goroutine as it contains an infinite loop for periodic stats
-	go outputter.ROT(dummyConfig)
-	// Give the ROT goroutine a moment to start up and initialize rotchan
-	// Adjust duration if needed, but keep it short for test speed.
-	time.Sleep(10 * time.Millisecond)
+	// Initialize the outputter channel and readStats goroutine.
+	// We intentionally do NOT start ROT() here — it runs an infinite loop
+	// and would leak goroutines between test iterations. The synchronization
+	// being tested (Account -> rotchan -> readStats -> ReadFinal/WaitGroup)
+	// only requires InitROT.
+	outputter.InitROT(dummyConfig)
 
 	// --- Action ---
 	testSampleName := "test_sync_sample"

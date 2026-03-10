@@ -55,6 +55,17 @@ if [ -z "$ROLE_ARN" ]; then
 fi
 echo "Using role ARN from environment: $ROLE_ARN"
 
+# Expect GitHub OAuth credentials to be set as environment variables
+if [ -z "$GITHUB_OAUTH_CLIENT_ID" ]; then
+    echo "Error: GITHUB_OAUTH_CLIENT_ID environment variable is not set." >&2
+    exit 1
+fi
+if [ -z "$GITHUB_OAUTH_CLIENT_SECRET" ]; then
+    echo "Error: GITHUB_OAUTH_CLIENT_SECRET environment variable is not set." >&2
+    exit 1
+fi
+echo "GitHub OAuth credentials configured"
+
 # Create build directory if it doesn't exist
 mkdir -p $BUILD_DIR
 
@@ -184,6 +195,8 @@ echo "  LambdaRoleArn=${ROLE_ARN}"
 echo "  CertificateArn=${CERT_ARN}"
 echo "  ProdTableName=gogen"
 echo "  StagingTableName=gogen-staging"
+echo "  GitHubOAuthClientId=${GITHUB_OAUTH_CLIENT_ID}"
+echo "  GitHubOAuthClientSecret=<hidden>"
 
 sam deploy \
     --stack-name "gogen-api-${ENVIRONMENT}" \
@@ -194,6 +207,8 @@ sam deploy \
         ParameterKey=CertificateArn,ParameterValue=${CERT_ARN} \
         ParameterKey=ProdTableName,ParameterValue=gogen \
         ParameterKey=StagingTableName,ParameterValue=gogen-staging \
+        ParameterKey=GitHubOAuthClientId,ParameterValue=${GITHUB_OAUTH_CLIENT_ID} \
+        ParameterKey=GitHubOAuthClientSecret,ParameterValue=${GITHUB_OAUTH_CLIENT_SECRET} \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
     --no-confirm-changeset \
     --no-fail-on-empty-changeset

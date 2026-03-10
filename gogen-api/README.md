@@ -149,6 +149,24 @@ This script will:
 4. List objects in the bucket
 5. Download and verify the test file
 
+### Testing API Unit Logic
+
+Focused unit tests are available for request authentication helpers and config ownership enforcement.
+
+From the repo root:
+
+```bash
+make api-test
+```
+
+Or directly with the project virtual environment:
+
+```bash
+/home/clint/local/src/gogen/.pyvenv/bin/python -m unittest \
+  gogen-api/test_auth_utils.py \
+  gogen-api/test_upsert_auth.py
+```
+
 ## Accessing Services
 
 ### API Endpoints

@@ -267,40 +267,39 @@ func (t Token) GenReplacement(choice int, et time.Time, lt time.Time, now time.T
 			f := float64(randgen.Intn(upper-lower)+lower) / math.Pow10(t.Precision)
 			return strconv.FormatFloat(f, 'f', t.Precision, 64), -1, nil
 		case "string", "hex":
-			var ret string
-			for i := 0; i < t.Length; i++ {
-				if t.Replacement == "string" {
-					ri := randgen.Intn(len(randStringLetters))
-					ret += randStringLetters[ri : ri+1]
-				} else {
-					ri := randgen.Intn(len(randHexLetters))
-					ret += randHexLetters[ri : ri+1]
-				}
+			var b strings.Builder
+			b.Grow(t.Length)
+			letters := randStringLetters
+			if t.Replacement == "hex" {
+				letters = randHexLetters
 			}
-			return ret, -1, nil
+			for i := 0; i < t.Length; i++ {
+				b.WriteByte(letters[randgen.Intn(len(letters))])
+			}
+			return b.String(), -1, nil
 		case "guid":
 			u := uuid.NewV4()
 			return u.String(), -1, nil
 		case "ipv4":
-			var ret string
+			var b strings.Builder
+			b.Grow(15) // max "255.255.255.255"
 			for i := 0; i < 4; i++ {
-				ri := randgen.Intn(255)
-				ret += strconv.Itoa(ri)
-				if i < 3 {
-					ret += "."
+				if i > 0 {
+					b.WriteByte('.')
 				}
+				b.WriteString(strconv.Itoa(randgen.Intn(255)))
 			}
-			return ret, -1, nil
+			return b.String(), -1, nil
 		case "ipv6":
-			var ret string
+			var b strings.Builder
+			b.Grow(39) // max "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
 			for i := 0; i < 8; i++ {
-				ri := randgen.Intn(65535)
-				ret += fmt.Sprintf("%x", ri)
-				if i < 7 {
-					ret += ":"
+				if i > 0 {
+					b.WriteByte(':')
 				}
+				fmt.Fprintf(&b, "%x", randgen.Intn(65535))
 			}
-			return ret, -1, nil
+			return b.String(), -1, nil
 		}
 	case "choice":
 		if choice == -1 {

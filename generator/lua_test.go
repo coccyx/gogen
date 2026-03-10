@@ -288,6 +288,98 @@ func TestSetTime(t *testing.T) {
 	testLuaGen(t, s, gen, "2001-10-20 11:59:59.000100")
 }
 
+func TestLuaRound(t *testing.T) {
+	config.ResetConfig()
+
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "")
+	home := ".."
+	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "generator", "luaapi2.yml"))
+
+	c := config.NewConfig()
+	s := c.FindSampleByName("roundTest")
+	gen := new(luagen)
+	runLuaGen(t, s, gen)
+	time.Sleep(100 * time.Millisecond)
+	found := false
+	var token config.Token
+	for _, tk := range gen.tokens {
+		if tk.Name == "rounded" {
+			found = true
+			token = tk
+		}
+	}
+	assert.True(t, found, "Couldn't find token 'rounded' in sample roundTest")
+	assert.Equal(t, "3.14", token.Replacement)
+}
+
+func TestLuaLogInfo(t *testing.T) {
+	config.ResetConfig()
+
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "")
+	home := ".."
+	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "generator", "luaapi2.yml"))
+
+	c := config.NewConfig()
+	s := c.FindSampleByName("logInfoTest")
+	gen := new(luagen)
+	runLuaGen(t, s, gen)
+	time.Sleep(100 * time.Millisecond)
+	found := false
+	var token config.Token
+	for _, tk := range gen.tokens {
+		if tk.Name == "logged" {
+			found = true
+			token = tk
+		}
+	}
+	assert.True(t, found, "Couldn't find token 'logged' in sample logInfoTest")
+	assert.Equal(t, "ok", token.Replacement)
+}
+
+func TestRemoveToken(t *testing.T) {
+	config.ResetConfig()
+
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "")
+	home := ".."
+	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "generator", "luaapi2.yml"))
+
+	c := config.NewConfig()
+	s := c.FindSampleByName("removeTokenTest")
+	gen := new(luagen)
+	runLuaGen(t, s, gen)
+	time.Sleep(100 * time.Millisecond)
+
+	foundKeeper := false
+	foundRemover := false
+	for _, tk := range gen.tokens {
+		if tk.Name == "keeper" {
+			foundKeeper = true
+		}
+		if tk.Name == "remover" {
+			foundRemover = true
+		}
+	}
+	assert.True(t, foundKeeper, "Token 'keeper' should still be present")
+	assert.False(t, foundRemover, "Token 'remover' should have been removed")
+}
+
+func TestSendEvent(t *testing.T) {
+	config.ResetConfig()
+
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "")
+	home := ".."
+	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "generator", "luaapi2.yml"))
+
+	c := config.NewConfig()
+	s := c.FindSampleByName("sendEventTest")
+	gen := new(luagen)
+	testLuaGen(t, s, gen, "sent via sendEvent")
+}
+
 func testLuaGen(t *testing.T, s *config.Sample, gen *luagen, expected string) {
 	oq, err := runLuaGen(t, s, gen)
 	timeout := make(chan bool, 1)

@@ -32,12 +32,13 @@ describe('ExecutionComponent', () => {
 
   test('renders execution form', () => {
     render(<ExecutionComponent configuration={mockConfig} />);
-    
+
     expect(screen.getByLabelText(/events per interval/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/intervals/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/interval \(in seconds\)/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/output template/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/output mode/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /terminal/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /structured/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /execute/i })).toBeInTheDocument();
   });
 
@@ -94,21 +95,15 @@ describe('ExecutionComponent', () => {
     );
   });
 
-  test('executes configuration in structured mode', async () => {
+  test('populates both terminal and structured output from single execution', async () => {
     render(<ExecutionComponent configuration={mockConfig} />);
-    
-    // Switch to structured mode
-    const outputModeSelect = screen.getByLabelText(/output mode/i);
-    await act(async () => {
-      fireEvent.change(outputModeSelect, { target: { value: 'structured' } });
-    });
 
     const executeButton = screen.getByRole('button', { name: /execute/i });
     await act(async () => {
       fireEvent.click(executeButton);
     });
 
-    // Should have called executeConfiguration without callback
+    // Should always call with callback to populate both outputs
     expect(gogenWasm.executeConfiguration).toHaveBeenCalledWith(
       mockConfig,
       {
@@ -116,8 +111,13 @@ describe('ExecutionComponent', () => {
         intervals: 5,
         intervalSeconds: 1,
         outputTemplate: 'raw'
-      }
+      },
+      expect.any(Function)
     );
+
+    // Both tabs should be present and switchable without re-executing
+    expect(screen.getByRole('button', { name: /terminal/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /structured/i })).toBeInTheDocument();
   });
 
   it('handles execution errors', async () => {

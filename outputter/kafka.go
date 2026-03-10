@@ -19,7 +19,7 @@ type kafkaout struct {
 }
 
 func (k *kafkaout) Send(item *config.OutQueueItem) error {
-	if k.initialized == false {
+	if !k.initialized {
 		var err error
 		if len(item.S.Output.Endpoints) < 1 {
 			return fmt.Errorf("No configured brokers")

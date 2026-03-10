@@ -414,11 +414,12 @@ samples:
 		}
 	}
 
-	// Full message format validation
+	// Full message format validation (trim trailing newline from network output)
 	rfc5424Regex := regexp.MustCompile(`^<14>1\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[-+]\d{2}:\d{2}|Z)\s+gogen\s+gogen\s+12345\s+-\s+\[meta\s+(?:[a-zA-Z0-9_]+="[^"]*"\s*)+\]\s+test message$`)
 
-	if !rfc5424Regex.Match(lastNetworkData) {
-		t.Errorf("RFC5424 format mismatch. Got: %s", string(lastNetworkData))
+	trimmedData := strings.TrimRight(string(lastNetworkData), "\n")
+	if !rfc5424Regex.MatchString(trimmedData) {
+		t.Errorf("RFC5424 format mismatch. Got: %s", trimmedData)
 	}
 
 	// Validate meta fields

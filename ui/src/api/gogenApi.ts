@@ -9,10 +9,20 @@ const apiClient = axios.create({
   },
 });
 
+// Add request interceptor to include auth token
+apiClient.interceptors.request.use((requestConfig) => {
+  const token = localStorage.getItem('github_token');
+  if (token) {
+    requestConfig.headers.Authorization = `token ${token}`;
+  }
+  return requestConfig;
+});
+
 // Define interfaces for API responses
 export interface ConfigurationSummary {
   gogen: string;
   description: string;
+  owner?: string;
 }
 
 export interface Configuration extends ConfigurationSummary {
@@ -23,6 +33,25 @@ export interface Configuration extends ConfigurationSummary {
   generators?: any[];
   global?: any;
   templates?: any[];
+  s3Path?: string;
+}
+
+export interface OAuthResponse {
+  access_token: string;
+  token_type: string;
+  user: {
+    login: string;
+    avatar_url: string;
+    id: number;
+    name?: string;
+    email?: string;
+  };
+}
+
+export interface UpsertRequest {
+  name: string;
+  description: string;
+  config: string;
 }
 
 // API functions
@@ -61,6 +90,50 @@ export const gogenApi = {
       throw error;
     }
   },
+
+  // Exchange OAuth code for access token
+  exchangeOAuthCode: async (code: string, state: string): Promise<OAuthResponse> => {
+    try {
+      const response = await apiClient.post('/auth/github', { code, state });
+      return response.data;
+    } catch (error) {
+      console.error('Error exchanging OAuth code:', error);
+      throw error;
+    }
+  },
+
+  // Get current user's configurations
+  getMyConfigurations: async (): Promise<ConfigurationSummary[]> => {
+    try {
+      const response = await apiClient.get('/my-configs');
+      return response.data.Items || [];
+    } catch (error) {
+      console.error('Error fetching my configurations:', error);
+      throw error;
+    }
+  },
+
+  // Create or update a configuration
+  upsertConfiguration: async (data: UpsertRequest): Promise<any> => {
+    try {
+      const response = await apiClient.post('/upsert', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error upserting configuration:', error);
+      throw error;
+    }
+  },
+
+  // Delete a configuration
+  deleteConfiguration: async (configPath: string): Promise<any> => {
+    try {
+      const response = await apiClient.delete(`/delete/${configPath}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting configuration ${configPath}:`, error);
+      throw error;
+    }
+  },
 };
 
-export default gogenApi; 
+export default gogenApi;

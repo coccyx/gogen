@@ -27,6 +27,17 @@ jobs:
       - name: Run Tests
         run: make GOBIN=$HOME/gopath/bin test
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Create Python Virtual Environment
+        run: python -m venv .pyvenv
+
+      - name: Run API Unit Tests
+        run: make api-test
+
       - name: Run Coverage Tests
         env:
           COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
@@ -112,12 +123,15 @@ jobs:
         env:
           # Set ROLE_ARN based on the branch
           ROLE_ARN: ${{ github.ref == 'refs/heads/master' && secrets.PROD_LAMBDA_ROLE_ARN || secrets.STAGING_LAMBDA_ROLE_ARN }}
+          # Set GitHub OAuth credentials based on the branch
+          GITHUB_OAUTH_CLIENT_ID: ${{ github.ref == 'refs/heads/master' && secrets.PROD_GITHUB_OAUTH_CLIENT_ID || secrets.STAGING_GITHUB_OAUTH_CLIENT_ID }}
+          GITHUB_OAUTH_CLIENT_SECRET: ${{ github.ref == 'refs/heads/master' && secrets.PROD_GITHUB_OAUTH_CLIENT_SECRET || secrets.STAGING_GITHUB_OAUTH_CLIENT_SECRET }}
         run: |
           cd gogen-api
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-            # Prod deployment, ROLE_ARN is already set via env
+            # Prod deployment
             bash deploy_lambdas.sh
           else
-            # Staging deployment, ROLE_ARN is already set via env
+            # Staging deployment
             bash deploy_lambdas.sh -e staging
           fi

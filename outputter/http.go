@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 
@@ -24,7 +23,7 @@ type httpout struct {
 }
 
 func (h *httpout) Send(item *config.OutQueueItem) error {
-	if h.initialized == false {
+	if !h.initialized {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true, MaxIdleConnsPerHost: -1}
 		h.client = &http.Client{Transport: tr, Timeout: item.S.Output.Timeout}
 		h.buf = bytes.NewBuffer([]byte{})
@@ -56,13 +55,13 @@ func (h *httpout) flush() error {
 	if err != nil && h.resp == nil {
 		return fmt.Errorf("Error making request from sample '%s' to endpoint '%s': %s", h.lastSampleName, h.endpoint, err)
 	}
-	body, err := ioutil.ReadAll(h.resp.Body)
+	defer h.resp.Body.Close()
+	body, err := io.ReadAll(h.resp.Body)
 	if err != nil {
 		return fmt.Errorf("Error making request from sample '%s' to endpoint '%s': %s", h.lastSampleName, h.endpoint, err)
 	} else if h.resp.StatusCode < 200 || h.resp.StatusCode > 299 {
 		return fmt.Errorf("Error making request from sample '%s' to endpoint '%s', status '%d': %s", h.lastSampleName, h.endpoint, h.resp.StatusCode, body)
 	}
-	h.resp.Body.Close()
 	h.buf.Reset()
 	return nil
 }

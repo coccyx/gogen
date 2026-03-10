@@ -4,6 +4,13 @@ import ConfigurationDetailPage from './ConfigurationDetailPage';
 import gogenApi from '../api/gogenApi';
 import type { Configuration } from '../api/gogenApi';
 
+jest.mock('../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: null,
+    isAuthenticated: false,
+  }),
+}));
+
 // Mock the Monaco Editor
 jest.mock('@monaco-editor/react', () => {
   return function MockEditor({ value }: { value: string }) {
@@ -81,15 +88,15 @@ describe('ConfigurationDetailPage', () => {
     await waitFor(() => {
       // Check main container
       const mainContainer = screen.getByRole('main');
-      expect(mainContainer).toHaveClass('container', 'mx-auto', 'px-4', 'py-8');
+      expect(mainContainer).toHaveClass('container', 'mx-auto', 'px-4', 'py-6');
 
       // Check title
       const title = screen.getByRole('heading', { level: 1 });
-      expect(title).toHaveClass('text-3xl', 'font-bold', 'text-gray-800');
+      expect(title).toHaveClass('text-2xl', 'font-bold', 'text-term-text', 'font-mono');
 
       // Check back link
       const backLink = screen.getByRole('link', { name: 'Back to List' });
-      expect(backLink).toHaveClass('btn-primary');
+      expect(backLink).toHaveClass('btn-secondary', 'text-sm');
     });
   });
-}); 
+});

@@ -199,6 +199,40 @@ Loop:
 	}
 }
 
+func TestBackfillReplay(t *testing.T) {
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")
+	home := filepath.Join("..", "tests", "timer")
+	os.Setenv("GOGEN_SAMPLES_DIR", home)
+
+	s := tests.FindSampleInFile(home, "realtimereplay")
+	// Force non-realtime mode to exercise backfill with replay generator
+	s.Realtime = false
+	// Set end slightly in the future so backfill runs a few iterations
+	s.EndParsed = s.Current.Add(5 * time.Second)
+
+	gq := make(chan *config.GenQueueItem, 1000)
+	oq := make(chan *config.OutQueueItem)
+	done := make(chan int)
+	gqs := make([]*config.GenQueueItem, 0, 10)
+
+	timer := &Timer{S: s, GQ: gq, OQ: oq, Done: done}
+	go timer.NewTimer(0)
+	<-done
+
+Loop:
+	for {
+		select {
+		case i := <-gq:
+			gqs = append(gqs, i)
+		default:
+			break Loop
+		}
+	}
+	// Should have generated events using replay offsets via inc() replay path
+	assert.Greater(t, len(gqs), 0, "should have generated replay events during backfill")
+}
+
 func TestTimerClose(t *testing.T) {
 	os.Setenv("GOGEN_HOME", "..")
 	os.Setenv("GOGEN_ALWAYS_REFRESH", "1")

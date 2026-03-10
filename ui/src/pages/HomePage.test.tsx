@@ -54,7 +54,9 @@ describe('HomePage', () => {
     jest.clearAllMocks();
   });
 
-  it('renders Hero and ConfigurationList components', () => {
+  it('renders Hero and ConfigurationList components', async () => {
+    (gogenApi.listConfigurations as jest.Mock).mockImplementation(() => new Promise(() => {}));
+
     renderWithRouter();
     
     expect(screen.getByTestId('mock-hero')).toBeInTheDocument();

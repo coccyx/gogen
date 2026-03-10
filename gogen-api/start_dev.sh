@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Determine script directory and project root
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -16,6 +16,30 @@ if [ -d "$VENV_PATH" ]; then
 else
     echo "Warning: Python virtual environment not found at $VENV_PATH"
     echo "Consider creating it with: python3 -m venv $VENV_PATH"
+fi
+
+# Check for env.json (OAuth credentials)
+ENV_FILE="$SCRIPT_DIR/env.json"
+SAM_ENV_ARGS=""
+if [ -f "$ENV_FILE" ]; then
+    echo "Found env.json - OAuth credentials will be loaded"
+    SAM_ENV_ARGS="--env-vars $ENV_FILE"
+else
+    echo ""
+    echo "=========================================="
+    echo "WARNING: env.json not found!"
+    echo "GitHub OAuth login will not work locally."
+    echo ""
+    echo "To enable OAuth, create env.json from the template:"
+    echo "  cp env.json.example env.json"
+    echo "  # Then edit env.json with your GitHub OAuth credentials"
+    echo ""
+    echo "Get OAuth credentials by creating a GitHub OAuth App at:"
+    echo "  https://github.com/settings/developers"
+    echo "  - Homepage URL: http://localhost:3000"
+    echo "  - Callback URL: http://localhost:3000/auth/callback"
+    echo "=========================================="
+    echo ""
 fi
 
 # Start Docker containers
@@ -36,7 +60,7 @@ run_test_commands() {
     echo "Running test gogen commands to validate API..."
     GOGEN_APIURL=http://localhost:4000 gogen -c "$PROJECT_ROOT/examples/tutorial/tutorial1.yml" push tutorial1
     GOGEN_APIURL=http://localhost:4000 gogen -c coccyx/tutorial1 config
-    
+
     echo "Test commands completed."
 }
 
@@ -49,8 +73,8 @@ sam build
 run_test_commands &
 TEST_COMMANDS_PID=$!
 
-# Start SAM local in foreground
-sam local start-api --host 0.0.0.0 --port 4000 --warm-containers EAGER --docker-network lambda-local
+# Start SAM local in foreground (with env vars if available)
+sam local start-api --host 0.0.0.0 --port 4000 --warm-containers EAGER --docker-network lambda-local $SAM_ENV_ARGS
 
 # Trap Ctrl+C and call cleanup
 cleanup() {
