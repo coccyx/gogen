@@ -1,5 +1,45 @@
 # Gogen Release Notes
 
+## Version 0.13.0
+
+### New Features
+- Added GitHub OAuth authentication for configuration management
+  - OAuth login flow with GitHub for user identity
+  - Users can create, edit, and delete their own configurations
+  - My Configurations page for managing owned configs
+  - Protected routes for authenticated operations
+
+### UI Overhaul
+- Redesigned UI with dark terminal-style developer theme
+  - Terminal color palette with JetBrains Mono font
+  - Monaco editor and xterm terminal with dark themes
+  - Compact, developer-friendly layout
+- Unified create/edit screens with integrated execution panel
+  - Test configurations while editing with terminal and structured output tabs
+  - Interactive JSON browser with per-event collapse/expand
+
+### Code Quality
+- Improved test coverage from 52% to 75% with simplified test helpers
+- Added 28 integration tests covering config, templates, tokens, and concurrency
+- DRY refactoring: uniform rate maps, generic setDefault helper, string builders
+- Replaced deprecated io/ioutil with io and os equivalents
+- Split config.go (900+ lines) into focused files for maintainability
+- Added HTTP helper with proper resource cleanup and structured error types
+- Fixed error handling: return parse errors, log marshal errors
+- Fixed logger package name to match directory convention
+- Fixed concurrency safety with sync.Once for ROT initialization
+- Replaced deprecated oauth2.NoContext with context.Background()
+
+### Infrastructure
+- Added CORS preflight OPTIONS handlers for all API endpoints
+- Added staging environment support for API Gateway and Lambda
+- Updated CI/CD with OAuth credential management per environment
+
+### Bug Fixes
+- Fixed race condition in ROT channel initialization
+- Fixed flaky TestTCPRFC5424Output trailing newline issue
+- Fixed Splunk HEC field transform duplication
+
 ## Version 0.12.1
 
 ### New Features
