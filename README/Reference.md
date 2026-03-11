@@ -301,6 +301,7 @@ getLine returns a line from the sample config.
 | Parameter        | Description                                                                                    | Type        |
 |------------------|------------------------------------------------------------------------------------------------|-------------|
 | line             | Line number to return                                                                          | number      |
+| index            | Retrieve choice at line `index`                                                                | number      |
 
 *Returns:*
 
