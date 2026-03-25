@@ -161,6 +161,10 @@ golang.org/x/oauth2/internal
 ## explicit; go 1.23.0
 golang.org/x/sys/unix
 golang.org/x/sys/windows
+# gonum.org/v1/gonum v0.14.0
+## explicit; go 1.20
+gonum.org/v1/gonum/dsp/fourier
+gonum.org/v1/gonum/dsp/fourier/internal/fftpack
 # gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 ## explicit; go 1.11
 # gopkg.in/urfave/cli.v1 v1.20.0
