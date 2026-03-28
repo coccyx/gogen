@@ -13,6 +13,7 @@ import (
 	"time"
 
 	config "github.com/coccyx/gogen/internal"
+	"github.com/coccyx/gogen/jitter"
 	log "github.com/coccyx/gogen/logger"
 	"github.com/coccyx/gogen/run"
 	"github.com/olekukonko/tablewriter"
@@ -529,6 +530,58 @@ func main() {
 					for _, setting := range buildInfo.Settings {
 						fmt.Printf("  %s: %s\n", setting.Key, setting.Value)
 					}
+				}
+				return nil
+			},
+		},
+		{
+			Name:      "jitter",
+			Usage:     "Analyze inter-arrival time jitter from stdin",
+			ArgsUsage: " ",
+			SkipFlagParsing: false,
+			Flags: []cli.Flag{
+				cli.Float64Flag{
+					Name:  "cv-threshold",
+					Value: 0.5,
+					Usage: "Minimum coefficient of variation threshold",
+				},
+				cli.Float64Flag{
+					Name:  "burst-threshold",
+					Value: -0.5,
+					Usage: "Minimum burstiness threshold",
+				},
+				cli.Float64Flag{
+					Name:  "scr-threshold",
+					Value: 0.3,
+					Usage: "Maximum spectral concentration ratio threshold for periodicity",
+				},
+				cli.BoolFlag{
+					Name:  "json",
+					Usage: "Output results as JSON",
+				},
+				cli.BoolFlag{
+					Name:  "quiet, q",
+					Usage: "Quiet mode - only output pass/fail",
+				},
+			},
+			Before: func(clic *cli.Context) error {
+				// Skip normal Setup for jitter command
+				return nil
+			},
+			Action: func(clic *cli.Context) error {
+				opts := jitter.Options{
+					CVThreshold:    clic.Float64("cv-threshold"),
+					BurstThreshold: clic.Float64("burst-threshold"),
+					SCRThreshold:   clic.Float64("scr-threshold"),
+					JSONOutput:     clic.Bool("json"),
+					Quiet:          clic.Bool("quiet"),
+					Reader:         os.Stdin,
+				}
+				if err := jitter.Analyze(opts); err != nil {
+					if !clic.Bool("json") && !clic.Bool("quiet") {
+						fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					}
+					os.Exit(1)
 				}
 				return nil
 			},
