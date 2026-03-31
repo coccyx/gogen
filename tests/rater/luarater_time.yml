@@ -1,0 +1,15 @@
+global:
+  output:
+    outputter: buf
+samples:
+  - name: time_aware
+    rater: time_rater
+    count: 1
+    endIntervals: 1
+    lines:
+    - "_raw": test
+raters:
+  - name: time_rater
+    type: script
+    script: >
+        if now > 0 then return 3.0 else return 1.0 end

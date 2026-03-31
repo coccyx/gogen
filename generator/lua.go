@@ -451,6 +451,12 @@ func (lg *luagen) Gen(item *config.GenQueueItem) error {
 				L.SetGlobal("earliest", lua.LNumber(float64(item.Earliest.UnixNano())/float64(time.Second)))
 				L.SetGlobal("latest", lua.LNumber(float64(item.Latest.UnixNano())/float64(time.Second)))
 				L.SetGlobal("now", lua.LNumber(float64(item.Now.UnixNano())/float64(time.Second)))
+				if !s.BeginParsed.IsZero() {
+					L.SetGlobal("beginTime", lua.LNumber(float64(s.BeginParsed.UnixNano())/float64(time.Second)))
+				}
+				if !s.EndParsed.IsZero() {
+					L.SetGlobal("endTime", lua.LNumber(float64(s.EndParsed.UnixNano())/float64(time.Second)))
+				}
 
 				// Register functions
 				L.SetGlobal("sleep", L.NewFunction(sleep))
@@ -484,6 +490,12 @@ func (lg *luagen) Gen(item *config.GenQueueItem) error {
 	L.SetGlobal("earliest", lua.LNumber(float64(item.Earliest.UnixNano())/float64(time.Second)))
 	L.SetGlobal("latest", lua.LNumber(float64(item.Latest.UnixNano())/float64(time.Second)))
 	L.SetGlobal("now", lua.LNumber(float64(item.Now.UnixNano())/float64(time.Second)))
+	if !s.BeginParsed.IsZero() {
+		L.SetGlobal("beginTime", lua.LNumber(float64(s.BeginParsed.UnixNano())/float64(time.Second)))
+	}
+	if !s.EndParsed.IsZero() {
+		L.SetGlobal("endTime", lua.LNumber(float64(s.EndParsed.UnixNano())/float64(time.Second)))
+	}
 
 	// log.Debugf("Calling DoString for %# v", s.CustomGenerator.Script)
 	var f *lua.LFunction
