@@ -1,0 +1,15 @@
+generators:
+  - name: beginEndTime
+    script: |
+        line = getLine(0)
+        setToken("bt", tostring(math.floor(beginTime)))
+        setToken("et", tostring(math.floor(endTime)))
+        line = replaceTokens(line)
+        sendEvent(line)
+samples:
+  - name: beginEndTime
+    generator: beginEndTime
+    interval: 1
+    endIntervals: 1
+    lines:
+    - _raw: "$bt$-$et$"

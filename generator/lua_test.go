@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -418,4 +419,28 @@ func runLuaGen(t *testing.T, s *config.Sample, gen *luagen) (chan *config.OutQue
 		err = gen.Gen(gqi)
 	}()
 	return oq, err
+}
+
+func TestBeginEndTimeExposed(t *testing.T) {
+	config.ResetConfig()
+
+	os.Setenv("GOGEN_HOME", "..")
+	os.Setenv("GOGEN_ALWAYS_REFRESH", "")
+	home := ".."
+	os.Setenv("GOGEN_FULLCONFIG", filepath.Join(home, "tests", "generator", "luaapi_time.yml"))
+
+	c := config.NewConfig()
+	s := c.FindSampleByName("beginEndTime")
+
+	// Set BeginParsed and EndParsed on the sample
+	loc, _ := time.LoadLocation("Local")
+	s.BeginParsed = time.Date(2001, 10, 20, 11, 0, 0, 0, loc)
+	s.EndParsed = time.Date(2001, 10, 20, 13, 0, 0, 0, loc)
+
+	beginEpoch := s.BeginParsed.Unix()
+	endEpoch := s.EndParsed.Unix()
+	expected := fmt.Sprintf("%d-%d", beginEpoch, endEpoch)
+
+	gen := new(luagen)
+	testLuaGen(t, s, gen, expected)
 }

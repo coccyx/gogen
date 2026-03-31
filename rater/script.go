@@ -17,8 +17,10 @@ type ScriptRater struct {
 	luaState *lua.LTable
 }
 
-// GetRate acts as a general method for EventRate and TokenRate
-func (sr *ScriptRater) getRate(now time.Time) float64 {
+// getRate acts as a general method for EventRate and TokenRate.
+// It exposes now, beginTime, and endTime as Lua globals so scripts
+// can make time-aware decisions (e.g. operating hours, week-based ramp-up).
+func (sr *ScriptRater) getRate(s *config.Sample, now time.Time) float64 {
 	if sr.luaState == nil {
 		sr.luaState = new(lua.LTable)
 		for k, v := range sr.c.Init {
@@ -29,6 +31,15 @@ func (sr *ScriptRater) getRate(now time.Time) float64 {
 	defer L.Close()
 	L.SetGlobal("state", sr.luaState)
 	L.SetGlobal("options", luar.New(L, sr.c.Options))
+	L.SetGlobal("now", lua.LNumber(float64(now.UnixNano())/float64(time.Second)))
+	if s != nil {
+		if !s.BeginParsed.IsZero() {
+			L.SetGlobal("beginTime", lua.LNumber(float64(s.BeginParsed.UnixNano())/float64(time.Second)))
+		}
+		if !s.EndParsed.IsZero() {
+			L.SetGlobal("endTime", lua.LNumber(float64(s.EndParsed.UnixNano())/float64(time.Second)))
+		}
+	}
 	if err := L.DoString(sr.c.Script); err != nil {
 		log.Errorf("Error executing script for rater '%s': %s", sr.c.Name, err)
 	}
@@ -37,10 +48,10 @@ func (sr *ScriptRater) getRate(now time.Time) float64 {
 
 // EventRate takes a given sample and current count and returns the rated count
 func (sr *ScriptRater) EventRate(s *config.Sample, now time.Time, count int) float64 {
-	return sr.getRate(now)
+	return sr.getRate(s, now)
 }
 
 // TokenRate takes a token and returns the rated value
 func (sr *ScriptRater) TokenRate(t config.Token, now time.Time) float64 {
-	return sr.getRate(now)
+	return sr.getRate(t.Parent, now)
 }
